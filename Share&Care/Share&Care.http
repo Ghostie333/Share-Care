@@ -1,0 +1,6 @@
+@Share_Care_HostAddress = http://localhost:5133
+
+GET {{Share_Care_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

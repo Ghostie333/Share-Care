@@ -1,0 +1,2 @@
+1. Otworz powershella w tym folderze
+2. Kopiuj wklej: python -m http.server 3000

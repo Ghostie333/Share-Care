@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:latest
+    container_name: mongo-db-container
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build: ./Share&Care
+    container_name: sharecareapp-backend
+    restart: unless-stopped
+    ports:
+      - "7070:8080"   # expose tylko port produkcyjny
+    depends_on:
+      - mongo
+    environment:
+      MongoDb__ConnectionString: "mongodb://admin:admin123@mongo:27017/testdb?authSource=admin"
+
+volumes:
+  mongo_data:
