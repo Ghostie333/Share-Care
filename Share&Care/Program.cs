@@ -1,3 +1,4 @@
+using System.Linq;
 using MongoDB.Driver;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,35 +14,45 @@ var mongoClient = new MongoClient(mongoConnectionString);
 var mongoDatabase = mongoClient.GetDatabase("testdb");
 builder.Services.AddSingleton(mongoDatabase);
 
+// CORS
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "https://localhost:3000", "https://localhost:32769")
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        policy.WithOrigins(
+            "http://localhost:3000",
+            "https://localhost:3000",
+            "http://192.168.1.68:32769",
+            "http://192.168.1.68:7070",
+            "https://46.205.192.175:7070",
+            "http://46.205.192.175:7070"
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod();
     });
 });
 
 var app = builder.Build();
 
-// Middleware
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
+// WA¯NE: UseRouting przed UseCors
+app.UseRouting();
+
 app.UseCors();
 
 app.UseHttpsRedirection();
 app.UseAuthorization();
 
-// **to pozwala na serwowanie plików statycznych z wwwroot**
-app.UseDefaultFiles();   // pozwala automatycznie wczytaæ index.html
+app.UseDefaultFiles();
 app.UseStaticFiles();
 
 app.MapControllers();
+
 app.MapGet("/userprofilepage", async context =>
 {
     var path = Path.Combine(app.Environment.WebRootPath, "pages", "UserProfilePage", "index.html");
