@@ -42,5 +42,11 @@ app.UseDefaultFiles();   // pozwala automatycznie wczytaæ index.html
 app.UseStaticFiles();
 
 app.MapControllers();
+app.MapGet("/userprofilepage", async context =>
+{
+    var path = Path.Combine(app.Environment.WebRootPath, "pages", "UserProfilePage", "index.html");
+    context.Response.ContentType = "text/html";
+    await context.Response.SendFileAsync(path);
+});
 
 app.Run();

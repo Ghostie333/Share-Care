@@ -34,6 +34,7 @@
 <body>
     <h1>Main Page</h1>
     <h1>Weather Forecasts</h1>
+    <button onclick="goToUserPage()">Otwórz User Page</button>
     <button onclick="fetchForecasts()">Odśwież dane</button>
     <button onclick="addToForecasts()">Dodaj dane</button>
 
@@ -53,6 +54,15 @@
 
     <script>
         const backendUrl = "http://localhost:7070/MainPage/all";
+
+        function goToUserPage() {
+            // Opcje:
+            // 1) Przekierowanie w tej samej karcie:
+            window.location.href = '/pages/UserProfilePage/';
+
+            // 2) (alternatywnie) otwarcie w nowej karcie:
+            // window.open('/pages/UserProfilePage/', '_blank');
+        }
 
         async function addToForecasts() {
             try {
@@ -85,10 +95,10 @@
                 data.forEach(item => {
                     const tr = document.createElement("tr");
                     tr.innerHTML = `
-                                <td>${new Date(item.date).toLocaleDateString()}</td>
-                                <td>${item.temperatureC}</td>
-                                <td>${item.summary}</td>
-                            `;
+                                    <td>${new Date(item.date).toLocaleDateString()}</td>
+                                    <td>${item.temperatureC}</td>
+                                    <td>${item.summary}</td>
+                                `;
                     tbody.appendChild(tr);
                 });
 
