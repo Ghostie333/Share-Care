@@ -32,7 +32,7 @@
     </style>
 </head>
 <body>
-
+    <h1>Main Page</h1>
     <h1>Weather Forecasts</h1>
     <button onclick="fetchForecasts()">Odśwież dane</button>
     <button onclick="addToForecasts()">Dodaj dane</button>
@@ -52,11 +52,11 @@
     </table>
 
     <script>
-        const backendUrl = "http://localhost:7070/WeatherForecast/all";
+        const backendUrl = "http://localhost:7070/MainPage/all";
 
         async function addToForecasts() {
             try {
-                const response = await fetch("http://localhost:7070/WeatherForecast");
+                const response = await fetch("http://localhost:7070/MainPage");
                 if (!response.ok) throw new Error("Błąd sieci: " + response.status);
 
                 // Po dodaniu danych odśwież tabelę
