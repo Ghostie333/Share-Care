@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pl">
 <head>
     <meta charset="UTF-8">
     <title>Weather Forecast</title>
@@ -38,7 +38,6 @@
     <button onclick="fetchForecasts()">Odśwież dane</button>
     <button onclick="addToForecasts()">Dodaj dane</button>
 
-
     <table>
         <thead>
             <tr>
@@ -53,24 +52,25 @@
     </table>
 
     <script>
-        //const backendUrl = "http://localhost:7070/MainPage/all";
-        const backendUrl = "/MainPage/all";
-        function goToUserPage() {
-            // Opcje:
-            // 1) Przekierowanie w tej samej karcie:
-            window.location.href = '/pages/UserProfilePage/';
+        // BACKEND ORIGIN: domyślnie używa originu strony (location.origin),
+        // ale możesz nadpisać go w dev: window.BACKEND_URL = "http://192.168.1.68:7070";
+        const backendOrigin = window.BACKEND_URL || location.origin;
 
-            // 2) (alternatywnie) otwarcie w nowej karcie:
-            // window.open('/pages/UserProfilePage/', '_blank');
+        const apiAddUrl = `${backendOrigin}/MainPage`;
+        const apiAllUrl = `${backendOrigin}/MainPage/all`;
+
+        function goToUserPage() {
+            // Jeśli serwujesz statyczne pliki z backendu (wwwroot), użyj ścieżki względnej:
+            window.location.href = '/pages/UserProfilePage/';
+            // Jeśli front jest serwowany przez inny serwer i potrzebujesz pełnego URL:
+            // window.location.href = `${backendOrigin}/pages/UserProfilePage/`;
         }
 
         async function addToForecasts() {
             try {
-                const response = await fetch("http://localhost:7070/MainPage");
+                const response = await fetch(apiAddUrl, { method: 'GET' });
                 if (!response.ok) throw new Error("Błąd sieci: " + response.status);
-
-                // Po dodaniu danych odśwież tabelę
-                fetchForecasts();
+                await fetchForecasts();
             } catch (error) {
                 alert("Błąd: " + error.message);
             }
@@ -81,12 +81,12 @@
             tbody.innerHTML = "<tr><td colspan='3'>Ładowanie...</td></tr>";
 
             try {
-                const response = await fetch(backendUrl);
+                const response = await fetch(apiAllUrl, { method: 'GET' });
                 if (!response.ok) throw new Error("Błąd sieci: " + response.status);
 
                 const data = await response.json();
 
-                if (data.length === 0) {
+                if (!Array.isArray(data) || data.length === 0) {
                     tbody.innerHTML = "<tr><td colspan='3'>Brak danych</td></tr>";
                     return;
                 }
@@ -95,10 +95,10 @@
                 data.forEach(item => {
                     const tr = document.createElement("tr");
                     tr.innerHTML = `
-                                    <td>${new Date(item.date).toLocaleDateString()}</td>
-                                    <td>${item.temperatureC}</td>
-                                    <td>${item.summary}</td>
-                                `;
+                            <td>${new Date(item.date).toLocaleDateString()}</td>
+                            <td>${item.temperatureC}</td>
+                            <td>${item.summary}</td>
+                        `;
                     tbody.appendChild(tr);
                 });
 
@@ -110,6 +110,5 @@
         // fetch przy pierwszym załadowaniu strony
         fetchForecasts();
     </script>
-
 </body>
 </html>
