@@ -13,7 +13,7 @@ namespace Share_Care.models
 
         public string? Name { get; set; }
 
-        public string? Surname { get; set; }
+        public string? LastName { get; set; }
 
         // Id pliku w GridFS (BSON ObjectId przechowywany jako string)
         [BsonRepresentation(BsonType.ObjectId)]

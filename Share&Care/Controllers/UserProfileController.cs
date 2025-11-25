@@ -25,49 +25,6 @@ namespace Share_Care.Controllers
             _logger = logger;
         }
 
-        // Upload: multipart/form-data, pole "file" i "userId"
-        #region FunkcjaDoPrzesłaniaZdjęciaProfilowego(Nie Działa)
-        /*
-        [HttpPost("upload")]
-        [Consumes("multipart/form-data")]
-        public async Task<IActionResult> UploadProfileImage([FromForm] IFormFile file, [FromForm] string userId)
-        {
-            throw new NotImplementedException("Funkcja uploadu obrazu profilu została wyłączona.");
-            #region PowodujeBłąd
-            //if (file == null || file.Length == 0) return BadRequest("Brak pliku.");
-            //if (string.IsNullOrWhiteSpace(userId)) return BadRequest("Brak userId.");
-
-            //try
-            //{
-            //    using var ms = new MemoryStream();
-            //    await file.CopyToAsync(ms);
-            //    var bytes = ms.ToArray();
-            //    var filename = $"{userId}_{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
-
-            //    var options = new GridFSUploadOptions
-            //    {
-            //        Metadata = new BsonDocument { { "contentType", file.ContentType } }
-            //    };
-
-            //    var objectId = await _bucket.UploadFromBytesAsync(filename, bytes, options);
-            //    var idString = objectId.ToString();
-
-            //    var filter = Builders<UserData>.Filter.Eq(u => u.UserId, userId);
-            //    var update = Builders<UserData>.Update.Set(u => u.ProfileImageId, idString);
-            //    await _users.UpdateOneAsync(filter, update);
-
-            //    return Ok(new { profileImageId = idString });
-            //}
-            //catch (Exception ex)
-            //{
-            //    _logger.LogError(ex, "Błąd uploadu profilu");
-            //    return StatusCode(500, "Błąd serwera podczas zapisu pliku.");
-            //}
-            #endregion
-        }
-        */
-        #endregion
-
         // Pobierz obraz: zwraca zawartość z GridFS
         [HttpGet("photo/{userId}")]
         public async Task<IActionResult> GetProfileImage(string userId)
