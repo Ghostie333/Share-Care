@@ -4,7 +4,7 @@
 
 
 Development:
-docker compose -f docker-compose.dev.yml down -v (-v kasuje dane)
+docker compose -f docker-compose.dev.yml down (-v kasuje dane)
 docker compose -f docker-compose.dev.yml up -d --build
 
 
@@ -12,3 +12,7 @@ Prod:
 docker compose -f docker-compose.prod.yml down -v
 docker compose -f docker-compose.prod.yml up -d --build
 
+
+Dev z plikiem env:
+docker compose --env-file shareCare.env -f docker-compose.dev.yml down
+docker compose --env-file shareCare.env -f docker-compose.dev.yml up -d --build

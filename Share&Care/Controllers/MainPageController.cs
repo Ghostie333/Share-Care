@@ -40,17 +40,17 @@ namespace Share_Care.Controllers
         }
 
         [HttpGet("all")]
-        public async Task<IEnumerable<WeatherForecast>> GetAll()
+        public async Task<IActionResult> GetAll()
         {
             try
             {
                 var forecasts = await _collection.Find(_ => true).ToListAsync();
-                return forecasts;
+                return Ok(forecasts);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "B³¹d pobierania danych z MongoDB");
-                throw;
+                return Problem("B³¹d bazy danych", statusCode: StatusCodes.Status500InternalServerError);
             }
         }
     }

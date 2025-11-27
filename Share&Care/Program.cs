@@ -1,4 +1,8 @@
-using System.Linq;
+using System.Text;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,19 +25,62 @@ var mongoDatabase = mongoClient.GetDatabase(dbName);
 builder.Services.AddSingleton(mongoDatabase);
 
 
-// CORS
-//builder.Services.AddCors(options =>
-//{
-//    options.AddDefaultPolicy(policy =>
-//    {
-//        policy.WithOrigins(
-//            "http://localhost:3000",
-//            "https://localhost:3000"
-//        )
-//        .AllowAnyHeader()
-//        .AllowAnyMethod();
-//    });
-//});
+// AUTH: automatyczny wybór Cookies/JWT (PolicyScheme)
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = "Smart";
+    options.DefaultChallengeScheme = "Smart";
+})
+    .AddPolicyScheme("Smart", "JWT or Cookies", o =>
+    {
+        o.ForwardDefaultSelector = ctx =>
+        {
+            var hasBearer = ctx.Request.Headers["Authorization"]
+                .FirstOrDefault()?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true;
+            return hasBearer ? JwtBearerDefaults.AuthenticationScheme : CookieAuthenticationDefaults.AuthenticationScheme;
+        };
+    })
+    .AddCookie(o =>
+    {
+        o.Cookie.Name = ".sharecare.auth";
+        o.Cookie.HttpOnly = true;
+        // Dla cross-site w produkcji: None + Secure (wymaga HTTPS)
+        // o.Cookie.SameSite = SameSiteMode.None;
+        // o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        o.SlidingExpiration = true;
+        o.ExpireTimeSpan = TimeSpan.FromDays(7); // Gdy u¿ytkownik pozostaje aktywny, odœwie¿amy wa¿noœæ o 7 dni
+        o.Events.OnRedirectToLogin = ctx => { ctx.Response.StatusCode = StatusCodes.Status401Unauthorized; return Task.CompletedTask; };
+        o.Events.OnRedirectToAccessDenied = ctx => { ctx.Response.StatusCode = StatusCodes.Status403Forbidden; return Task.CompletedTask; };
+    })
+    .AddJwtBearer(o =>
+    {
+        var key = Environment.GetEnvironmentVariable("Auth__Jwt__Key");
+        o.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+            ClockSkew = TimeSpan.FromMinutes(1)
+        };
+    }
+);
+
+/*
+//CORS
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins(
+            "http://localhost:3000",
+            "https://localhost:3000"
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod();
+    });
+});
+*/
 var app = builder.Build();
 
 
@@ -46,6 +93,7 @@ if (app.Environment.IsDevelopment())
 app.UseRouting();
 //app.UseCors();
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.UseDefaultFiles();
