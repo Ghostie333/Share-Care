@@ -52,18 +52,12 @@
     </table>
 
     <script>
-        // BACKEND ORIGIN: domyślnie używa originu strony (location.origin),
-        // ale możesz nadpisać go w dev: window.BACKEND_URL = "http://192.168.1.68:7070";
-        const backendOrigin = window.BACKEND_URL || location.origin;
-
-        const apiAddUrl = `${backendOrigin}/MainPage`;
-        const apiAllUrl = `${backendOrigin}/MainPage/all`;
+        // Same-origin: wszystkie wywołania są względne do originu strony
+        const apiAddUrl = "/MainPage";
+        const apiAllUrl = "/MainPage/all";
 
         function goToUserPage() {
-            // Jeśli serwujesz statyczne pliki z backendu (wwwroot), użyj ścieżki względnej:
             window.location.href = '/pages/UserProfilePage/';
-            // Jeśli front jest serwowany przez inny serwer i potrzebujesz pełnego URL:
-            // window.location.href = `${backendOrigin}/pages/UserProfilePage/`;
         }
 
         async function addToForecasts() {
@@ -107,7 +101,6 @@
             }
         }
 
-        // fetch przy pierwszym załadowaniu strony
         fetchForecasts();
     </script>
 </body>

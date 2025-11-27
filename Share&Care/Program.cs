@@ -22,32 +22,19 @@ builder.Services.AddSingleton(mongoDatabase);
 
 
 // CORS
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy =>
-    {
-        policy.WithOrigins(
-            "http://localhost:3000",
-            "https://localhost:3000",
-            "http://192.168.1.68:32769",
-            "http://192.168.1.68:7070",
-            "https://46.205.192.175:7070",
-            "http://46.205.192.175:7070"
-        )
-        .AllowAnyHeader()
-        .AllowAnyMethod();
-    });
-});
-var app = builder.Build();
 //builder.Services.AddCors(options =>
 //{
-//    options.AddPolicy("AllowAll",
-//        builder => builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+//    options.AddDefaultPolicy(policy =>
+//    {
+//        policy.WithOrigins(
+//            "http://localhost:3000",
+//            "https://localhost:3000"
+//        )
+//        .AllowAnyHeader()
+//        .AllowAnyMethod();
+//    });
 //});
-
-//var app = builder.Build();
-//app.UseCors("AllowAll");
-
+var app = builder.Build();
 
 
 if (app.Environment.IsDevelopment())
@@ -56,11 +43,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// WA¯NE: UseRouting przed UseCors
 app.UseRouting();
-
-app.UseCors();
-
+//app.UseCors();
 app.UseHttpsRedirection();
 app.UseAuthorization();
 
