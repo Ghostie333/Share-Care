@@ -9,10 +9,12 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // MongoDB
-var mongoConnectionString = builder.Configuration.GetConnectionString("MongoDB");
-var mongoClient = new MongoClient(mongoConnectionString);
+var mongoConn = Environment.GetEnvironmentVariable("MongoDb__ConnectionString");
+
+var mongoClient = new MongoClient(mongoConn);
 var mongoDatabase = mongoClient.GetDatabase("testdb");
 builder.Services.AddSingleton(mongoDatabase);
+
 
 // CORS
 builder.Services.AddCors(options =>
