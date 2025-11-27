@@ -9,10 +9,15 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // MongoDB
-var mongoConn = Environment.GetEnvironmentVariable("MongoDb__ConnectionString");
+var rawConn = Environment.GetEnvironmentVariable("MongoDb__ConnectionString");
 
-var mongoClient = new MongoClient(mongoConn);
-var mongoDatabase = mongoClient.GetDatabase("testdb");
+var mongoUrl = new MongoUrl(rawConn);
+var dbName = mongoUrl.DatabaseName;
+Console.WriteLine($"[STARTUP] Using MongoDB URL: {rawConn}");
+Console.WriteLine($"[STARTUP] Resolved Database: {dbName}");
+
+var mongoClient = new MongoClient(mongoUrl);
+var mongoDatabase = mongoClient.GetDatabase(dbName);
 builder.Services.AddSingleton(mongoDatabase);
 
 

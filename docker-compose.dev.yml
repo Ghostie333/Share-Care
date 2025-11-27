@@ -21,7 +21,7 @@ services:
     depends_on:
       - mongo
     environment:
-      MongoDb__ConnectionString: "mongodb://admin:admin123@mongo:27017/testdb?authSource=admin"
+      MongoDb__ConnectionString: "mongodb://admin:admin123@mongo:27017/shareCareDb?authSource=admin"
     volumes:
       - ./Share&Care/wwwroot:/app/wwwroot
     restart: unless-stopped
