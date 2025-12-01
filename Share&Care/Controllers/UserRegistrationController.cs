@@ -11,10 +11,12 @@ namespace Share_Care.Controllers
     public class UserRegistrationController : Controller
     {
         private readonly IMongoCollection<UserData> _users;
+        private readonly SecurityService _security;
 
-        public UserRegistrationController(IMongoDatabase db)
+        public UserRegistrationController(IMongoDatabase db, SecurityService security)
         {
             _users = db.GetCollection<UserData>("users");
+            _security = security;
         }
 
         public sealed class RegistrationRequest
@@ -29,8 +31,6 @@ namespace Share_Care.Controllers
         [HttpPost("user-registry")]
         public async Task<IActionResult> UserRegistration([FromBody] RegistrationRequest userRegistration)
         {
-            SecurityService securityService = SecurityService.GetInstance();
-
             var existingUser = await _users
                 .Find(u => u.Email == userRegistration.Email)
                 .FirstOrDefaultAsync();
@@ -42,7 +42,7 @@ namespace Share_Care.Controllers
 
             UserData user = new UserData();
             user.Email = userRegistration.Email;
-            user.Password = Convert.ToBase64String(securityService.HashPassword(userRegistration.Password));
+            user.Password = Convert.ToBase64String(_security.HashPassword(userRegistration.Password));
             user.FirstName = userRegistration.FirstName;
             user.LastName = userRegistration.LastName;
 

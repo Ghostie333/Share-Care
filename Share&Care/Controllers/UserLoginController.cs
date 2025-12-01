@@ -1,14 +1,16 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using Microsoft.AspNetCore.Authentication;
+﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
+using MongoDB.Driver.Linq;
 using Share_Care.models;
+using Share_Care.Services;
+using System.ComponentModel.DataAnnotations;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace Share_Care.Controllers
 {
@@ -18,11 +20,15 @@ namespace Share_Care.Controllers
     {
         private readonly ILogger<UserLoginController> _logger;
         private readonly IMongoCollection<UserData> _users;
+        private readonly SecurityService _security;
+        private readonly IConfiguration _config;
 
-        public UserLoginController(ILogger<UserLoginController> logger, IMongoDatabase db)
+        public UserLoginController(ILogger<UserLoginController> logger, IMongoDatabase db, SecurityService security, IConfiguration config)
         {
             _logger = logger;
             _users = db.GetCollection<UserData>("users");
+            _security = security;
+            _config = config;
         }
 
         public sealed class LoginRequest
@@ -41,13 +47,10 @@ namespace Share_Care.Controllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            // Wyszukanie uzytkownika w bazie danych na podstawie Emaila
-            var user = await _users.Find(u => u.Email == request.Email).FirstOrDefaultAsync(ct);
-            if (user == null) return Unauthorized("Nieprawidłowy email lub hasło.");
+            var userResult = await CheckLoginRequest(request, ct);
+            if (userResult.Result is IActionResult error) return error; // Unauthorized/BadRequest
 
-            // TODO: weryfikacja hasła (hash + salt) po dodaniu pola np. PasswordHash w UserData
-            // if (!PasswordHasher.Verify(user.PasswordHash, request.Password)) return Unauthorized();
-
+            var user = userResult.Value!;
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.UserId ?? String.Empty),
@@ -66,13 +69,14 @@ namespace Share_Care.Controllers
                 new AuthenticationProperties
                 {
                     IsPersistent = true,
-                    ExpiresUtc = DateTimeOffset.UtcNow.AddDays(7) // Czas trwania sesji
+                    ExpiresUtc = DateTime.UtcNow.AddHours(_config.GetValue<int?>("Session:SessionTimeoutHours") ?? 1) // Czas trwania sesji
                 }
             );
 
             // Zwracamy odpowiedź z danymi użytkownika
             return Ok(new { userId = user.UserId, email = user.Email, name = user.FirstName, lastName = user.LastName });
         }
+
 
         // Logowanie mobilne (JWT)
         [HttpPost("login-jwt")]
@@ -81,13 +85,10 @@ namespace Share_Care.Controllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            // Wyszukanie uzytkownika w bazie danych na podstawie Emaila
-            var user = await _users.Find(u => u.Email == request.Email).FirstOrDefaultAsync(ct);
-            if (user == null) return Unauthorized("Nieprawidłowy email lub hasło.");
+            var userResult = await CheckLoginRequest(request, ct);
+            if (userResult.Result is IActionResult error) return error; // Unauthorized/BadRequest
 
-            // TODO: weryfikacja hasła (hash + salt) po dodaniu pola np. PasswordHash w UserData
-            // if (!PasswordHasher.Verify(user.PasswordHash, request.Password)) return Unauthorized();
-
+            var user = userResult.Value!;
             var claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.UserId ?? String.Empty),
@@ -106,12 +107,24 @@ namespace Share_Care.Controllers
 
             var jwt = new JwtSecurityToken(
                 claims: claims,
-                expires: DateTime.UtcNow.AddHours(1), // Czas trwania sesji
+                expires: DateTime.UtcNow.AddHours(_config.GetValue<int?>("Session:SessionTimeoutHours") ?? 1), // Czas trwania sesji
                 signingCredentials: creds);
 
             var token = new JwtSecurityTokenHandler().WriteToken(jwt);
 
-            return Ok(new { access_token = token, token_type = "Bearer", expires_in = 3600 });
+            return Ok(new { access_token = token, token_type = "Bearer", expires_in = jwt.ValidTo });
+        }
+
+        // Sprawdzenie czy użytkownik istnieje i czy hasło jest poprawne
+        private async Task<ActionResult<UserData>> CheckLoginRequest(LoginRequest request, CancellationToken ct)
+        {
+            var user = await _users.Find(u => u.Email == request.Email).FirstOrDefaultAsync(ct);
+            if (user == null) return Unauthorized("Nieprawidłowy email lub hasło");
+
+            if (!_security.ComparePasswords(request.Password ?? string.Empty, user.Password ?? string.Empty))
+                return Unauthorized("Nieprawidłowy email lub hasło");
+
+            return user;
         }
     }
 }
