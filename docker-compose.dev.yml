@@ -1,29 +1,32 @@
-version: "3.9"
-
 services:
   mongo:
-    image: mongo:latest   # najnowsza wersja
-    container_name: mongo-db-container
+    image: "mongo:latest"
+    container_name: "mongo-db-container"
     restart: always
     environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_ROOT_USERNAME: "${MONGO_ROOT_USER}"
+      MONGO_INITDB_ROOT_PASSWORD: "${MONGO_ROOT_PASS}"
+      MONGO_INITDB_DATABASE: "${MONGO_DB}"
     ports:
       - "27017:27017"
     volumes:
-      - mongo_data:/data/db
+      - "mongo_data:/data/db"
 
   backend:
-    build: ./Share&Care
-    container_name: sharecareapp-backend
-    ports:
-      - "7070:8080"
+    build:
+      context: "./Share&Care"                 # cudzysłowy przez znak &
+    container_name: "sharecareapp-backend"
     depends_on:
       - mongo
     environment:
-      MongoDb__ConnectionString: "mongodb://admin:admin123@mongo:27017/testdb?authSource=admin"
+      MongoDb__ConnectionString: "mongodb://${MONGO_APP_USER}:${MONGO_APP_PASS}@mongo:27017/${MONGO_DB}?authSource=${MONGO_AUTH_SOURCE}"
+      Auth__Jwt__Key: "${JWT_KEY}"
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_URLS: "http://+:8080"
+    ports:
+      - "7070:8080"
     volumes:
-      - ./Share&Care/wwwroot:/app/wwwroot
+      - "./Share&Care/wwwroot:/app/wwwroot"   # też w cudzysłowie
     restart: unless-stopped
 
 volumes:

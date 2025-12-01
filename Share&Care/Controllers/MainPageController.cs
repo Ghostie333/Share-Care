@@ -1,27 +1,28 @@
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
+using Share_Care.models;
 
 namespace Share_Care.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class WeatherForecastController : ControllerBase
+    public class MainPageController : ControllerBase
     {
         private static readonly string[] Summaries = new[]
         {
             "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
         };
 
-        private readonly ILogger<WeatherForecastController> _logger;
+        private readonly ILogger<MainPageController> _logger;
         private readonly IMongoCollection<WeatherForecast> _collection;
 
-        public WeatherForecastController(ILogger<WeatherForecastController> logger, IMongoDatabase db)
+        public MainPageController(ILogger<MainPageController> logger, IMongoDatabase db)
         {
             _logger = logger;
             _collection = db.GetCollection<WeatherForecast>("weatherforecasts");
         }
 
-        [HttpGet(Name = "GetWeatherForecast")]
+        [HttpGet(Name = "getMainPage")]
         public async Task<IEnumerable<WeatherForecast>> Get()
         {
             // Generowanie prognoz
@@ -29,7 +30,7 @@ namespace Share_Care.Controllers
             {
                 Date = DateTime.Now.AddDays(index), // zamiast DateOnly.FromDateTime(...),
                 TemperatureC = Random.Shared.Next(-20, 55),
-                Summary = WeatherForecastController.Summaries[Random.Shared.Next(WeatherForecastController.Summaries.Length)]
+                Summary = MainPageController.Summaries[Random.Shared.Next(MainPageController.Summaries.Length)]
             }).ToList();
 
             // Zapis do Mongo
@@ -39,17 +40,17 @@ namespace Share_Care.Controllers
         }
 
         [HttpGet("all")]
-        public async Task<IEnumerable<WeatherForecast>> GetAll()
+        public async Task<IActionResult> GetAll()
         {
             try
             {
                 var forecasts = await _collection.Find(_ => true).ToListAsync();
-                return forecasts;
+                return Ok(forecasts);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "B³¹d pobierania danych z MongoDB");
-                throw;
+                return Problem("B³¹d bazy danych", statusCode: StatusCodes.Status500InternalServerError);
             }
         }
     }

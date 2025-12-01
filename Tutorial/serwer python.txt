@@ -1,0 +1,3 @@
+1. Otworz powershella w folderze wwwroot
+2. Kopiuj wklej:
+python -m http.server 3000

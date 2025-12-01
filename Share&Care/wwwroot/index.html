@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pl">
 <head>
     <meta charset="UTF-8">
     <title>Weather Forecast</title>
@@ -32,11 +32,11 @@
     </style>
 </head>
 <body>
-
+    <h1>Main Page</h1>
     <h1>Weather Forecasts</h1>
+    <button onclick="goToUserPage()">Otwórz User Page</button>
     <button onclick="fetchForecasts()">Odśwież dane</button>
     <button onclick="addToForecasts()">Dodaj dane</button>
-
 
     <table>
         <thead>
@@ -52,15 +52,19 @@
     </table>
 
     <script>
-        const backendUrl = "http://localhost:7070/WeatherForecast/all";
+        // Same-origin: wszystkie wywołania są względne do originu strony
+        const apiAddUrl = "/MainPage";
+        const apiAllUrl = "/MainPage/all";
+
+        function goToUserPage() {
+            window.location.href = '/pages/UserProfilePage/';
+        }
 
         async function addToForecasts() {
             try {
-                const response = await fetch("http://localhost:7070/WeatherForecast");
+                const response = await fetch(apiAddUrl, { method: 'GET' });
                 if (!response.ok) throw new Error("Błąd sieci: " + response.status);
-
-                // Po dodaniu danych odśwież tabelę
-                fetchForecasts();
+                await fetchForecasts();
             } catch (error) {
                 alert("Błąd: " + error.message);
             }
@@ -71,12 +75,12 @@
             tbody.innerHTML = "<tr><td colspan='3'>Ładowanie...</td></tr>";
 
             try {
-                const response = await fetch(backendUrl);
+                const response = await fetch(apiAllUrl, { method: 'GET' });
                 if (!response.ok) throw new Error("Błąd sieci: " + response.status);
 
                 const data = await response.json();
 
-                if (data.length === 0) {
+                if (!Array.isArray(data) || data.length === 0) {
                     tbody.innerHTML = "<tr><td colspan='3'>Brak danych</td></tr>";
                     return;
                 }
@@ -85,10 +89,10 @@
                 data.forEach(item => {
                     const tr = document.createElement("tr");
                     tr.innerHTML = `
-                                <td>${new Date(item.date).toLocaleDateString()}</td>
-                                <td>${item.temperatureC}</td>
-                                <td>${item.summary}</td>
-                            `;
+                            <td>${new Date(item.date).toLocaleDateString()}</td>
+                            <td>${item.temperatureC}</td>
+                            <td>${item.summary}</td>
+                        `;
                     tbody.appendChild(tr);
                 });
 
@@ -97,9 +101,7 @@
             }
         }
 
-        // fetch przy pierwszym załadowaniu strony
         fetchForecasts();
     </script>
-
 </body>
 </html>
