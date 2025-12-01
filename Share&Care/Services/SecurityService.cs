@@ -6,10 +6,12 @@ namespace Share_Care.Services
     public class SecurityService
     {
         private static SecurityService _instance;
+        private const int _saltLength = 16;
+        private const int _hashLength = 20;
 
         public static SecurityService GetInstance()
         {
-            if(_instance == null)
+            if (_instance == null)
             {
                 _instance = new SecurityService();
             }
@@ -17,21 +19,40 @@ namespace Share_Care.Services
             return _instance;
         }
 
-        public string HashPassword(string password)
+        public byte[] HashPassword(string password)
         {
             byte[] salt;
-            new RNGCryptoServiceProvider().GetBytes(salt = new byte[16]);
+            new RNGCryptoServiceProvider().GetBytes(salt = new byte[_saltLength]);
 
             var pbkdf2 = new Rfc2898DeriveBytes(password, salt, 100000);
-            byte[] hash = pbkdf2.GetBytes(20);
+            byte[] hash = pbkdf2.GetBytes(_hashLength);
 
-            byte[] hashBytes = new byte[36];
-            Array.Copy(salt, 0, hashBytes, 0, 16);
-            Array.Copy(hash, 0, hashBytes, 16, 20);
+            byte[] hashBytes = new byte[_saltLength + _hashLength];
+            Array.Copy(salt, 0, hashBytes, 0, _saltLength);
+            Array.Copy(hash, 0, hashBytes, _saltLength, _hashLength);
 
-            string passwordHash = Convert.ToBase64String(hashBytes);
+            return hashBytes;
+        }
 
-            return passwordHash;
+        public bool ComparePasswords(string password, string hashedPassword)
+        {
+            byte[] hashBytes = Convert.FromBase64String(hashedPassword);
+            byte[] salt = new byte[_saltLength];
+
+            Array.Copy(hashBytes, 0, salt, 0, _saltLength);
+
+            var pbkdf2 = new Rfc2898DeriveBytes(password, salt, 100000);
+            var newHash = pbkdf2.GetBytes(_hashLength);
+
+            for (int i = 0; i < 20; i++)
+            {
+                if (hashBytes[i + _saltLength] != newHash[i])
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }
