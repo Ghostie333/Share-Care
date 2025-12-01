@@ -52,7 +52,7 @@ namespace Share_Care.Controllers
             {
                 new Claim(ClaimTypes.NameIdentifier, user.UserId ?? String.Empty),
                 new Claim(ClaimTypes.Email, user.Email ?? String.Empty),
-                new Claim(ClaimTypes.Name, user.Name ?? String.Empty)
+                new Claim(ClaimTypes.Name, user.FirstName ?? String.Empty)
             };
             // Utworzenie tożsamości z listą roszczeń (claims)
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -71,7 +71,7 @@ namespace Share_Care.Controllers
             );
 
             // Zwracamy odpowiedź z danymi użytkownika
-            return Ok(new { userId = user.UserId, email = user.Email, name = user.Name, lastName = user.LastName });
+            return Ok(new { userId = user.UserId, email = user.Email, name = user.FirstName, lastName = user.LastName });
         }
 
         // Logowanie mobilne (JWT)
@@ -92,7 +92,7 @@ namespace Share_Care.Controllers
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.UserId ?? String.Empty),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email ?? String.Empty),
-                new Claim(ClaimTypes.Name, user.Name ?? String.Empty)
+                new Claim(ClaimTypes.Name, user.FirstName ?? String.Empty)
             };
 
             var key = Environment.GetEnvironmentVariable("Auth__Jwt__Key");
