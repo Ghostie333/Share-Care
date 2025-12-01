@@ -1,10 +1,11 @@
-using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using Share_Care.Services;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -64,7 +65,7 @@ builder.Services.AddAuthentication(options =>
             ValidateIssuer = false,
             ValidateAudience = false,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key ?? "")),
             ClockSkew = TimeSpan.FromMinutes(1)
         };
     }
@@ -102,6 +103,31 @@ app.UseAuthorization();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
+
+// Serwuj Flutter Web spod /app
+var flutterAppRoot = Path.Combine(app.Environment.WebRootPath, "frontend", "build", "web");
+if (Directory.Exists(flutterAppRoot))
+{
+    app.UseFileServer(new FileServerOptions
+    {
+        FileProvider = new PhysicalFileProvider(flutterAppRoot),
+        RequestPath = "/app",
+        EnableDefaultFiles = true
+    });
+
+    // SPA fallback tylko dla œcie¿ek bez rozszerzenia (nie ³ap assetów .js/.css/itd.)
+    app.MapWhen(ctx =>
+        ctx.Request.Path.StartsWithSegments("/app") &&
+        !Path.HasExtension(ctx.Request.Path.Value),
+        spa =>
+        {
+            spa.Run(async ctx =>
+            {
+                ctx.Response.ContentType = "text/html; charset=utf-8";
+                await ctx.Response.SendFileAsync(Path.Combine(flutterAppRoot, "index.html"));
+            });
+        });
+}
 
 app.MapControllers();
 
