@@ -45,7 +45,7 @@ namespace Share_Care.Controllers
         }
 
         // GET /offer/all
-        [HttpGet("all")]
+        [HttpGet("get-offers")]
         public async Task<IActionResult> GetAll()
         {
             try
