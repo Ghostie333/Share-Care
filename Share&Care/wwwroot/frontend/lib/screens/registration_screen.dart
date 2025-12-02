@@ -4,6 +4,9 @@ import 'login_screen.dart';
 import '../styles/classic_style.dart';
 import 'package:flutter/services.dart';
 
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
 class RegistrationScreen extends StatefulWidget {
   @override
   _RegistrationScreenState createState() => _RegistrationScreenState();
@@ -25,6 +28,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   bool showEmailConfirm = false;
   bool showPasswordConfirm = false;
+  
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -58,6 +63,65 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     super.dispose();
   }
 
+   Future<void> _submitRegistration() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    final body = {
+      "Email": emailController.text.trim(),
+      "Password": passwordController.text, // serwer zahashuje
+      "FirstName": firstNameController.text.trim(),
+      "LastName": lastNameController.text.trim(),
+    };
+
+    // DOSTOSUJ: adres backendu (emulator Android: 10.0.2.2)
+    const backendBase = 'http://10.0.2.2:8080';
+    final uri = Uri.parse('$backendBase/UserRegistration/user-registry');
+
+    try {
+      final res = await http.post(uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body));
+
+      if (res.statusCode == 200) {
+        // powodzenie
+        if (!mounted) return;
+        showDialog(
+            context: context,
+            builder: (_) => AlertDialog(
+                  title: const Text('Sukces'),
+                  content: const Text('Rejestracja zakończona pomyślnie.'),
+                  actions: [
+                    TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context)
+                              .push(createSlideFadeRoute(LoginScreen()));
+                        },
+                        child: const Text('OK'))
+                  ],
+                ));
+      } else if (res.statusCode == 409) {
+        // konflikt: już istnieje
+        if (!mounted) return;
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Email już istnieje')));
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Błąd serwera: ${res.statusCode} ${res.body}')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Błąd: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -321,11 +385,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
                         const SizedBox(height: 20),
                         ElevatedButton(
-                          onPressed: () {
-                            if (_formKey.currentState!.validate()) {
-                              // logika rejestracji
-                            }
-                          },
+                          onPressed: _isLoading ? null : _submitRegistration,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: ClassicStyle.my_light_green,
                             foregroundColor: Colors.white,
@@ -333,7 +393,15 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                             textStyle: const TextStyle(
                                 fontSize: 18, fontWeight: FontWeight.bold),
                           ),
-                          child: const Text("Utwórz konto"),
+                          child: _isLoading
+                          ? const SizedBox(
+                              height: 20, 
+                              width: 20, 
+                              child: 
+                              CircularProgressIndicator(strokeWidth: 2, 
+                              color: Colors.white)
+                          )
+                          : const Text("Utwórz konto"),
                         ),
 
                         const SizedBox(height: 20),
