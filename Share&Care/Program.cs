@@ -27,8 +27,9 @@ var mongoDatabase = mongoClient.GetDatabase(dbName);
 builder.Services.AddSingleton(mongoDatabase);
 
 
-// SecurityService
+// SecurityService i LoginService
 builder.Services.AddSingleton<SecurityService>();
+builder.Services.AddScoped<LoginService>();
 
 // AUTH: automatyczny wybór Cookies/JWT (PolicyScheme)
 builder.Services.AddAuthentication(options =>
