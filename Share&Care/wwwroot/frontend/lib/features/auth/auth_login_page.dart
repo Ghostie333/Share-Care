@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
-import '../utils/animations.dart';
-import 'registration_screen.dart';
-import '../styles/classic_style.dart';
+import '../../utils/animations.dart';
+import 'auth_registration_page.dart';
+import '../../styles/classic_style.dart';
+import '../../services/auth_service.dart';
+import 'profile_page.dart';
 
 
 class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
   @override
   _LoginScreenState createState() => _LoginScreenState();
 }
@@ -15,11 +19,42 @@ class _LoginScreenState extends State<LoginScreen> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
+  bool _isLoading = false;
+
   @override
   void dispose() {
     emailController.dispose();
     passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _submitLogin() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final result = await AuthService.loginCookie(
+        email: emailController.text.trim(),
+        password: passwordController.text,
+      );
+
+      if (!mounted) return;
+
+      // TODO: tutaj zmienisz przekierowanie na HomePage zamiast ProfilePage,
+      // kiedy będzie gotowy ekran główny.
+      Navigator.of(context).pushReplacement(
+        createSlideFadeRoute(ProfileScreen(authResult: result)),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Błąd logowania: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
   
   @override
@@ -101,11 +136,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         const SizedBox(height: 20),
                         ElevatedButton(
-                          onPressed: () {
-                            if (_formKey.currentState!.validate()) {
-                                // Tutaj logika logowania
-                              }
-                          },
+                          onPressed: _isLoading ? null : _submitLogin,
                           style: ElevatedButton.styleFrom(
                               backgroundColor: ClassicStyle.my_light_green,
                               foregroundColor: Colors.white,
@@ -113,7 +144,16 @@ class _LoginScreenState extends State<LoginScreen> {
                               textStyle: const TextStyle(
                                   fontSize: 18, fontWeight: FontWeight.bold),
                             ),
-                          child: const Text("Zaloguj się"),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text("Zaloguj się"),
                         ),
 
                         const SizedBox(height: 20),

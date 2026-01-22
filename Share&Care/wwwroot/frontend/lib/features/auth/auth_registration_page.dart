@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
-import '../utils/animations.dart';
-import 'login_screen.dart';
-import '../styles/classic_style.dart';
+import '../../utils/animations.dart';
+import 'auth_login_page.dart';
+import '../../styles/classic_style.dart';
 import 'package:flutter/services.dart';
 
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import '../../services/auth_service.dart';
+import 'profile_page.dart';
 
 class RegistrationScreen extends StatefulWidget {
+  const RegistrationScreen({super.key});
+
   @override
   _RegistrationScreenState createState() => _RegistrationScreenState();
 }
@@ -62,60 +64,46 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     passwordConfirmController.dispose();
     super.dispose();
   }
-
-   Future<void> _submitRegistration() async {
+ 
+  Future<void> _submitRegistration() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
-    final body = {
-      "Email": emailController.text.trim(),
-      "Password": passwordController.text, // serwer zahashuje
-      "FirstName": firstNameController.text.trim(),
-      "LastName": lastNameController.text.trim(),
-    };
-
-    // DOSTOSUJ: adres backendu (emulator Android: 10.0.2.2)
-    const backendBase = 'http://10.0.2.2:8080';
-    final uri = Uri.parse('$backendBase/UserRegistration/user-registry');
-
     try {
-      final res = await http.post(uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(body));
+      await AuthService.registerUser(
+        email: emailController.text.trim(),
+        password: passwordController.text,
+        firstName: firstNameController.text.trim(),
+        lastName: lastNameController.text.trim(),
+        phoneNumber: phoneNumberController.text.trim(),
+        birthday: dateBirthController.text.trim(),
+        city: addressNameController.text.trim(),
+        postalCode: postCodeController.text.trim(),
+      );
 
-      if (res.statusCode == 200) {
-        // powodzenie
-        if (!mounted) return;
-        showDialog(
-            context: context,
-            builder: (_) => AlertDialog(
-                  title: const Text('Sukces'),
-                  content: const Text('Rejestracja zakończona pomyślnie.'),
-                  actions: [
-                    TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          Navigator.of(context)
-                              .push(createSlideFadeRoute(LoginScreen()));
-                        },
-                        child: const Text('OK'))
-                  ],
-                ));
-      } else if (res.statusCode == 409) {
-        // konflikt: już istnieje
-        if (!mounted) return;
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Email już istnieje')));
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Błąd serwera: ${res.statusCode} ${res.body}')));
-      }
+      if (!mounted) return;
+
+      // Auto-logowanie po pomyślnej rejestracji — używamy tego samego
+      // endpointu co przy normalnym logowaniu.
+      final authResult = await AuthService.loginCookie(
+        email: emailController.text.trim(),
+        password: passwordController.text,
+      );
+
+      if (!mounted) return;
+
+      // Po rejestracji przekierowujemy od razu na ekran profilu.
+      // TODO (tu będziesz zmieniać później):
+      // zamiast ProfileScreen przekierujesz na HomePage.
+      Navigator.of(context).pushReplacement(
+        createSlideFadeRoute(ProfileScreen(authResult: authResult)),
+      );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Błąd: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Błąd: $e')),
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
