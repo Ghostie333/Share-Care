@@ -60,5 +60,36 @@ namespace Share_Care.Controllers
                 return StatusCode(500);
             }
         }
+
+        // Pobiera informacje o użytkowniku (imię, nazwisko, email, miasto)
+        [HttpGet("info/{userId}")]
+        public async Task<IActionResult> GetProfileInfo(string userId)
+        {
+            if (!ObjectId.TryParse(userId, out var objectId))
+                return BadRequest("Invalid id");
+
+            var filter = Builders<UserData>.Filter.Eq("_id", objectId);
+
+            var user = await _users
+                    .Find(filter)
+                    .FirstOrDefaultAsync();
+
+            if (user == null) return NotFound("User not found");
+
+            try
+            {
+                return Ok(new { 
+                    firstName = user.FirstName, 
+                    lastName = user.LastName, 
+                    email = user.Email, 
+                    city = user.City 
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Nie udało się pobrać informacji o użytkowniku");
+                return StatusCode(500);
+            }
+        }
     }
 }
