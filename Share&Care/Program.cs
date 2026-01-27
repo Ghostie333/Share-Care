@@ -31,7 +31,7 @@ builder.Services.AddSingleton(mongoDatabase);
 builder.Services.AddSingleton<SecurityService>();
 builder.Services.AddScoped<LoginService>();
 
-// AUTH: automatyczny wybór Cookies/JWT (PolicyScheme)
+// AUTH: automatyczny wybï¿½r Cookies/JWT (PolicyScheme)
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultScheme = "Smart";
@@ -54,7 +54,7 @@ builder.Services.AddAuthentication(options =>
         // o.Cookie.SameSite = SameSiteMode.None;
         // o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
         o.SlidingExpiration = true;
-        o.ExpireTimeSpan = TimeSpan.FromDays(7); // Gdy u¿ytkownik pozostaje aktywny, odœwie¿amy wa¿noœæ o 7 dni
+        o.ExpireTimeSpan = TimeSpan.FromDays(7); // Gdy uï¿½ytkownik pozostaje aktywny, odï¿½wieï¿½amy waï¿½noï¿½ï¿½ o 7 dni
         o.Events.OnRedirectToLogin = ctx => { ctx.Response.StatusCode = StatusCodes.Status401Unauthorized; return Task.CompletedTask; };
         o.Events.OnRedirectToAccessDenied = ctx => { ctx.Response.StatusCode = StatusCodes.Status403Forbidden; return Task.CompletedTask; };
     })
@@ -116,7 +116,7 @@ if (Directory.Exists(flutterAppRoot))
         EnableDefaultFiles = true
     });
 
-    // SPA fallback tylko dla œcie¿ek bez rozszerzenia (nie ³ap assetów .js/.css/itd.)
+    // SPA fallback tylko dla ï¿½cieï¿½ek bez rozszerzenia (nie ï¿½ap assetï¿½w .js/.css/itd.)
     app.MapWhen(ctx =>
         ctx.Request.Path.StartsWithSegments("/app") &&
         !Path.HasExtension(ctx.Request.Path.Value),
