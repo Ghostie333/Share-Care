@@ -15,10 +15,12 @@ namespace Share_Care.Controllers
     {
         private readonly ILogger<MainPageController> _logger;
         private readonly IMongoCollection<Offer> _collection;
+        private readonly GridFSBucket _gridFS;
         public OfferController(ILogger<MainPageController> logger, IMongoDatabase db)
         {
             _logger = logger;
             _collection = db.GetCollection<Offer>("offers");
+            _gridFS = new GridFSBucket(db);
         }
         public sealed class CreateOfferForm
         {
@@ -69,14 +71,12 @@ namespace Share_Care.Controllers
                 var imageIds = new List<string>();
                 if (form.Images != null && form.Images.Count > 0)
                 {
-                    var bucket = new GridFSBucket(_collection.Database);
-
                     foreach (var file in form.Images)
                     {
                         if (file == null || file.Length == 0) continue;
 
                         using var stream = file.OpenReadStream();
-                        var fileId = await bucket.UploadFromStreamAsync(
+                        var fileId = await _gridFS.UploadFromStreamAsync(
                             file.FileName,
                             stream,
                             new GridFSUploadOptions
@@ -119,7 +119,7 @@ namespace Share_Care.Controllers
             }
         }
 
-        // GET /offer/get-offers
+        // GET /offer/get-offers, Pobieranie wszystkich ofert z bazy
         [HttpGet("get-offers")]
         public async Task<IActionResult> GetAll()
         {
@@ -135,8 +135,8 @@ namespace Share_Care.Controllers
             }
         }
 
-        // GET /offer/get-user-offers
-        [HttpGet("get-user-offers")]
+        // GET /offer/get-user-offers, Pobieranie ofert konkretnego użytkownika
+        [HttpGet("get-user-offers/{userId}")]
         public async Task<IActionResult> GetUserOffers(string userId)
         {
             try
@@ -151,8 +151,8 @@ namespace Share_Care.Controllers
             }
         }
 
-        // GET /offer/get-offer-page
-        [HttpGet("get-offer-page")]
+        // GET /offer/get-offer-page, Pobieranie konkretnej oferty
+        [HttpGet("get-offer-page/{offerId}")]
         public async Task<IActionResult> GetOfferPage(string offerId)
         {
             try
@@ -164,6 +164,39 @@ namespace Share_Care.Controllers
             {
                 _logger.LogError(ex, "Błąd pobierania oferty z MongoDB");
                 return Problem("Błąd bazy danych", statusCode: StatusCodes.Status500InternalServerError);
+            }
+        }
+
+        // GET /offer/image/{imageId} - Zwraca obraz do wyświetlenia na stronie
+        [HttpGet("image/{imageId}")]
+        [ResponseCache(Duration = 86400)] // cache 24h
+        public async Task<IActionResult> GetImage(string imageId)
+        {
+            try
+            {
+                if (!ObjectId.TryParse(imageId, out var objectId))
+                {
+                    return BadRequest("Nieprawidłowy format ID obrazu");
+                }
+
+                var filter = Builders<GridFSFileInfo>.Filter.Eq("_id", objectId);
+                var fileInfo = await _gridFS.Find(filter).FirstOrDefaultAsync();
+
+                if (fileInfo == null)
+                {
+                    return NotFound();
+                }
+
+                var contentType = fileInfo.Metadata?.GetValue("contentType", "image/jpeg").AsString
+                                  ?? "image/jpeg";
+
+                var stream = await _gridFS.OpenDownloadStreamAsync(objectId);
+                return File(stream, contentType); // bez nazwy = inline (wyświetla się)
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Błąd pobierania obrazu z bazy danych");
+                return Problem("Błąd pobierania obrazu", statusCode: StatusCodes.Status500InternalServerError);
             }
         }
     }
