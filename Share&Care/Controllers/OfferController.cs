@@ -150,9 +150,26 @@ namespace Share_Care.Controllers
             }
         }
 
-        // GET /offer/get-offer, Pobieranie konkretnej oferty
-        [HttpGet("get-offer/{offerId}")]
-        public async Task<IActionResult> GetOffer(string offerId)
+        //GET /offer/remove-offer
+        [HttpGet("remove-offer/{offerId}")]
+        public async Task<IActionResult> RemoveOffer(string offerId)
+        {
+            try
+            {
+                var filter = Builders<Offer>.Filter.Eq("OfferId", offerId);
+                await _collection.DeleteOneAsync(filter);
+                return Ok("Usunięto oferte");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Błąd usunięcia oferty z MongoDB");
+                return Problem("Błąd bazy danych", statusCode: StatusCodes.Status500InternalServerError);
+            }
+        }
+
+        // GET /offer/get-offer-page
+        [HttpGet("get-offer-page")]
+        public async Task<IActionResult> GetOfferPage(string offerId)
         {
             try
             {
