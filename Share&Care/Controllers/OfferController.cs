@@ -133,6 +133,22 @@ namespace Share_Care.Controllers
                 return Problem("Błąd bazy danych", statusCode: StatusCodes.Status500InternalServerError);
             }
         }
+        // GET /offer/get-offer/offerId
+        [HttpGet("get-offer/{offerId}")]
+        public async Task<IActionResult> GetOffer(string offerId)
+        {
+            try
+            {
+                var filter = Builders<Offer>.Filter.Eq("OfferId", offerId);
+                var offer = await _collection.Find(filter).FirstOrDefaultAsync();
+                return Ok(offer);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Bład pobierania oferty z MongoDB");
+                return Problem("Błąd bazy danych", statusCode: StatusCodes.Status500InternalServerError);
+            }
+        }
 
         // GET /offer/get-user-offers, Pobieranie ofert konkretnego użytkownika
         [HttpGet("get-user-offers/{userId}")]
