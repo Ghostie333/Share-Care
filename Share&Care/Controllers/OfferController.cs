@@ -46,23 +46,6 @@ namespace Share_Care.Controllers
             public List<IFormFile>? Images { get; set; }
         }
 
-
-        [HttpGet("get-offer/{offerId}")]
-        public async Task<IActionResult> GetOffer(string offerId)
-        {
-            try
-            {
-                var filter = Builders<Offer>.Filter.Eq("OfferId", offerId);
-                var offer = await _collection.Find(filter).FirstOrDefaultAsync();
-                return Ok(offer);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Bład pobierania oferty z MongoDB");
-                return Problem("Błąd bazy danych", statusCode: StatusCodes.Status500InternalServerError);
-            }
-        }
-
         // POST /offer/create-offer (multipart/form-data: pola + images[])
         [HttpPost("create-offer")]
         [Consumes("multipart/form-data")]
@@ -167,18 +150,19 @@ namespace Share_Care.Controllers
             }
         }
 
-        // GET /offer/get-offer-page, Pobieranie konkretnej oferty
-        [HttpGet("get-offer-page/{offerId}")]
-        public async Task<IActionResult> GetOfferPage(string offerId)
+        // GET /offer/get-offer, Pobieranie konkretnej oferty
+        [HttpGet("get-offer/{offerId}")]
+        public async Task<IActionResult> GetOffer(string offerId)
         {
             try
             {
-                var offer = await _collection.Find(x => x.OfferId == offerId).ToListAsync();
+                var filter = Builders<Offer>.Filter.Eq("OfferId", offerId);
+                var offer = await _collection.Find(filter).FirstOrDefaultAsync();
                 return Ok(offer);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Błąd pobierania oferty z MongoDB");
+                _logger.LogError(ex, "Bład pobierania oferty z MongoDB");
                 return Problem("Błąd bazy danych", statusCode: StatusCodes.Status500InternalServerError);
             }
         }
