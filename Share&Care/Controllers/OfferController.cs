@@ -44,28 +44,13 @@ namespace Share_Care.Controllers
             public List<IFormFile>? Images { get; set; }
         }
 
-        // GET /offer/all
-        [HttpGet("get-offers")]
-        public async Task<IActionResult> GetAll()
-        {
-            try
-            {
-                var offers = await _collection.Find(_ => true).ToListAsync();
-                return Ok(offers);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Błąd pobierania danych z MongoDB");
-                return Problem("Błąd bazy danych", statusCode: StatusCodes.Status500InternalServerError);
-            }
-        }
 
         // POST /offer/create-offer (multipart/form-data: pola + images[])
         [HttpPost("create-offer")]
         [Consumes("multipart/form-data")]
         [RequestSizeLimit(50_000_000)]
         [RequestFormLimits(MultipartBodyLengthLimit = 50_000_000)]
-        public async Task<IActionResult> CreateOffer([FromBody] CreateOfferForm form)
+        public async Task<IActionResult> CreateOffer([FromForm] CreateOfferForm form)
         {
             try
             {
@@ -130,6 +115,54 @@ namespace Share_Care.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Błąd tworzenia oferty w MongoDB");
+                return Problem("Błąd bazy danych", statusCode: StatusCodes.Status500InternalServerError);
+            }
+        }
+
+        // GET /offer/get-offers
+        [HttpGet("get-offers")]
+        public async Task<IActionResult> GetAll()
+        {
+            try
+            {
+                var offers = await _collection.Find(_ => true).ToListAsync();
+                return Ok(offers);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Błąd pobierania ofert z MongoDB");
+                return Problem("Błąd bazy danych", statusCode: StatusCodes.Status500InternalServerError);
+            }
+        }
+
+        // GET /offer/get-user-offers
+        [HttpGet("get-user-offers")]
+        public async Task<IActionResult> GetUserOffers(string userId)
+        {
+            try
+            {
+                var offers = await _collection.Find(x => x.UserId == userId).ToListAsync();
+                return Ok(offers);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Błąd pobierania ofert użytkownika z MongoDB");
+                return Problem("Błąd bazy danych", statusCode: StatusCodes.Status500InternalServerError);
+            }
+        }
+
+        // GET /offer/get-offer-page
+        [HttpGet("get-offer-page")]
+        public async Task<IActionResult> GetOfferPage(string offerId)
+        {
+            try
+            {
+                var offer = await _collection.Find(x => x.OfferId == offerId).ToListAsync();
+                return Ok(offer);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Błąd pobierania oferty z MongoDB");
                 return Problem("Błąd bazy danych", statusCode: StatusCodes.Status500InternalServerError);
             }
         }
