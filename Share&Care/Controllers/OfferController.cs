@@ -13,9 +13,9 @@ namespace Share_Care.Controllers
     [Route("offer")]
     public class OfferController : Controller
     {
-        private readonly ILogger<MainPageController> _logger;
+        private readonly ILogger<OfferController> _logger;
         private readonly IMongoCollection<Offer> _collection;
-        public OfferController(ILogger<MainPageController> logger, IMongoDatabase db)
+        public OfferController(ILogger<OfferController> logger, IMongoDatabase db)
         {
             _logger = logger;
             _collection = db.GetCollection<Offer>("offers");
@@ -44,6 +44,22 @@ namespace Share_Care.Controllers
             public List<IFormFile>? Images { get; set; }
         }
 
+
+        [HttpGet("get-offer/{offerId}")]
+        public async Task<IActionResult> GetOffer(string offerId)
+        {
+            try
+            {
+                var filter = Builders<Offer>.Filter.Eq("OfferId", offerId);
+                var offer = await _collection.Find(filter).FirstOrDefaultAsync();
+                return Ok(offer);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Bład pobierania oferty z MongoDB");
+                return Problem("Błąd bazy danych", statusCode: StatusCodes.Status500InternalServerError);
+            }
+        }
 
         // POST /offer/create-offer (multipart/form-data: pola + images[])
         [HttpPost("create-offer")]
