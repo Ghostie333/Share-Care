@@ -18,6 +18,7 @@ namespace Share_Care.models
         public string ContactNumber { get; set; }
         public string? Description { get; set; }
         public string Category { get; set; }
+        public string Status { get; set; } = "Active";
 
         // GeoJSON Point (dla zapytań geolokalizacyjnych i indeksu 2dsphere)
         public GeoJsonPoint<GeoJson2DGeographicCoordinates>? Location { get; set; } 
