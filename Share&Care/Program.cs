@@ -72,21 +72,6 @@ builder.Services.AddAuthentication(options =>
     }
 );
 
-/*
-//CORS
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy =>
-    {
-        policy.WithOrigins(
-            "http://localhost:3000",
-            "https://localhost:3000"
-        )
-        .AllowAnyHeader()
-        .AllowAnyMethod();
-    });
-});
-*/
 var app = builder.Build();
 
 
@@ -97,7 +82,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseRouting();
-//app.UseCors();
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -105,29 +89,24 @@ app.UseAuthorization();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-// Serwuj Flutter Web spod /app
+// Serwuj Flutter Web spod / (root)
 var flutterAppRoot = Path.Combine(app.Environment.WebRootPath, "frontend", "build", "web");
 if (Directory.Exists(flutterAppRoot))
 {
+    var flutterProvider = new PhysicalFileProvider(flutterAppRoot);
+
     app.UseFileServer(new FileServerOptions
     {
-        FileProvider = new PhysicalFileProvider(flutterAppRoot),
-        RequestPath = "/app",
+        FileProvider = flutterProvider,
+        RequestPath = PathString.Empty, // root
         EnableDefaultFiles = true
     });
 
-    // SPA fallback tylko dla �cie�ek bez rozszerzenia (nie �ap asset�w .js/.css/itd.)
-    app.MapWhen(ctx =>
-        ctx.Request.Path.StartsWithSegments("/app") &&
-        !Path.HasExtension(ctx.Request.Path.Value),
-        spa =>
-        {
-            spa.Run(async ctx =>
-            {
-                ctx.Response.ContentType = "text/html; charset=utf-8";
-                await ctx.Response.SendFileAsync(Path.Combine(flutterAppRoot, "index.html"));
-            });
-        });
+    // Fallback dla SPA: tylko jeśli nie trafiono w żaden endpoint ani plik statyczny
+    app.MapFallbackToFile("index.html", new StaticFileOptions
+    {
+        FileProvider = flutterProvider
+    });
 }
 
 app.MapControllers();
