@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
@@ -6,6 +7,7 @@ using MongoDB.Driver.GeoJsonObjectModel;
 using MongoDB.Driver.GridFS;
 using Share_Care.models;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 
 namespace Share_Care.Controllers
 {
@@ -16,37 +18,39 @@ namespace Share_Care.Controllers
         private readonly ILogger<OfferController> _logger;
         private readonly IMongoCollection<Offer> _collection;
         private readonly GridFSBucket _gridFS;
+
         public OfferController(ILogger<OfferController> logger, IMongoDatabase db)
         {
             _logger = logger;
             _collection = db.GetCollection<Offer>("offers");
             _gridFS = new GridFSBucket(db);
         }
+
         public sealed class CreateOfferForm
         {
             [Required]
-            public string? UserId { get; set; }
-            [Required]
             public string? Title { get; set; }
+
             [Required]
             public string? ContactName { get; set; }
+
             [Required]
             public string? Category { get; set; }
+
             public string ContactNumber { get; set; } = string.Empty;
             public string Description { get; set; } = string.Empty;
 
-            // Google Maps i większość klientów używa { lat, lng }
             [Range(-90, 90, ErrorMessage = "Lat musi być w zakresie [-90, 90].")]
             public double? Lat { get; set; }
 
             [Range(-180, 180, ErrorMessage = "Lng musi być w zakresie [-180, 180].")]
             public double? Lng { get; set; }
 
-            // Wiele plików: nazwa pola po stronie klienta: images
             public List<IFormFile>? Images { get; set; }
         }
 
-        // POST /offer/create-offer (multipart/form-data: pola + images[])
+        // POST /offer/create-offer
+        [Authorize]
         [HttpPost("create-offer")]
         [Consumes("multipart/form-data")]
         [RequestSizeLimit(50_000_000)]
@@ -65,6 +69,11 @@ namespace Share_Care.Controllers
                     return BadRequest(new { message = "Podaj oba pola: Lat i Lng." });
                 }
 
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrWhiteSpace(currentUserId))
+                {
+                    return Unauthorized();
+                }
 
                 // Upload obrazów do GridFS
                 var imageIds = new List<string>();
@@ -84,7 +93,7 @@ namespace Share_Care.Controllers
                                 {
                                     { "contentType", file.ContentType ?? "application/octet-stream" },
                                     { "originalName", file.FileName },
-                                    { "userId", form.UserId ?? string.Empty }
+                                    { "userId", currentUserId }
                                 }
                             });
 
@@ -94,7 +103,7 @@ namespace Share_Care.Controllers
 
                 var offer = new Offer
                 {
-                    UserId = form.UserId!,
+                    UserId = currentUserId,
                     Title = form.Title!,
                     ContactName = form.ContactName!,
                     Category = form.Category!,
@@ -118,7 +127,6 @@ namespace Share_Care.Controllers
             }
         }
 
-        // GET /offer/get-offers, Pobieranie wszystkich ofert z bazy
         [HttpGet("get-offers")]
         public async Task<IActionResult> GetAll()
         {
@@ -133,14 +141,13 @@ namespace Share_Care.Controllers
                 return Problem("Błąd bazy danych", statusCode: StatusCodes.Status500InternalServerError);
             }
         }
-        // GET /offer/get-offer/offerId
+
         [HttpGet("get-offer/{offerId}")]
         public async Task<IActionResult> GetOffer(string offerId)
         {
             try
             {
-                var filter = Builders<Offer>.Filter.Eq("OfferId", offerId);
-                var offer = await _collection.Find(filter).FirstOrDefaultAsync();
+                var offer = await _collection.Find(x => x.OfferId == offerId).FirstOrDefaultAsync();
                 return Ok(offer);
             }
             catch (Exception ex)
@@ -150,7 +157,6 @@ namespace Share_Care.Controllers
             }
         }
 
-        // GET /offer/get-user-offers, Pobieranie ofert konkretnego użytkownika
         [HttpGet("get-user-offers/{userId}")]
         public async Task<IActionResult> GetUserOffers(string userId)
         {
@@ -166,15 +172,51 @@ namespace Share_Care.Controllers
             }
         }
 
-        //GET /offer/remove-offer
-        [HttpGet("remove-offer/{offerId}")]
+        // DELETE /offer/remove-offer/{offerId}
+        [Authorize]
+        [HttpDelete("remove-offer/{offerId}")]
         public async Task<IActionResult> RemoveOffer(string offerId)
         {
             try
             {
-                var filter = Builders<Offer>.Filter.Eq("OfferId", offerId);
-                await _collection.DeleteOneAsync(filter);
-                return Ok("Usunięto oferte");
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrWhiteSpace(currentUserId))
+                {
+                    return Unauthorized();
+                }
+
+                var offer = await _collection.Find(x => x.OfferId == offerId).FirstOrDefaultAsync();
+                if (offer is null)
+                {
+                    return NotFound();
+                }
+
+                if (!string.Equals(offer.UserId, currentUserId, StringComparison.Ordinal))
+                {
+                    return Forbid(); // wywołujący nie jest właścicielem
+                }
+
+                await _collection.DeleteOneAsync(x => x.OfferId == offerId);
+
+                // Best-effort: usuń pliki z GridFS powiązane z ofertą
+                if (offer.ImageIds is { Count: > 0 })
+                {
+                    foreach (var id in offer.ImageIds)
+                    {
+                        if (!ObjectId.TryParse(id, out var oid)) continue;
+
+                        try
+                        {
+                            await _gridFS.DeleteAsync(oid);
+                        }
+                        catch (GridFSFileNotFoundException)
+                        {
+                            // plik już nie istnieje - ignoruj
+                        }
+                    }
+                }
+
+                return Ok(new { message = "Usunięto ofertę" });
             }
             catch (Exception ex)
             {
@@ -183,14 +225,12 @@ namespace Share_Care.Controllers
             }
         }
 
-        // GET /offer/get-offer-page
         [HttpGet("get-offer-page")]
         public async Task<IActionResult> GetOfferPage(string offerId)
         {
             try
             {
-                var filter = Builders<Offer>.Filter.Eq("OfferId", offerId);
-                var offer = await _collection.Find(filter).FirstOrDefaultAsync();
+                var offer = await _collection.Find(x => x.OfferId == offerId).FirstOrDefaultAsync();
                 return Ok(offer);
             }
             catch (Exception ex)
@@ -200,9 +240,8 @@ namespace Share_Care.Controllers
             }
         }
 
-        // GET /offer/image/{imageId} - Zwraca obraz do wyświetlenia na stronie
         [HttpGet("image/{imageId}")]
-        [ResponseCache(Duration = 86400)] // cache 24h
+        [ResponseCache(Duration = 86400)]
         public async Task<IActionResult> GetImage(string imageId)
         {
             try
@@ -224,7 +263,7 @@ namespace Share_Care.Controllers
                                   ?? "image/jpeg";
 
                 var stream = await _gridFS.OpenDownloadStreamAsync(objectId);
-                return File(stream, contentType); // bez nazwy = inline (wyświetla się)
+                return File(stream, contentType);
             }
             catch (Exception ex)
             {
