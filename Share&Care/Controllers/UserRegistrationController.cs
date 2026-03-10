@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using Share_Care.models;
 using Share_Care.Services;
-using System.ComponentModel.DataAnnotations;
 using Share_Care.Models.Requests;
 
 namespace Share_Care.Controllers
@@ -18,10 +17,9 @@ namespace Share_Care.Controllers
         private readonly LoginService _loginService = loginService;
 
         [HttpPost("user-registry")]
-        public async Task<IActionResult> UserRegistration([FromBody] RegistrationRequest userRegistration, [FromQuery] bool issueJwt = false)
+        public async Task<IActionResult> UserRegistration([FromBody] RegistrationRequest userRegistration)
         {
-            _logger.LogInformation("Rozpoczêto rejestracjê u¿ytkownika, email: {Email}, issueJwt: {IssueJwt}", 
-                userRegistration.Email, issueJwt);
+            _logger.LogInformation("Rozpoczêto rejestracjê u¿ytkownika, email: {Email}", userRegistration.Email);
 
             try
             {
@@ -32,7 +30,7 @@ namespace Share_Care.Controllers
                 if (existingUser != null)
                 {
                     _logger.LogWarning("Próba rejestracji z istniej¹cym emailem: {Email}", userRegistration.Email);
-                    return Conflict("User with this email already exists");
+                    return Conflict(new { error = "User with this email already exists" });
                 }
 
                 var user = new UserData
@@ -51,25 +49,16 @@ namespace Share_Care.Controllers
                 _logger.LogInformation("Pomyœlnie utworzono u¿ytkownika {UserId}, email: {Email}", 
                     user.UserId, user.Email);
 
-                if (!issueJwt)
+                try
                 {
-                    await _loginService.SignInCookieAsync(HttpContext, user);
-                    _logger.LogInformation("U¿ytkownik {UserId} zalogowany przez Cookie", user.UserId);
-                    return Ok(new { userId = user.UserId, email = user.Email, name = user.FirstName, lastName = user.LastName });
+                    var token = _loginService.GenerateJwtToken(user, out var expiresUtc);
+                    _logger.LogInformation("Wygenerowano JWT token dla u¿ytkownika {UserId}", user.UserId);
+                    return Ok(new { access_token = token, token_type = "Bearer", expires_in = expiresUtc });
                 }
-                else
+                catch (InvalidOperationException ex)
                 {
-                    try
-                    {
-                        var token = _loginService.GenerateJwtToken(user, out var expiresUtc);
-                        _logger.LogInformation("Wygenerowano JWT token dla u¿ytkownika {UserId}", user.UserId);
-                        return Ok(new { access_token = token, token_type = "Bearer", expires_in = expiresUtc });
-                    }
-                    catch (InvalidOperationException ex)
-                    {
-                        _logger.LogError(ex, "Brak konfiguracji JWT dla u¿ytkownika {UserId}", user.UserId);
-                        return StatusCode(StatusCodes.Status500InternalServerError, "Brak konfiguracji JWT");
-                    }
+                    _logger.LogError(ex, "Brak konfiguracji JWT dla u¿ytkownika {UserId}", user.UserId);
+                    return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Brak konfiguracji JWT" });
                 }
             }
             catch (Exception ex)

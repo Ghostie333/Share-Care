@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
@@ -22,37 +20,26 @@ namespace Share_Care.Services
         // Weryfikacja email/has³a, zwraca u¿ytkownika lub null
         public async Task<UserData?> ValidateCredentialsAsync(string email, string password, CancellationToken ct)
         {
+            _logger.LogInformation("ValidateCredentials - szukam u¿ytkownika: {Email}", email);
+
             var user = await _users.Find(u => u.Email == email).FirstOrDefaultAsync(ct);
-            if (user == null) return null;
+            if (user == null)
+            {
+                _logger.LogWarning("ValidateCredentials - nie znaleziono u¿ytkownika: {Email}", email);
+                return null;
+            }
+
+            _logger.LogInformation("ValidateCredentials - znaleziono u¿ytkownika: {Email}, sprawdzam has³o...", email);
+            _logger.LogDebug("ValidateCredentials - stored password hash length: {Length}", user.Password?.Length ?? 0);
 
             var ok = _security.ComparePasswords(password ?? string.Empty, user.Password ?? string.Empty);
+
+            _logger.LogInformation("ValidateCredentials - wynik porównania has³a: {Result}", ok);
+
             return ok ? user : null;
         }
 
-        // Logowanie przez ciasteczka (WWW)
-        public async Task SignInCookieAsync(HttpContext httpContext, UserData user)
-        {
-            var claims = new List<Claim>
-            {
-                new(ClaimTypes.NameIdentifier, user.UserId ?? string.Empty),
-                new(ClaimTypes.Email, user.Email ?? string.Empty),
-                new(ClaimTypes.Name, user.FirstName ?? string.Empty)
-            };
-
-            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-            var principal = new ClaimsPrincipal(identity);
-
-            await httpContext.SignInAsync(
-                CookieAuthenticationDefaults.AuthenticationScheme,
-                principal,
-                new AuthenticationProperties
-                {
-                    IsPersistent = true,
-                    ExpiresUtc = DateTime.UtcNow.AddHours(_config.GetValue<int?>("Session:SessionTimeoutHours") ?? 1)
-                });
-        }
-
-        // Generowanie JWT (mobilne)
+        // Generowanie JWT (Flutter Web + Mobile)
         public string GenerateJwtToken(UserData user, out DateTime expiresUtc)
         {
             var claims = new List<Claim>

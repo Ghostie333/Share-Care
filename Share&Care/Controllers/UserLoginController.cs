@@ -1,16 +1,5 @@
-﻿using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
-using MongoDB.Driver;
-using MongoDB.Driver.Linq;
-using Share_Care.models;
+﻿using Microsoft.AspNetCore.Mvc;
 using Share_Care.Services;
-using System.ComponentModel.DataAnnotations;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using Share_Care.Models.Requests;
 
 namespace Share_Care.Controllers
@@ -22,42 +11,35 @@ namespace Share_Care.Controllers
         private readonly ILogger<UserLoginController> _logger = logger;
         private readonly LoginService _loginService = loginService;
 
-
-        // Logowanie WWW (cookie)
-        [HttpPost("login-cookie")]
+        // Logowanie (JWT)
+        [HttpPost("login")]
         [Consumes("application/json")]
-        public async Task<IActionResult> LoginCookie([FromBody] LoginRequest request, CancellationToken ct)
+        public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken ct)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
+            if (!ModelState.IsValid)
+            {
+                _logger.LogWarning("Login attempt with invalid model state from IP: {IP}", HttpContext.Connection.RemoteIpAddress);
+                return BadRequest(ModelState);
+            }
 
             var user = await _loginService.ValidateCredentialsAsync(request.Email, request.Password, ct);
-            if (user is null) return Unauthorized("Nieprawidłowy email lub hasło");
-
-            await _loginService.SignInCookieAsync(HttpContext, user);
-
-            // Zwracamy odpowiedź z danymi użytkownika
-            return Ok(new { userId = user.UserId, email = user.Email, name = user.FirstName, lastName = user.LastName });
-        }
-
-
-        // Logowanie mobilne (JWT)
-        [HttpPost("login-jwt")]
-        [Consumes("application/json")]
-        public async Task<IActionResult> LoginJwt([FromBody] LoginRequest request, CancellationToken ct)
-        {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-
-            var user = await _loginService.ValidateCredentialsAsync(request.Email, request.Password, ct);
-            if (user is null) return Unauthorized("Nieprawidłowy email lub hasło");
+            if (user is null)
+            {
+                _logger.LogWarning("Failed login attempt for email: {Email} from IP: {IP}", 
+                    request.Email, HttpContext.Connection.RemoteIpAddress);
+                return Unauthorized(new { error = "Nieprawidłowy email lub hasło" });
+            }
 
             try
             {
                 var token = _loginService.GenerateJwtToken(user, out var expiresUtc);
+                _logger.LogInformation("Successful login for user: {UserId} ({Email})", user.UserId, user.Email);
                 return Ok(new { access_token = token, token_type = "Bearer", expires_in = expiresUtc });
             }
-            catch (InvalidOperationException)
+            catch (InvalidOperationException ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "Brak konfiguracji JWT");
+                _logger.LogError(ex, "JWT configuration error during login for user: {Email}", request.Email);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Brak konfiguracji JWT" });
             }
         }
     }

@@ -86,7 +86,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
       // Auto-logowanie po pomyślnej rejestracji — używamy tego samego
       // endpointu co przy normalnym logowaniu.
-      final authResult = await AuthService.loginCookie(
+      final authResult = await AuthService.login(
         email: emailController.text.trim(),
         password: passwordController.text,
       );

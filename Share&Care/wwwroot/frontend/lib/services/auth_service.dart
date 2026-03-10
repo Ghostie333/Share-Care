@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:html' as html;
 
 import 'package:http/http.dart' as http;
 
@@ -54,9 +55,18 @@ class AuthService {
     };
 
     final http.Response res =
-        await ApiService.postJson('/UserRegistration/user-registry', body);
+        await ApiService.postJson('/UserRegistration/user-registry', body, includeAuth: false);
 
     if (res.statusCode == 200) {
+      // Backend zwraca token po rejestracji
+      final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+      final token = decoded['access_token'] as String?;
+
+      // ZAPISZ TOKEN do localStorage
+      if (token != null) {
+        html.window.localStorage['jwt_token'] = token;
+      }
+
       return;
     } else if (res.statusCode == 409) {
       throw Exception('Email już istnieje');
@@ -65,8 +75,8 @@ class AuthService {
     }
   }
 
-  // logowanie za pomocą ciasteczek (scenariusz WWW)
-  static Future<AuthResult> loginCookie({
+  // logowanie JWT (Web + Mobile)
+  static Future<AuthResult> login({
     required String email,
     required String password,
   }) async {
@@ -76,34 +86,42 @@ class AuthService {
     };
 
     final http.Response res =
-        await ApiService.postJson('/UserLogin/login-cookie', body);
+        await ApiService.postJson('/UserLogin/login', body, includeAuth: false);
 
     if (res.statusCode == 200) {
       final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+      final token = decoded['access_token'] as String?;
+
+      // ZAPISZ TOKEN do localStorage
+      if (token != null) {
+        html.window.localStorage['jwt_token'] = token;
+        print('✅ Token zapisany: ${token.substring(0, 20)}...');
+      } else {
+        print('❌ Brak tokenu w response!');
+      }
+
       return AuthResult.fromJson(decoded);
     } else {
       throw Exception('Nieprawidłowy email lub hasło');
     }
   }
 
-  // logowanie JWT (np. dla mobile); na razie nieużywane, ale gotowe
-  static Future<AuthResult> loginJwt({
-    required String email,
-    required String password,
-  }) async {
-    final body = <String, dynamic>{
-      'Email': email,
-      'Password': password,
-    };
+  // Sprawdź czy użytkownik jest zalogowany
+  static bool isLoggedIn() {
+    final token = html.window.localStorage['jwt_token'];
+    final loggedIn = token != null && token.isNotEmpty;
+    print('🔐 isLoggedIn sprawdza token: ${token != null ? "ISTNIEJE" : "BRAK"} → $loggedIn');
+    return loggedIn;
+  }
 
-    final http.Response res =
-        await ApiService.postJson('/UserLogin/login-jwt', body);
+  // Wyloguj użytkownika
+  static void logout() {
+    html.window.localStorage.remove('jwt_token');
+    print('🚪 Użytkownik wylogowany, token usunięty');
+  }
 
-    if (res.statusCode == 200) {
-      final decoded = jsonDecode(res.body) as Map<String, dynamic>;
-      return AuthResult.fromJson(decoded);
-    } else {
-      throw Exception('Nieprawidłowy email lub hasło');
-    }
+  // Pobierz zapisany token (do API calls)
+  static String? getToken() {
+    return html.window.localStorage['jwt_token'];
   }
 }

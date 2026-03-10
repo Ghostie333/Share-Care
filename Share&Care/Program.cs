@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
@@ -13,6 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
 
 // MongoDB
 var rawConn = Environment.GetEnvironmentVariable("MongoDb__ConnectionString");
@@ -31,33 +30,8 @@ builder.Services.AddSingleton(mongoDatabase);
 builder.Services.AddSingleton<SecurityService>();
 builder.Services.AddScoped<LoginService>();
 
-// AUTH: automatyczny wyb�r Cookies/JWT (PolicyScheme)
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultScheme = "Smart";
-    options.DefaultChallengeScheme = "Smart";
-})
-    .AddPolicyScheme("Smart", "JWT or Cookies", o =>
-    {
-        o.ForwardDefaultSelector = ctx =>
-        {
-            var hasBearer = ctx.Request.Headers.Authorization
-                .FirstOrDefault()?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true;
-            return hasBearer ? JwtBearerDefaults.AuthenticationScheme : CookieAuthenticationDefaults.AuthenticationScheme;
-        };
-    })
-    .AddCookie(o =>
-    {
-        o.Cookie.Name = ".sharecare.auth";
-        o.Cookie.HttpOnly = true;
-        // Dla cross-site w produkcji: None + Secure (wymaga HTTPS)
-        // o.Cookie.SameSite = SameSiteMode.None;
-        // o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-        o.SlidingExpiration = true;
-        o.ExpireTimeSpan = TimeSpan.FromDays(7); // Gdy u�ytkownik pozostaje aktywny, od�wie�amy wa�no�� o 7 dni
-        o.Events.OnRedirectToLogin = ctx => { ctx.Response.StatusCode = StatusCodes.Status401Unauthorized; return Task.CompletedTask; };
-        o.Events.OnRedirectToAccessDenied = ctx => { ctx.Response.StatusCode = StatusCodes.Status403Forbidden; return Task.CompletedTask; };
-    })
+// AUTH: JWT dla Flutter (Web + Mobile)
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(o =>
     {
         var key = Environment.GetEnvironmentVariable("Auth__Jwt__Key");
@@ -69,8 +43,7 @@ builder.Services.AddAuthentication(options =>
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key ?? "")),
             ClockSkew = TimeSpan.FromMinutes(1)
         };
-    }
-);
+    });
 
 var app = builder.Build();
 

@@ -34,7 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final result = await AuthService.loginCookie(
+      final result = await AuthService.login(
         email: emailController.text.trim(),
         password: passwordController.text,
       );
