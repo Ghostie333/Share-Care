@@ -41,7 +41,7 @@ builder.Services.AddAuthentication(options =>
     {
         o.ForwardDefaultSelector = ctx =>
         {
-            var hasBearer = ctx.Request.Headers["Authorization"]
+            var hasBearer = ctx.Request.Headers.Authorization
                 .FirstOrDefault()?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true;
             return hasBearer ? JwtBearerDefaults.AuthenticationScheme : CookieAuthenticationDefaults.AuthenticationScheme;
         };

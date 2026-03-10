@@ -11,30 +11,17 @@ using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Share_Care.Models.Requests;
 
 namespace Share_Care.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class UserLoginController : Controller
+    public class UserLoginController(ILogger<UserLoginController> logger, LoginService loginService) : ControllerBase
     {
-        private readonly ILogger<UserLoginController> _logger;
-        private readonly LoginService _loginService;
+        private readonly ILogger<UserLoginController> _logger = logger;
+        private readonly LoginService _loginService = loginService;
 
-        public UserLoginController(ILogger<UserLoginController> logger, LoginService loginService)
-        {
-            _logger = logger;
-            _loginService = loginService;
-        }
-
-        public sealed class LoginRequest
-        {
-            [Required, EmailAddress]
-            public string Email { get; set; } = string.Empty;
-
-            [Required]
-            public string Password { get; set; } = string.Empty;
-        }
 
         // Logowanie WWW (cookie)
         [HttpPost("login-cookie")]

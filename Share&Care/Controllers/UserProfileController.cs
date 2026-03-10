@@ -10,29 +10,29 @@ namespace Share_Care.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class UserProfileController : ControllerBase
+    public class UserProfileController(IMongoDatabase database, ILogger<UserProfileController> logger) : ControllerBase
     {
-        private readonly IMongoDatabase _database;
-        private readonly GridFSBucket _bucket;
-        private readonly IMongoCollection<UserData> _users;
-        private readonly ILogger<UserProfileController> _logger;
-
-        public UserProfileController(IMongoDatabase database, ILogger<UserProfileController> logger)
-        {
-            _database = database;
-            _bucket = new GridFSBucket(_database);
-            _users = _database.GetCollection<UserData>("users");
-            _logger = logger;
-        }
+        private readonly IMongoDatabase _database = database;
+        private readonly GridFSBucket _bucket = new(database);
+        private readonly IMongoCollection<UserData> _users = database.GetCollection<UserData>("users");
+        private readonly ILogger<UserProfileController> _logger = logger;
 
         // Pobierz obraz: zwraca zawartość z GridFS
         [HttpGet("photo/{userId}")]
         public async Task<IActionResult> GetProfileImage(string userId)
         {
-            if (string.IsNullOrWhiteSpace(userId)) return BadRequest();
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                _logger.LogWarning("GetProfileImage wywołane z pustym userId");
+                return BadRequest();
+            }
 
             var user = await _users.Find(u => u.UserId == userId).FirstOrDefaultAsync();
-            if (user == null || string.IsNullOrEmpty(user.ProfileImageId)) return NotFound();
+            if (user == null || string.IsNullOrEmpty(user.ProfileImageId))
+            {
+                _logger.LogWarning("Nie znaleziono obrazu dla użytkownika {UserId}", userId);
+                return NotFound();
+            }
 
             try
             {
@@ -48,15 +48,18 @@ namespace Share_Care.Controllers
                     ? fileDoc["metadata"]["contentType"].AsString
                     : "application/octet-stream";
 
+                _logger.LogDebug("Pomyślnie pobrano obraz dla użytkownika {UserId}", userId);
                 return File(ms.ToArray(), contentType);
             }
             catch (GridFSFileNotFoundException)
             {
+                _logger.LogWarning("Plik GridFS nie istnieje dla użytkownika {UserId}, imageId: {ImageId}", 
+                    userId, user.ProfileImageId);
                 return NotFound();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Błąd pobierania obrazu z GridFS");
+                _logger.LogError(ex, "Błąd pobierania obrazu z GridFS dla użytkownika {UserId}", userId);
                 return StatusCode(500);
             }
         }

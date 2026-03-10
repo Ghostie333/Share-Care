@@ -12,24 +12,12 @@ using System.Text;
 
 namespace Share_Care.Services
 {
-    public sealed class LoginService
+    public sealed class LoginService(ILogger<LoginService> logger, IMongoDatabase db, SecurityService security, IConfiguration config)
     {
-        private readonly ILogger<LoginService> _logger;
-        private readonly IMongoCollection<UserData> _users;
-        private readonly SecurityService _security;
-        private readonly IConfiguration _config;
-
-        public LoginService(
-            ILogger<LoginService> logger,
-            IMongoDatabase db,
-            SecurityService security,
-            IConfiguration config)
-        {
-            _logger = logger;
-            _users = db.GetCollection<UserData>("users");
-            _security = security;
-            _config = config;
-        }
+        private readonly ILogger<LoginService> _logger = logger;
+        private readonly IMongoCollection<UserData> _users = db.GetCollection<UserData>("users");
+        private readonly SecurityService _security = security;
+        private readonly IConfiguration _config = config;
 
         // Weryfikacja email/has³a, zwraca u¿ytkownika lub null
         public async Task<UserData?> ValidateCredentialsAsync(string email, string password, CancellationToken ct)
@@ -46,9 +34,9 @@ namespace Share_Care.Services
         {
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.NameIdentifier, user.UserId ?? string.Empty),
-                new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
-                new Claim(ClaimTypes.Name, user.FirstName ?? string.Empty)
+                new(ClaimTypes.NameIdentifier, user.UserId ?? string.Empty),
+                new(ClaimTypes.Email, user.Email ?? string.Empty),
+                new(ClaimTypes.Name, user.FirstName ?? string.Empty)
             };
 
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -69,9 +57,9 @@ namespace Share_Care.Services
         {
             var claims = new List<Claim>
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.UserId ?? string.Empty),
-                new Claim(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
-                new Claim(ClaimTypes.Name, user.FirstName ?? string.Empty)
+                new(JwtRegisteredClaimNames.Sub, user.UserId ?? string.Empty),
+                new(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
+                new(ClaimTypes.Name, user.FirstName ?? string.Empty)
             };
 
             var key = Environment.GetEnvironmentVariable("Auth__Jwt__Key");

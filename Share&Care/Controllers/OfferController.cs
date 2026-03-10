@@ -8,46 +8,17 @@ using MongoDB.Driver.GridFS;
 using Share_Care.models;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using Share_Care.Models.Requests;
 
 namespace Share_Care.Controllers
 {
     [ApiController]
     [Route("offer")]
-    public class OfferController : Controller
+    public class OfferController(ILogger<OfferController> logger, IMongoDatabase db) : ControllerBase
     {
-        private readonly ILogger<OfferController> _logger;
-        private readonly IMongoCollection<Offer> _collection;
-        private readonly GridFSBucket _gridFS;
-
-        public OfferController(ILogger<OfferController> logger, IMongoDatabase db)
-        {
-            _logger = logger;
-            _collection = db.GetCollection<Offer>("offers");
-            _gridFS = new GridFSBucket(db);
-        }
-
-        public sealed class CreateOfferForm
-        {
-            [Required]
-            public string? Title { get; set; }
-
-            [Required]
-            public string? ContactName { get; set; }
-
-            [Required]
-            public string? Category { get; set; }
-
-            public string ContactNumber { get; set; } = string.Empty;
-            public string Description { get; set; } = string.Empty;
-
-            [Range(-90, 90, ErrorMessage = "Lat musi być w zakresie [-90, 90].")]
-            public double? Lat { get; set; }
-
-            [Range(-180, 180, ErrorMessage = "Lng musi być w zakresie [-180, 180].")]
-            public double? Lng { get; set; }
-
-            public List<IFormFile>? Images { get; set; }
-        }
+        private readonly ILogger<OfferController> _logger = logger;
+        private readonly IMongoCollection<Offer> _collection = db.GetCollection<Offer>("offers");
+        private readonly GridFSBucket _gridFS = new(db);
 
         // POST /offer/create-offer
         [Authorize]
@@ -55,7 +26,7 @@ namespace Share_Care.Controllers
         [Consumes("multipart/form-data")]
         [RequestSizeLimit(50_000_000)]
         [RequestFormLimits(MultipartBodyLengthLimit = 50_000_000)]
-        public async Task<IActionResult> CreateOffer([FromForm] CreateOfferForm form)
+        public async Task<IActionResult> CreateOffer([FromForm] CreateOfferRequest form)
         {
             try
             {
@@ -127,12 +98,71 @@ namespace Share_Care.Controllers
             }
         }
 
+        // GET /offer/get-offers?userId=123&category=Elektronika&status=Active
         [HttpGet("get-offers")]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] OfferFiltersRequest filters)
         {
             try
             {
-                var offers = await _collection.Find(_ => true).ToListAsync();
+                var filterBuilder = Builders<Offer>.Filter;
+                var filterList = new List<FilterDefinition<Offer>>();
+
+                // Filtr użytkownika
+                if (!string.IsNullOrWhiteSpace(filters.UserId))
+                {
+                    filterList.Add(filterBuilder.Eq(x => x.UserId, filters.UserId));
+                }
+
+                // Filtr kategorii
+                if (!string.IsNullOrWhiteSpace(filters.Category))
+                {
+                    filterList.Add(filterBuilder.Eq(x => x.Category, filters.Category));
+                }
+
+                // Filtr statusu
+                if (!string.IsNullOrWhiteSpace(filters.Status))
+                {
+                    filterList.Add(filterBuilder.Eq(x => x.Status, filters.Status));
+                }
+
+                // Wyszukiwanie tekstowe
+                if (!string.IsNullOrWhiteSpace(filters.SearchText))
+                {
+                    var textFilter = filterBuilder.Or(
+                        filterBuilder.Regex(x => x.Title, new BsonRegularExpression(filters.SearchText, "i")),
+                        filterBuilder.Regex(x => x.Description, new BsonRegularExpression(filters.SearchText, "i"))
+                    );
+                    filterList.Add(textFilter);
+                }
+
+                // Filtr lokalizacji
+                if (filters.Lat.HasValue && filters.Lng.HasValue && filters.RadiusKm.HasValue)
+                {
+                    var point = GeoJson.Point(GeoJson.Position(filters.Lng.Value, filters.Lat.Value));
+                    var locationFilter = filterBuilder.Near(
+                        x => x.Location,
+                        point,
+                        maxDistance: filters.RadiusKm.Value * 1000,
+                        minDistance: 0
+                    );
+                    filterList.Add(locationFilter);
+                }
+
+                // Filtr dat
+                if (filters.CreatedAfter.HasValue)
+                {
+                    filterList.Add(filterBuilder.Gte(x => x.CreatedAt, filters.CreatedAfter.Value));
+                }
+                if (filters.CreatedBefore.HasValue)
+                {
+                    filterList.Add(filterBuilder.Lte(x => x.CreatedAt, filters.CreatedBefore.Value));
+                }
+
+                var finalFilter = filterList.Count > 0
+                    ? filterBuilder.And(filterList)
+                    : filterBuilder.Empty;
+
+                var offers = await _collection.Find(finalFilter).ToListAsync();
                 return Ok(offers);
             }
             catch (Exception ex)
@@ -140,6 +170,13 @@ namespace Share_Care.Controllers
                 _logger.LogError(ex, "Błąd pobierania ofert z MongoDB");
                 return Problem("Błąd bazy danych", statusCode: StatusCodes.Status500InternalServerError);
             }
+        }
+
+        // Alias
+        [HttpGet("get-user-offers/{userId}")]
+        public async Task<IActionResult> GetUserOffers(string userId)
+        {
+            return await GetAll(new OfferFiltersRequest { UserId = userId });
         }
 
         [HttpGet("get-offer/{offerId}")]
@@ -157,20 +194,6 @@ namespace Share_Care.Controllers
             }
         }
 
-        [HttpGet("get-user-offers/{userId}")]
-        public async Task<IActionResult> GetUserOffers(string userId)
-        {
-            try
-            {
-                var offers = await _collection.Find(x => x.UserId == userId).ToListAsync();
-                return Ok(offers);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Błąd pobierania ofert użytkownika z MongoDB");
-                return Problem("Błąd bazy danych", statusCode: StatusCodes.Status500InternalServerError);
-            }
-        }
 
         // DELETE /offer/remove-offer/{offerId}
         [Authorize]

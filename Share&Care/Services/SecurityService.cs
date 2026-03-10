@@ -5,19 +5,8 @@ namespace Share_Care.Services
 {
     public class SecurityService
     {
-        private static SecurityService _instance;
         private const int _saltLength = 16;
         private const int _hashLength = 20;
-
-        public static SecurityService GetInstance()
-        {
-            if (_instance == null)
-            {
-                _instance = new SecurityService();
-            }
-
-            return _instance;
-        }
 
         public byte[] HashPassword(string password)
         {
