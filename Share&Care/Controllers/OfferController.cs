@@ -225,6 +225,44 @@ namespace Share_Care.Controllers
             }
         }
 
+
+        // Oferta zmienia status na "Closed"
+        [Authorize]
+        [HttpPost("close-offer/{offerId}")]
+        public async Task<IActionResult> CloseOffer(string offerId)
+        {
+            try
+            {
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrWhiteSpace(currentUserId))
+                {
+                    return Unauthorized();
+                }
+
+                var offer = await _collection.Find(x => x.OfferId == offerId).FirstOrDefaultAsync();
+                if (offer is null)
+                {
+                    return NotFound();
+                }
+
+                if (!string.Equals(offer.UserId, currentUserId, StringComparison.Ordinal))
+                {
+                    return Forbid(); // wywołujący nie jest właścicielem
+                }
+
+                var update = Builders<Offer>.Update.Set(x => x.Status, "Inactive");
+                await _collection.FindOneAndUpdateAsync(x => x.OfferId == offerId, update);
+
+
+                return Ok(new { message = "Zamknięto ofertę" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Błąd zamknięcia oferty");
+                return Problem("Błąd bazy danych", statusCode: StatusCodes.Status500InternalServerError);
+            }
+        }
+
         [HttpGet("get-offer-page")]
         public async Task<IActionResult> GetOfferPage(string offerId)
         {
