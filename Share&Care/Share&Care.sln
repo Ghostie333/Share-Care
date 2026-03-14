@@ -5,6 +5,8 @@ VisualStudioVersion = 17.14.36705.20 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Share&Care", "Share&Care.csproj", "{577C96D5-D932-46A0-AF52-3D14E4A1ABAB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Share&Care.Tests", "Share&Care.Tests\Share&Care.Tests.csproj", "{A1F0E47A-DA6C-4BEB-A2FE-9A04F220EC2E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{577C96D5-D932-46A0-AF52-3D14E4A1ABAB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{577C96D5-D932-46A0-AF52-3D14E4A1ABAB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{577C96D5-D932-46A0-AF52-3D14E4A1ABAB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1F0E47A-DA6C-4BEB-A2FE-9A04F220EC2E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1F0E47A-DA6C-4BEB-A2FE-9A04F220EC2E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1F0E47A-DA6C-4BEB-A2FE-9A04F220EC2E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1F0E47A-DA6C-4BEB-A2FE-9A04F220EC2E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

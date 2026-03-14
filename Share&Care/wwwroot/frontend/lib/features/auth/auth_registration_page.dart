@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../utils/animations.dart';
 import 'auth_login_page.dart';
-import '../../styles/classic_style.dart';
+import '../../core/classic_style.dart';
 import 'package:flutter/services.dart';
 
 import '../../services/auth_service.dart';
-import 'profile_page.dart';
+import '../home/widgets/profile_page.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -93,9 +93,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
       if (!mounted) return;
 
-      // Po rejestracji przekierowujemy od razu na ekran profilu.
-      // TODO (tu będziesz zmieniać później):
-      // zamiast ProfileScreen przekierujesz na HomePage.
       Navigator.of(context).pushReplacement(
         createSlideFadeRoute(ProfileScreen(authResult: authResult)),
       );
