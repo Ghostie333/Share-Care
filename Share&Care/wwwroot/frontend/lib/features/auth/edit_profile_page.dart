@@ -4,20 +4,20 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../services/auth_service.dart';
-import '../../styles/classic_style.dart';
+import '../../core/classic_style.dart';
 import '../../utils/animations.dart';
 import 'auth_login_page.dart';
 
-class ProfileScreen extends StatefulWidget {
+class EditProfileScreen extends StatefulWidget {
   final AuthResult authResult;
 
-  const ProfileScreen({super.key, required this.authResult});
+  const EditProfileScreen({super.key, required this.authResult});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  State<EditProfileScreen> createState() => _EditProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _EditProfileScreenState extends State<EditProfileScreen> {
   File? _avatarFile;
 
   late String _firstName;
@@ -51,6 +51,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text('Edycja profilu'),
+        backgroundColor: ClassicStyle.my_dark_green,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
       backgroundColor: ClassicStyle.my_dark_green,
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),

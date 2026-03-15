@@ -23975,7 +23975,7 @@ VN(a,b,c,d,e,f,g,h){var s=0,r=A.N(t.H),q,p,o,n
 var $async$VN=A.O(function(i,j){if(i===1)return A.K(j,r)
 for(;;)switch(s){case 0:p=A.ar(["Email",c,"Password",f,"FirstName",d,"LastName",e,"PhoneNumber",g,"Birthday",a,"City",b,"PostalCode",h],t.N,t.z)
 s=3
-return A.P(A.axu(A.fQ("http://192.168.122.1:7070/UserRegistration/user-registry"),B.cz.FL(p,null),B.tu),$async$VN)
+return A.Q(A.awt(A.fO("/UserRegistration/user-registry"),B.cw.EQ(p,null),B.tk),$async$V5)
 case 3:o=j
 n=o.b
 if(n===200){s=1
@@ -23987,7 +23987,7 @@ FH(a,b){var s=0,r=A.N(t.Tm),q,p,o,n,m,l,k
 var $async$FH=A.O(function(c,d){if(c===1)return A.K(d,r)
 for(;;)switch(s){case 0:l=A.ar(["Email",a,"Password",b],t.N,t.z)
 s=3
-return A.P(A.axu(A.fQ("http://192.168.122.1:7070/UserLogin/login-cookie"),B.cz.FL(l,null),B.tu),$async$FH)
+return A.Q(A.awt(A.fO("/UserLogin/login-cookie"),B.cw.EQ(l,null),B.tk),$async$Fi)
 case 3:k=d
 if(k.b===200){p=t.a.a(B.cz.S_(A.ax8(A.awa(k.e)).fe(k.w),null))
 A.c4(p.h(0,"userId"))
