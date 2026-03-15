@@ -1,8 +1,8 @@
 cd Share-Care
 docker compose --env-file shareCare.env -f docker-compose.dev.yml up --build
 
-http://192.168.122.1:7070/app
-http://192.168.122.1:7070/swagger/index.html
+http://192.168..:7070/app
+http://192.168..:7070/swagger/index.html
 
 cd Share&Care/wwwroot/frontend
 flutter pub get

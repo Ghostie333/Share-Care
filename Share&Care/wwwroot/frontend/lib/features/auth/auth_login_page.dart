@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../utils/animations.dart';
 import 'auth_registration_page.dart';
-import '../../styles/classic_style.dart';
+import '../../core/classic_style.dart';
 import '../../services/auth_service.dart';
-import 'profile_page.dart';
+import '../home/widgets/profile_page.dart';
 
 
 class LoginScreen extends StatefulWidget {
@@ -41,8 +41,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
-      // TODO: tutaj zmienisz przekierowanie na HomePage zamiast ProfilePage,
-      // kiedy będzie gotowy ekran główny.
       Navigator.of(context).pushReplacement(
         createSlideFadeRoute(ProfileScreen(authResult: result)),
       );
@@ -60,7 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: ClassicStyle.my_dark_green,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Center(
@@ -90,7 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 20),
                         const Text(
                           "Logowanie",
-                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                          style: ClassicStyle.title,
                         ),
 
                         const SizedBox(height: 20),
