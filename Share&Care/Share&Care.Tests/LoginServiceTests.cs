@@ -18,8 +18,9 @@ using Xunit;
 
 namespace Share_Care.Tests
 {
-    public class LoginServiceTests
+    public class LoginServiceTests(SecurityService securityService)
     {
+        private readonly SecurityService _securityService = securityService;
         [Fact]
         public async Task ValidateCredentialsAsync_WithCorrectPassword_ReturnsUser()
         {
@@ -28,7 +29,7 @@ namespace Share_Care.Tests
             {
                 UserId = "1",
                 Email = "test@example.com",
-                Password = Convert.ToBase64String(SecurityService.GetInstance().HashPassword("secret"))
+                Password = Convert.ToBase64String(_securityService.HashPassword("secret"))
             };
 
             var usersCollection = new Mock<IMongoCollection<UserData>>();
@@ -50,10 +51,9 @@ namespace Share_Care.Tests
               .Returns(usersCollection.Object);
 
             var logger = new Mock<ILogger<LoginService>>();
-            var security = SecurityService.GetInstance();
             var config = new ConfigurationBuilder().Build();
 
-            var service = new LoginService(logger.Object, db.Object, security, config);
+            var service = new LoginService(logger.Object, db.Object, _securityService, config);
 
             // Act
             var result = await service.ValidateCredentialsAsync("test@example.com", "secret", CancellationToken.None);
@@ -78,7 +78,6 @@ namespace Share_Care.Tests
 
             var db = new Mock<IMongoDatabase>();
             var logger = new Mock<ILogger<LoginService>>();
-            var security = SecurityService.GetInstance();
             var inMemorySettings = new Dictionary<string, string?>
             {
                 { "Session:SessionTimeoutHours", "1" }
@@ -87,7 +86,7 @@ namespace Share_Care.Tests
                 .AddInMemoryCollection(inMemorySettings!)
                 .Build();
 
-            var service = new LoginService(logger.Object, db.Object, security, config);
+            var service = new LoginService(logger.Object, db.Object, _securityService, config);
 
             // Act
             var token = service.GenerateJwtToken(user, out var expiresUtc);
