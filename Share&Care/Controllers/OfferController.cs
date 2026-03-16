@@ -98,12 +98,15 @@ namespace Share_Care.Controllers
             }
         }
 
-        // GET /offer/get-offers?userId=123&category=Elektronika&status=Active
+        // GET /offer/get-offers?userId=123&category=Elektronika&status=Active&page=1&limit=20
         [HttpGet("get-offers")]
-        public async Task<IActionResult> GetAll([FromQuery] OfferFiltersRequest filters)
+        public async Task<IActionResult> GetAll([FromQuery] OfferFiltersRequest filters, [FromQuery] int page = 1, [FromQuery] int limit = 20)
         {
             try
             {
+                page = Math.Max(page, 1);
+                limit = Math.Clamp(limit, 1, 100); // zabezpieczenie, żeby nie zabić bazy
+
                 var filterBuilder = Builders<Offer>.Filter;
                 var filterList = new List<FilterDefinition<Offer>>();
 
@@ -162,8 +165,21 @@ namespace Share_Care.Controllers
                     ? filterBuilder.And(filterList)
                     : filterBuilder.Empty;
 
-                var offers = await _collection.Find(finalFilter).ToListAsync();
-                return Ok(offers);
+                var skip = (page - 1) * limit;
+
+                var offers = await _collection.Find(finalFilter)
+                    .SortByDescending(o => o.CreatedAt)
+                    .Skip(skip)
+                    .Limit(limit)
+                    .ToListAsync();
+
+                return Ok(new
+                {
+                    page,
+                    limit,
+                    returned = offers.Count,
+                    items = offers
+                });
             }
             catch (Exception ex)
             {
