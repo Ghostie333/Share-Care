@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
+using Share_Care.Hubs;
 using Share_Care.Services;
 using System.Text;
 
@@ -11,6 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddSignalR();
 
 
 // MongoDB
@@ -29,6 +31,9 @@ builder.Services.AddSingleton(mongoDatabase);
 // SecurityService i LoginService
 builder.Services.AddSingleton<SecurityService>();
 builder.Services.AddScoped<LoginService>();
+
+// Chat
+builder.Services.AddScoped<IChatService, ChatService>();
 
 // AUTH: JWT dla Flutter (Web + Mobile)
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -61,6 +66,9 @@ app.UseAuthorization();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
+
+app.MapHub<ChatHub>("/chubs/chat");
+
 
 // Serwuj Flutter Web spod / (root)
 var flutterAppRoot = Path.Combine(app.Environment.WebRootPath, "frontend", "build", "web");
