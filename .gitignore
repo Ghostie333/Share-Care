@@ -1,3 +1,5 @@
 /Share&Care/.vs
 /Share&Care/obj
 /Share&Care/bin
+**/bin/
+**/obj/

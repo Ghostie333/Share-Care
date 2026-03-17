@@ -6,10 +6,10 @@ namespace Share_Care.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class UserLoginController(ILogger<UserLoginController> logger, LoginService loginService) : ControllerBase
+    public class UserLoginController(ILogger<UserLoginController> logger, ILoginService loginService) : ControllerBase
     {
         private readonly ILogger<UserLoginController> _logger = logger;
-        private readonly LoginService _loginService = loginService;
+        private readonly ILoginService _loginService = loginService;
 
         // Logowanie (JWT)
         [HttpPost("login")]

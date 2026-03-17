@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
+using MongoDB.Driver.GridFS;
 using Share_Care.Hubs;
 using Share_Care.Services;
 using System.Text;
@@ -26,11 +27,12 @@ Console.WriteLine($"[STARTUP] Resolved Database: {dbName}");
 var mongoClient = new MongoClient(mongoUrl);
 var mongoDatabase = mongoClient.GetDatabase(dbName);
 builder.Services.AddSingleton(mongoDatabase);
+builder.Services.AddSingleton(new GridFSBucket(mongoDatabase));
 
 
 // SecurityService i LoginService
 builder.Services.AddSingleton<SecurityService>();
-builder.Services.AddScoped<LoginService>();
+builder.Services.AddScoped<ILoginService, LoginService>();
 
 // Chat
 builder.Services.AddScoped<IChatService, ChatService>();

@@ -5,12 +5,19 @@ using MongoDB.Driver;
 using Share_Care.models;
 using Share_Care.Services;
 using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
 using System.Security.Claims;
 using System.Text;
 
 namespace Share_Care.Services
 {
-    public sealed class LoginService(ILogger<LoginService> logger, IMongoDatabase db, SecurityService security, IConfiguration config)
+    public interface ILoginService
+    {
+        Task<UserData?> ValidateCredentialsAsync(string email, string password, CancellationToken ct);
+        string GenerateJwtToken(UserData user, out DateTime expiresUtc);
+    }
+
+    public sealed class LoginService(ILogger<LoginService> logger, IMongoDatabase db, SecurityService security, IConfiguration config) : ILoginService
     {
         private readonly ILogger<LoginService> _logger = logger;
         private readonly IMongoCollection<UserData> _users = db.GetCollection<UserData>("users");
@@ -22,7 +29,12 @@ namespace Share_Care.Services
         {
             _logger.LogInformation("ValidateCredentials - szukam u¿ytkownika: {Email}", email);
 
-            var user = await _users.Find(u => u.Email == email).FirstOrDefaultAsync(ct);
+            var cursor = await _users.FindAsync(
+                Builders<UserData>.Filter.Eq(u => u.Email, email),
+                new FindOptions<UserData, UserData>(),
+                ct);
+            var hasAny = await cursor.MoveNextAsync(ct);
+            var user = hasAny ? cursor.Current.FirstOrDefault() : null;
             if (user == null)
             {
                 _logger.LogWarning("ValidateCredentials - nie znaleziono u¿ytkownika: {Email}", email);

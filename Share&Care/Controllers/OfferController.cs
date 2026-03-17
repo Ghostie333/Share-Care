@@ -14,11 +14,11 @@ namespace Share_Care.Controllers
 {
     [ApiController]
     [Route("offer")]
-    public class OfferController(ILogger<OfferController> logger, IMongoDatabase db) : ControllerBase
+    public class OfferController(ILogger<OfferController> logger, IMongoDatabase db, GridFSBucket? gridFs = null) : ControllerBase
     {
         private readonly ILogger<OfferController> _logger = logger;
         private readonly IMongoCollection<Offer> _collection = db.GetCollection<Offer>("offers");
-        private readonly GridFSBucket _gridFS = new(db);
+        private readonly GridFSBucket? _gridFS = gridFs;
 
         // POST /offer/create-offer
         [Authorize]
@@ -50,6 +50,11 @@ namespace Share_Care.Controllers
                 var imageIds = new List<string>();
                 if (form.Images != null && form.Images.Count > 0)
                 {
+                    if (_gridFS is null)
+                    {
+                        return Problem("Brak konfiguracji GridFS", statusCode: StatusCodes.Status500InternalServerError);
+                    }
+
                     foreach (var file in form.Images)
                     {
                         if (file == null || file.Length == 0) continue;
@@ -167,11 +172,15 @@ namespace Share_Care.Controllers
 
                 var skip = (page - 1) * limit;
 
-                var offers = await _collection.Find(finalFilter)
-                    .SortByDescending(o => o.CreatedAt)
-                    .Skip(skip)
-                    .Limit(limit)
-                    .ToListAsync();
+                var options = new FindOptions<Offer, Offer>
+                {
+                    Sort = Builders<Offer>.Sort.Descending(o => o.CreatedAt),
+                    Skip = skip,
+                    Limit = limit
+                };
+
+                var cursor = await _collection.FindAsync(finalFilter, options);
+                var offers = await cursor.ToListAsync();
 
                 return Ok(new
                 {
@@ -238,7 +247,7 @@ namespace Share_Care.Controllers
                 await _collection.DeleteOneAsync(x => x.OfferId == offerId);
 
                 // Best-effort: usuń pliki z GridFS powiązane z ofertą
-                if (offer.ImageIds is { Count: > 0 })
+                if (_gridFS is not null && offer.ImageIds is { Count: > 0 })
                 {
                     foreach (var id in offer.ImageIds)
                     {
@@ -323,6 +332,11 @@ namespace Share_Care.Controllers
         {
             try
             {
+                if (_gridFS is null)
+                {
+                    return Problem("Brak konfiguracji GridFS", statusCode: StatusCodes.Status500InternalServerError);
+                }
+
                 if (!ObjectId.TryParse(imageId, out var objectId))
                 {
                     return BadRequest("Nieprawidłowy format ID obrazu");

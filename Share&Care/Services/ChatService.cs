@@ -1,5 +1,6 @@
 ﻿using MongoDB.Driver;
 using Share_Care.models;
+using System.Linq;
 
 namespace Share_Care.Services
 {
@@ -15,13 +16,13 @@ namespace Share_Care.Services
                 string.IsNullOrWhiteSpace(sellerId))
                 return null;
 
-            var sellerUser = await _db.GetCollection<UserData>("users")
-                .Find(u => u.UserId == sellerId)
-                .FirstOrDefaultAsync();
+            var sellerCursor = await _db.GetCollection<UserData>("users")
+                .FindAsync(Builders<UserData>.Filter.Eq(u => u.UserId, sellerId));
+            var sellerUser = await sellerCursor.FirstOrDefaultAsync();
 
-            var listingOffer = await _db.GetCollection<Offer>("offers")
-                .Find(o => o.OfferId == listingId)
-                .FirstOrDefaultAsync();
+            var offerCursor = await _db.GetCollection<Offer>("offers")
+                .FindAsync(Builders<Offer>.Filter.Eq(o => o.OfferId, listingId));
+            var listingOffer = await offerCursor.FirstOrDefaultAsync();
 
             if (sellerUser == null || listingOffer == null)
             {
@@ -52,10 +53,9 @@ namespace Share_Care.Services
             var belongs = await UserBelongsToChatAsync(chatId, requestingUserId);
             if (!belongs) return null;
 
-            var messages = await _db.GetCollection<Message>("messages")
-                .Find(mess => mess.ChatId == chatId)
-                .SortBy(mess => mess.SentAt)
-                .ToListAsync();
+            var messagesCursor = await _db.GetCollection<Message>("messages")
+                .FindAsync(Builders<Message>.Filter.Eq(mess => mess.ChatId, chatId));
+            var messages = await messagesCursor.ToListAsync();
 
             return messages;
         }
@@ -96,9 +96,14 @@ namespace Share_Care.Services
             if (string.IsNullOrWhiteSpace(chatId) || string.IsNullOrWhiteSpace(userId))
                 return false;
 
-            var chat = await _db.GetCollection<Chat>("chats")
-                .Find(c => c.Id == chatId && (c.BuyerId == userId || c.SellerId == userId))
-                .FirstOrDefaultAsync();
+            var chatCursor = await _db.GetCollection<Chat>("chats")
+                .FindAsync(
+                    Builders<Chat>.Filter.And(
+                        Builders<Chat>.Filter.Eq(c => c.Id, chatId),
+                        Builders<Chat>.Filter.Or(
+                            Builders<Chat>.Filter.Eq(c => c.BuyerId, userId),
+                            Builders<Chat>.Filter.Eq(c => c.SellerId, userId))));
+            var chat = await chatCursor.FirstOrDefaultAsync();
 
             return chat != null;
         }
