@@ -72,17 +72,21 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
     try {
       await AuthService.registerUser(
-        email: emailController.text.trim(),
-        password: passwordController.text,
-        firstName: firstNameController.text.trim(),
-        lastName: lastNameController.text.trim(),
-        phoneNumber: phoneNumberController.text.trim(),
-        birthday: dateBirthController.text.trim(),
-        city: addressNameController.text.trim(),
-        postalCode: postCodeController.text.trim(),
-      );
-
-      if (!mounted) return;
+      email: emailController.text.trim(),
+      password: passwordController.text,
+      firstName: firstNameController.text.trim(),
+      lastName: lastNameController.text.trim(),
+      phoneNumber: phoneNumberController.text.trim().isEmpty
+          ? null
+          : phoneNumberController.text.trim(),
+      birthday: dateBirthController.text.trim(),
+      city: addressNameController.text.trim().isEmpty
+          ? null
+          : addressNameController.text.trim(),
+      postalCode: postCodeController.text.trim().isEmpty
+          ? null
+          : postCodeController.text.trim(),
+    );
 
       // Auto-logowanie po pomyślnej rejestracji — używamy tego samego
       // endpointu co przy normalnym logowaniu.

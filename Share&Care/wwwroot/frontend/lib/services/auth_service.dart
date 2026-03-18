@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'dart:html' as html;
-
+import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 import 'api_service.dart';
@@ -32,6 +32,9 @@ class AuthResult {
 }
 
 class AuthService {
+  // jeden współdzielony storage dla całej aplikacji
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+
   // rejestracja użytkownika w backendzie
   static Future<void> registerUser({
     required String email,
@@ -57,14 +60,18 @@ class AuthService {
     final http.Response res =
         await ApiService.postJson('/UserRegistration/user-registry', body, includeAuth: false);
 
+    debugPrint('[registerUser] status: ${res.statusCode}');
+    debugPrint('[registerUser] body: ${res.body}');
+
+
     if (res.statusCode == 200) {
-      // Backend zwraca token po rejestracji
       final decoded = jsonDecode(res.body) as Map<String, dynamic>;
       final token = decoded['access_token'] as String?;
 
-      // ZAPISZ TOKEN do localStorage
+      // ZAPISZ TOKEN do secure storage
       if (token != null) {
-        html.window.localStorage['jwt_token'] = token;
+        await _secureStorage.write(key: 'jwt_token', value: token);
+        print('Token zapisany po rejestracji: ${token.substring(0, 20)}...');
       }
 
       return;
@@ -85,19 +92,25 @@ class AuthService {
       'Password': password,
     };
 
+    debugPrint('[login] body: $body');
+
     final http.Response res =
-        await ApiService.postJson('/UserLogin/login', body, includeAuth: false);
+        await ApiService.postJson('/UserLogin/login-jwt', body, includeAuth: false);
+
+     debugPrint('[login] status: ${res.statusCode}');
+    debugPrint('[login] body: ${res.body}');
+
 
     if (res.statusCode == 200) {
       final decoded = jsonDecode(res.body) as Map<String, dynamic>;
       final token = decoded['access_token'] as String?;
 
-      // ZAPISZ TOKEN do localStorage
+      // ZAPISZ TOKEN do secure storage
       if (token != null) {
-        html.window.localStorage['jwt_token'] = token;
-        print('✅ Token zapisany: ${token.substring(0, 20)}...');
+        await _secureStorage.write(key: 'jwt_token', value: token);
+        print('Token zapisany po logowaniu: ${token.substring(0, 20)}...');
       } else {
-        print('❌ Brak tokenu w response!');
+        print('Brak tokenu w response!');
       }
 
       return AuthResult.fromJson(decoded);
@@ -107,21 +120,22 @@ class AuthService {
   }
 
   // Sprawdź czy użytkownik jest zalogowany
-  static bool isLoggedIn() {
-    final token = html.window.localStorage['jwt_token'];
+  static Future<bool> isLoggedIn() async {
+    final token = await _secureStorage.read(key: 'jwt_token');
     final loggedIn = token != null && token.isNotEmpty;
-    print('🔐 isLoggedIn sprawdza token: ${token != null ? "ISTNIEJE" : "BRAK"} → $loggedIn');
+    print('isLoggedIn sprawdza token: ${token != null ? "ISTNIEJE" : "BRAK"} → $loggedIn');
     return loggedIn;
   }
 
   // Wyloguj użytkownika
-  static void logout() {
-    html.window.localStorage.remove('jwt_token');
-    print('🚪 Użytkownik wylogowany, token usunięty');
+  static Future<void> logout() async {
+    await _secureStorage.delete(key: 'jwt_token');
+    print('Użytkownik wylogowany, token usunięty');
   }
 
   // Pobierz zapisany token (do API calls)
-  static String? getToken() {
-    return html.window.localStorage['jwt_token'];
+  static Future<String?> getToken() async {
+    final token = await _secureStorage.read(key: 'jwt_token');
+    return token;
   }
 }
