@@ -34,7 +34,7 @@ namespace Share_Care.Controllers
             {
                 var token = _loginService.GenerateJwtToken(user, out var expiresUtc);
                 _logger.LogInformation("Successful login for user: {UserId} ({Email})", user.UserId, user.Email);
-                return Ok(new { access_token = token, token_type = "Bearer", expires_in = expiresUtc });
+                return Ok(new { user_id = user.UserId, access_token = token, token_type = "Bearer", expires_in = expiresUtc });
             }
             catch (InvalidOperationException ex)
             {
