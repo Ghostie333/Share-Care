@@ -9,12 +9,14 @@ class AnnouncementDetailsDialog extends StatefulWidget {
   final Announcement ad;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
+  final VoidCallback? onChat;
 
   const AnnouncementDetailsDialog({
     super.key,
     required this.ad,
     this.onEdit,
     this.onDelete,
+    this.onChat,
   });
 
   @override
@@ -200,6 +202,15 @@ class _AnnouncementDetailsDialogState
                           onPressed: () => Navigator.of(context).pop(),
                           child: const Text('Zamknij'),
                         ),
+                        if (widget.onChat != null)
+                          TextButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              widget.onChat?.call();
+                            },
+                            icon: const Icon(Icons.chat_bubble_outline),
+                            label: const Text('Czat'),
+                          ),
                         if (widget.ad.isOwner)
                           Row(
                             children: [

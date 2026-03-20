@@ -25,13 +25,15 @@ class UserProfileInfo {
 
   factory UserProfileInfo.fromJson(Map<String, dynamic> json) {
     return UserProfileInfo(
-      firstName: (json['firstName'] ?? '').toString(),
-      lastName: (json['lastName'] ?? '').toString(),
-      phoneNumber: (json['phoneNumber'] ?? '').toString(),
-      email: (json['email'] ?? '').toString(),
-      city: (json['city'] ?? '').toString(),
-      raiting: (json['raiting'] ?? '').toString(),
-      type: (json['type'] ?? '').toString(), 
+      firstName:
+          (json['firstName'] ?? json['FirstName'] ?? json['name'] ?? '').toString(),
+      lastName: (json['lastName'] ?? json['LastName'] ?? json['surname'] ?? '').toString(),
+      phoneNumber:
+          (json['phoneNumber'] ?? json['PhoneNumber'] ?? json['phone'] ?? '').toString(),
+      email: (json['email'] ?? json['Email'] ?? '').toString(),
+      city: (json['city'] ?? json['City'] ?? '').toString(),
+      raiting: (json['raiting'] ?? json['Raiting'] ?? '').toString(),
+      type: (json['type'] ?? json['Type'] ?? '').toString(),
 
     );
   }

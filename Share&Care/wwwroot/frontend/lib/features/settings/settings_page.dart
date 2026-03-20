@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 
+import '../../services/auth_service.dart';
 import '../../core/app_theme.dart';
+import '../../utils/animations.dart';
+import '../announcements/create_announcement_sheet.dart';
+import '../chat/chat_page.dart';
+import '../home/home_page.dart';
+import '../navigation/app_bar.dart';
+import '../search/search_page.dart';
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+  final AuthResult authResult;
+
+  const SettingsPage({super.key, required this.authResult});
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -38,6 +47,41 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
         ],
+      ),
+      bottomNavigationBar: MainBottomNavBar(
+        currentTab: BottomNavTab.profile,
+        onHomeTap: () {
+          Navigator.of(context).pushReplacement(
+            createSlideFadeRoute(HomePage(authResult: widget.authResult)),
+          );
+        },
+        onSearchTap: () {
+          Navigator.of(context).pushReplacement(
+            createSlideFadeRoute(
+              SearchPage(authResult: widget.authResult),
+            ),
+          );
+        },
+        onAddTap: () {
+          showCreateAnnouncementSheet(
+            context: context,
+            authResult: widget.authResult,
+            onCreated: (_) async {
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Dodano ogłoszenie')),
+              );
+            },
+          );
+        },
+        onMessagesTap: () {
+          Navigator.of(context).pushReplacement(
+            createSlideFadeRoute(
+              ChatPage(authResult: widget.authResult),
+            ),
+          );
+        },
+        onProfileTap: () {},
       ),
     );
   }

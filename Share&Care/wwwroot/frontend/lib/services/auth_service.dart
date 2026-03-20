@@ -22,11 +22,31 @@ class AuthResult {
 
   factory AuthResult.fromJson(Map<String, dynamic> json) {
     return AuthResult(
-      userId: json['userId'] as String?,
-      email: json['email'] as String? ?? '',
-      firstName: json['name'] as String? ?? json['firstName'] as String? ?? '',
-      lastName: json['lastName'] as String? ?? '',
-      accessToken: json['access_token'] as String?,
+      userId: (json['userId'] ??
+              json['user_id'] ??
+              json['UserId'] ??
+              json['UserID'] ??
+              json['User_ID'])
+          ?.toString(),
+      email: (json['email'] ?? json['Email'] ?? json['userEmail'])?.toString() ??
+          '',
+      firstName: (json['firstName'] ??
+              json['FirstName'] ??
+              json['name'] ??
+              json['Name'])
+          ?.toString() ??
+          '',
+      lastName: (json['lastName'] ??
+              json['LastName'] ??
+              json['surname'] ??
+              json['Surname'])
+          ?.toString() ??
+          '',
+      accessToken: (json['access_token'] ??
+              json['accessToken'] ??
+              json['token'] ??
+              json['Token'])
+          ?.toString(),
     );
   }
 }
@@ -95,7 +115,7 @@ class AuthService {
     debugPrint('[login] body: $body');
 
     final http.Response res =
-        await ApiService.postJson('/UserLogin/login-jwt', body, includeAuth: false);
+        await ApiService.postJson('/UserLogin/login', body, includeAuth: false);
 
      debugPrint('[login] status: ${res.statusCode}');
     debugPrint('[login] body: ${res.body}');

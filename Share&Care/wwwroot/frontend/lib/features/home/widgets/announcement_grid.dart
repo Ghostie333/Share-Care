@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/annoucement.dart';
 import '../../../core/classic_style.dart';
+import '../../../config/app_config.dart';
 
 /// Lista / siatka ogłoszeń użytkownika.
 class AnnouncementGrid extends StatelessWidget {
@@ -20,15 +21,30 @@ class AnnouncementGrid extends StatelessWidget {
 			return const Text('Brak aktywnych ogłoszeń.');
 		}
 
-		return Column(
-			children: announcements
-					.map(
-						(ad) => _AnnouncementCard(
+		return LayoutBuilder(
+			builder: (context, constraints) {
+				final width = constraints.maxWidth;
+				final crossAxisCount = width < 520 ? 2 : 3;
+
+				return GridView.builder(
+					itemCount: announcements.length,
+					shrinkWrap: true,
+					physics: const NeverScrollableScrollPhysics(),
+					gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+						crossAxisCount: crossAxisCount,
+						crossAxisSpacing: 12,
+						mainAxisSpacing: 12,
+						childAspectRatio: width < 520 ? 0.82 : 0.9,
+					),
+					itemBuilder: (context, index) {
+						final ad = announcements[index];
+						return _AnnouncementCard(
 							ad: ad,
 							onTap: () => onTap(ad),
-						),
-					)
-					.toList(),
+						);
+					},
+				);
+			},
 		);
 	}
 }
@@ -44,36 +60,81 @@ class _AnnouncementCard extends StatelessWidget {
 
 	@override
 	Widget build(BuildContext context) {
+		final hasImages = ad.imageUrls.isNotEmpty;
+		final firstImageId = hasImages ? ad.imageUrls.first : null;
+		final imageUrl = firstImageId == null
+			? null
+			: '${AppConfig.apiBaseUrl}/offer/image/$firstImageId';
+
 		return Card(
-			margin: const EdgeInsets.only(bottom: 12),
 			color: ClassicStyle.my_beige,
-			child: ListTile(
-				title: Text(ad.title),
-				subtitle: Column(
-					crossAxisAlignment: CrossAxisAlignment.start,
-					children: [
-						Text(
-							ad.description,
-							maxLines: 2,
-							overflow: TextOverflow.ellipsis,
-						),
-						const SizedBox(height: 4),
-						Text(
-							'Dodano: ${ad.createdAt.toLocal()}',
-							style: const TextStyle(fontSize: 12, color: Colors.black54),
-						),
-					],
-				),
-				trailing: ad.isActive
-						? const Chip(
-								label: Text('Aktywne'),
-								backgroundColor: Colors.greenAccent,
-							)
-						: const Chip(
-								label: Text('Zakończone'),
-								backgroundColor: Colors.grey,
-							),
+			child: InkWell(
 				onTap: onTap,
+				child: Padding(
+					padding: const EdgeInsets.all(12),
+					child: Column(
+						crossAxisAlignment: CrossAxisAlignment.start,
+						children: [
+							ClipRRect(
+								borderRadius: BorderRadius.circular(8),
+								child: AspectRatio(
+									aspectRatio: 16 / 10,
+									child: imageUrl == null
+										? Container(
+											color: Colors.grey[200],
+											child: const Icon(Icons.image, color: Colors.black38),
+										)
+										: Image.network(
+											imageUrl,
+											fit: BoxFit.cover,
+											errorBuilder: (_, __, ___) {
+												return Container(
+													color: Colors.grey[200],
+													child: const Icon(Icons.image, color: Colors.black38),
+												);
+											},
+										),
+								),
+							),
+							const SizedBox(height: 10),
+							Text(
+								ad.title,
+								maxLines: 1,
+								overflow: TextOverflow.ellipsis,
+								style: const TextStyle(
+									fontWeight: FontWeight.bold,
+								),
+							),
+							const SizedBox(height: 6),
+							if (ad.deposit != null)
+								Text(
+									'Kaucja: ${ad.deposit!.toStringAsFixed(2)} zł',
+									style: const TextStyle(fontSize: 12),
+								),
+							const SizedBox(height: 8),
+							Row(
+								mainAxisAlignment: MainAxisAlignment.spaceBetween,
+								children: [
+									ad.isActive
+										? const Chip(
+											label: Text('Aktywne'),
+											backgroundColor: Colors.greenAccent,
+										)
+										: const Chip(
+											label: Text('Zakończone'),
+											backgroundColor: Colors.grey,
+										),
+									IconButton(
+										padding: EdgeInsets.zero,
+										iconSize: 20,
+										onPressed: onTap,
+										icon: const Icon(Icons.chevron_right),
+									),
+								],
+							),
+						],
+					),
+				),
 			),
 		);
 	}

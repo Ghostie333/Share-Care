@@ -114,7 +114,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: ClassicStyle.my_dark_green,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Center(
@@ -128,7 +128,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(10),
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface,
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black,
@@ -157,7 +157,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                 decoration: const InputDecoration(
                                   labelText: "Imię",
                                   filled: true,
-                                  fillColor: Colors.white,
+                                  fillColor: Colors.transparent,
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
@@ -174,7 +174,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                 decoration: const InputDecoration(
                                   labelText: "Nazwisko",
                                   filled: true,
-                                  fillColor: Colors.white,
+                                  fillColor: Colors.transparent,
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
@@ -193,7 +193,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           decoration: const InputDecoration(
                             labelText: "Email",
                             filled: true,
-                            fillColor: Colors.white,
+                            fillColor: Colors.transparent,
                           ),
                           keyboardType: TextInputType.emailAddress,
                           validator: (value) {
@@ -220,7 +220,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                     decoration: const InputDecoration(
                                       labelText: "Potwierdź email",
                                       filled: true,
-                                      fillColor: Colors.white,
+                                  fillColor: Colors.transparent,
                                     ),
                                     validator: (value) {
                                       if (showEmailConfirm) {
@@ -244,7 +244,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           decoration: const InputDecoration(
                             labelText: "Numer Telefonu",
                             filled: true,
-                            fillColor: Colors.white,
+                            fillColor: Colors.transparent,
                           ),
                           keyboardType: TextInputType.phone,
                           inputFormatters: [
@@ -268,7 +268,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           decoration: const InputDecoration(
                             labelText: "Data urodzenia (DD.MM.RRRR)",
                             filled: true,
-                            fillColor: Colors.white,
+                            fillColor: Colors.transparent,
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
@@ -289,7 +289,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           decoration: const InputDecoration(
                             labelText: "Adres zamieszkania (miasto)",
                             filled: true,
-                            fillColor: Colors.white,
+                            fillColor: Colors.transparent,
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
@@ -305,7 +305,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           decoration: const InputDecoration(
                             labelText: "Kod pocztowy (NN-NNN)",
                             filled: true,
-                            fillColor: Colors.white,
+                            fillColor: Colors.transparent,
                           ),
                           keyboardType: TextInputType.number,
                           validator: (value) {
@@ -328,7 +328,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           decoration: const InputDecoration(
                             labelText: "Hasło",
                             filled: true,
-                            fillColor: Colors.white,
+                            fillColor: Colors.transparent,
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
@@ -354,7 +354,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                     decoration: const InputDecoration(
                                       labelText: "Potwierdź hasło",
                                       filled: true,
-                                      fillColor: Colors.white,
+                                      fillColor: Colors.transparent,
                                     ),
                                     validator: (value) {
                                       if (showPasswordConfirm) {

@@ -72,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(10),
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface,
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black,
@@ -97,8 +97,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           decoration: const InputDecoration(
                             labelText: "Email",
                             filled: true, 
-                            fillColor: Colors.white
+                            fillColor: Colors.transparent,
                           ),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                          cursorColor: Theme.of(context).colorScheme.primary,
                           keyboardType: TextInputType.emailAddress,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
@@ -119,8 +121,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           decoration: const InputDecoration(
                             labelText: "Hasło",
                             filled: true,
-                            fillColor: Colors.white,
+                            fillColor: Colors.transparent,
                           ),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                          cursorColor: Theme.of(context).colorScheme.primary,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return "Podaj hasło";

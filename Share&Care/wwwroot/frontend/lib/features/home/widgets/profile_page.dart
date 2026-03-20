@@ -12,6 +12,10 @@ import '../../announcements/annoucements_detail_page.dart';
 import '../../announcements/announcement_form_sheet.dart';
 import 'announcement_grid.dart';
 import '../../auth/auth_login_page.dart';
+import '../../chat/chat_page.dart';
+import '../../navigation/app_bar.dart';
+import '../../search/search_page.dart';
+import '../home_page.dart';
 
 class ProfileScreen extends StatefulWidget {
   final AuthResult authResult;
@@ -23,6 +27,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late String _firstName;
   late String _lastName;
   late String _email;
@@ -107,93 +112,131 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: theme.scaffoldBackgroundColor,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _onCreateAdPressed,
-        backgroundColor: ClassicStyle.my_light_green,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('Utwórz ogłoszenie'),
+      appBar: AppBar(
+        elevation: 0,
+        title: const SizedBox.shrink(),
+        backgroundColor: theme.appBarTheme.backgroundColor,
+        foregroundColor: theme.appBarTheme.foregroundColor,
+        actions: [
+          IconButton(
+            tooltip: 'Menu',
+            icon: const Icon(Icons.menu),
+            onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
+          ),
+        ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Center(
-          child: SingleChildScrollView(
-            child: Container(
-              width: MediaQuery.of(context).size.width * 0.5,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                color: theme.cardColor,
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black,
-                    blurRadius: 14,
-                    spreadRadius: 2,
-                    offset: Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: Wrap(
-                      spacing: 8,
-                      children: [
-                        TextButton.icon(
-                          onPressed: _onEditProfilePressed,
-                          icon: const Icon(Icons.edit),
-                          label: const Text('Edytuj dane'),
-                        ),
-                        TextButton.icon(
-                          onPressed: _onLogoutPressed,
-                          icon: const Icon(Icons.logout),
-                          label: const Text('Wyloguj'),
-                        ),
-                        TextButton.icon(
-                            onPressed: _onSettingsPressed,
-                          icon: const Icon(Icons.settings),
-                          label: const Text('Ustawienia'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: 18),
-                      Text(
-                        'Profil użytkownika',
-                        textAlign: TextAlign.center,
-                        style: isDark
-                            ? ClassicStyle.title_dark_theme
-                            : ClassicStyle.title,
-                      ),
-                      const SizedBox(height: 32),
-                      _buildProfileHeader(),
-                      const SizedBox(height: 24),
-                      _buildUserInfoSection(),
-                      const SizedBox(height: 24),
-                      _buildAdsSection(),
-                      const SizedBox(height: 24),
-                      _buildOtherSectionsPlaceholder(),
-                      const SizedBox(height: 96),
-                    ],
-                  ),
-                ],
-              ),
+      endDrawer: SizedBox(
+        width: MediaQuery.of(context).size.width / 2,
+        child: Drawer(
+          child: SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              children: [
+                const SizedBox(height: 12),
+                ListTile(
+                  leading: const Icon(Icons.edit),
+                  title: const Text('Edytuj dane'),
+                  onTap: () async {
+                    Navigator.of(context).pop();
+                    await _onEditProfilePressed();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.settings),
+                  title: const Text('Ustawienia'),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _onSettingsPressed();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.logout),
+                  title: const Text('Wyloguj'),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _onLogoutPressed();
+                  },
+                ),
+              ],
             ),
           ),
         ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: SingleChildScrollView(
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              color: theme.cardColor,
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black,
+                  blurRadius: 14,
+                  spreadRadius: 2,
+                  offset: Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 18),
+                Text(
+                  'Profil użytkownika',
+                  textAlign: TextAlign.center,
+                  style: isDark
+                      ? ClassicStyle.title_dark_theme
+                      : ClassicStyle.title,
+                ),
+                const SizedBox(height: 32),
+                _buildProfileHeader(),
+                const SizedBox(height: 24),
+                _buildUserInfoSection(),
+                const SizedBox(height: 24),
+                _buildAdsSection(),
+                const SizedBox(height: 24),
+                _buildOtherSectionsPlaceholder(),
+                const SizedBox(height: 120),
+              ],
+            ),
+          ),
+        ),
+      ),
+      bottomNavigationBar: MainBottomNavBar(
+        currentTab: BottomNavTab.profile,
+        onHomeTap: () {
+          Navigator.of(context).pushReplacement(
+            createSlideFadeRoute(HomePage(authResult: widget.authResult)),
+          );
+        },
+        onSearchTap: () {
+          Navigator.of(context).pushReplacement(
+            createSlideFadeRoute(
+              SearchPage(authResult: widget.authResult),
+            ),
+          );
+        },
+        onAddTap: _onCreateAdPressed,
+        onMessagesTap: () {
+          Navigator.of(context).pushReplacement(
+            createSlideFadeRoute(
+              ChatPage(authResult: widget.authResult),
+            ),
+          );
+        },
+        onProfileTap: () {},
       ),
     );
   }
 
   Widget _buildProfileHeader() {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         CircleAvatar(
           radius: 40,
@@ -207,33 +250,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '$_firstName $_lastName',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _email,
-                style: const TextStyle(color: Colors.black87),
-              ),
-              if (_city.isNotEmpty) ...[
-                const SizedBox(height: 2),
-                Text(
-                  _city,
-                  style: const TextStyle(color: Colors.black54),
-                ),
-              ],
-            ],
+        const SizedBox(height: 16),
+        Text(
+          '$_firstName $_lastName',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
           ),
         ),
+        const SizedBox(height: 4),
+        Text(
+          _email,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.black87),
+        ),
+        if (_city.isNotEmpty) ...[
+          const SizedBox(height: 2),
+          Text(
+            _city,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.black54),
+          ),
+        ],
       ],
     );
   }
@@ -263,23 +302,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _infoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              textAlign: TextAlign.right,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              value,
-              textAlign: TextAlign.left,
-            ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -290,10 +324,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final activeAds = _ads.where((ad) => ad.isActive).toList();
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
           'Aktywne ogłoszenia',
+          textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -309,27 +344,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildOtherSectionsPlaceholder() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
           'Inne sekcje (do zaimplementowania):',
+          textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
         ),
         const SizedBox(height: 8),
-        const Text('- Ustawienia konta i prywatności (zmiana hasła, itp.)'),
+        const Text(
+          '- Ustawienia konta i prywatności (zmiana hasła, itp.)',
+          textAlign: TextAlign.center,
+        ),
         ListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Ustawienia wyświetlania'),
-          subtitle:
-              const Text('Motyw, kontrast, czcionka, język (w przygotowaniu)'),
+          title: const Text(
+            'Ustawienia wyświetlania',
+            textAlign: TextAlign.center,
+          ),
+          subtitle: const Text(
+            'Motyw, kontrast, czcionka, język (w przygotowaniu)',
+            textAlign: TextAlign.center,
+          ),
           trailing: const Icon(Icons.arrow_forward_ios, size: 16),
         ),
-        const Text('- Historia wyszukiwania'),
-        const Text('- Historia czatów'),
-        const Text('- Historia ogłoszeń'),
-        const Text('- Punkty / nagrody'),
+        const Text('- Historia wyszukiwania', textAlign: TextAlign.center),
+        const Text('- Historia czatów', textAlign: TextAlign.center),
+        const Text('- Historia ogłoszeń', textAlign: TextAlign.center),
+        const Text('- Punkty / nagrody', textAlign: TextAlign.center),
       ],
     );
   }
@@ -359,7 +403,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _onSettingsPressed() {
     Navigator.of(context).push(
-      createSlideFadeRoute(const SettingsPage()),
+      createSlideFadeRoute(
+        SettingsPage(authResult: widget.authResult),
+      ),
     );
   }
 
@@ -374,7 +420,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -382,13 +428,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return AnnouncementFormSheet(
           existingAd: existingAd,
           ownerName: '$_firstName $_lastName',
-          onSubmit: (title, description, location, deposit) async {
+          onSubmit: (title, description, location, deposit, images) async {
             final userId = widget.authResult.userId;
             if (userId == null || userId.isEmpty) {
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Brak identyfikatora użytkownika – nie można zapisać ogłoszenia.'),
+                    content: Text(
+                      'Brak identyfikatora użytkownika - nie można zapisać ogłoszenia.',
+                    ),
                   ),
                 );
               }
@@ -396,6 +444,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
             }
 
             try {
+              if (_firstName.isEmpty || _lastName.isEmpty) {
+                final fresh = await UserProfileService.fetchProfile(userId);
+                if (!mounted) return;
+                _firstName = fresh.firstName;
+                _lastName = fresh.lastName;
+                _email = fresh.email;
+                _city = fresh.city;
+                _phoneNumber = fresh.phoneNumber;
+                _raiting = fresh.raiting;
+                _type = fresh.type;
+              }
+
+              final ownerName = '$_firstName $_lastName'.trim();
+
               if (existingAd == null) {
                 final newAnnouncement = Announcement(
                   id: '',
@@ -404,17 +466,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   description: description,
                   location: location,
                   deposit: deposit,
-                  ownerName: '$_firstName $_lastName',
+                  ownerName: ownerName,
                   isActive: true,
                   createdAt: DateTime.now(),
                   imageUrls: const [],
                   isOwner: true,
-                  category: 'Inne',
-                  contactName: '$_firstName $_lastName',
-                  contactNumber: _phoneNumber.isEmpty ? null : _phoneNumber,
+                  category: 'Ogłoszenie|Inne',
+                  contactName: ownerName,
+                  contactNumber: _phoneNumber.isEmpty ? '' : _phoneNumber,
                 );
 
-                final created = await AnnouncementService.createOffer(newAnnouncement);
+                final created = await AnnouncementService.createOffer(
+                  newAnnouncement,
+                  images: images,
+                );
 
                 if (!mounted) return;
                 setState(() {
@@ -459,6 +524,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _ads.removeWhere((a) => a.id == ad.id);
             });
             Navigator.of(ctx).pop();
+          },
+          onChat: () {
+            Navigator.of(ctx).pop();
+            Navigator.of(context).push(
+              createSlideFadeRoute(
+                ChatPage(
+                  authResult: widget.authResult,
+                  initialListing: ad,
+                ),
+              ),
+            );
           },
         );
       },
