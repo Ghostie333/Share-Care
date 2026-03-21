@@ -9,12 +9,12 @@ namespace Share_Care.Controllers
     [ApiController]
     [Route("[controller]")]
     public class UserRegistrationController(IMongoDatabase db, ILogger<UserRegistrationController> logger,
-                                           SecurityService security, LoginService loginService) : ControllerBase
+                                           SecurityService security, ILoginService loginService) : ControllerBase
     {
         private readonly IMongoCollection<UserData> _users = db.GetCollection<UserData>("users");
         private readonly ILogger<UserRegistrationController> _logger = logger;
         private readonly SecurityService _security = security;
-        private readonly LoginService _loginService = loginService;
+        private readonly ILoginService _loginService = loginService;
 
         [HttpPost("user-registry")]
         public async Task<IActionResult> UserRegistration([FromBody] RegistrationRequest userRegistration)

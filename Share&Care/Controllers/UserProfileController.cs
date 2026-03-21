@@ -5,6 +5,9 @@ using MongoDB.Driver.GridFS;
 using Share_Care.models;
 using System.IO;
 using Microsoft.Extensions.Logging;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Share_Care.Models.Requests;
 
 namespace Share_Care.Controllers
 {
@@ -91,6 +94,39 @@ namespace Share_Care.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Nie udało się pobrać informacji o użytkowniku");
+                return StatusCode(500);
+            }
+        }
+
+        // Aktualizacja profilu użytkownika
+        [Authorize]
+        [HttpPut("update-profile")]
+        public async Task<IActionResult> UpdateUserProfile([FromBody] RegistrationRequest form)
+        {
+            try
+            {
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if(string.IsNullOrWhiteSpace(currentUserId))
+                {
+                    return Unauthorized();
+                }
+
+                var update = Builders<UserData>.Update.Set(x => x.Password, form.Password) // Pomyśleć nad dodawaniem PostalCodu po wpisanaiu miasta
+                    .Set(x => x.Brithday, form.Birthday)
+                    .Set(x => x.City, form.City)
+                    .Set(x => x.PostalCode, form.PostalCode)
+                    .Set(x => x.FirstName, form.FirstName)
+                    .Set(x => x.LastName, form.LastName)
+                    .Set(x => x.Email, form.Email)
+                    .Set(x => x.PhoneNumber, form.PhoneNumber);
+
+                await _users.FindOneAndUpdateAsync(x => x.UserId == currentUserId, update);
+
+                return Ok("Pomyślnie zaktualizowano profil użytkownika");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Nie udało się zaktualizować informacji o użytkowniku");
                 return StatusCode(500);
             }
         }
