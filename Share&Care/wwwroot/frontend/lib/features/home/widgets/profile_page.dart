@@ -278,42 +278,76 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildUserInfoSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          'Dane konta',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade400),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            'Dane konta',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              decoration: TextDecoration.underline,
+              decorationThickness: 2,         
+              decorationColor: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  children: [
+                    _infoRow('Imię', _firstName),
+                    _infoRow('Nazwisko', _lastName),
+                    _infoRow('Email', _email),
+                  ],
+                ),
               ),
-        ),
-        const SizedBox(height: 12),
-        _infoRow('Imię', _firstName),
-        _infoRow('Nazwisko', _lastName),
-        _infoRow('Email', _email),
-        _infoRow('Miasto', _city.isEmpty ? '-' : _city),
-        _infoRow('Telefon', _phoneNumber.isEmpty ? '-' : _phoneNumber),
-        _infoRow('Typ konta', _type.isEmpty ? '-' : _type),
-        _infoRow('Ocena', _raiting.isEmpty ? '-' : _raiting),
-      ],
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  children: [
+                    _infoRow('Miasto', _city.isEmpty ? '-' : _city),
+                    _infoRow('Telefon', _phoneNumber.isEmpty ? '-' : _phoneNumber),
+                    _infoRow('Typ konta', _type.isEmpty ? '-' : _type),
+                    _infoRow('Ocena', _raiting.isEmpty ? '-' : _raiting),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _infoRow(String label, String value) {
+    Widget _infoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
         children: [
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontWeight: FontWeight.bold),
+          Expanded(
+            flex: 1,
+            child: Text(
+              label,
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            textAlign: TextAlign.center,
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 1,
+            child: Text(
+              value,
+              textAlign: TextAlign.left,
+            ),
           ),
         ],
       ),
