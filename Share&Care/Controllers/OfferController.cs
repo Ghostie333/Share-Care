@@ -362,5 +362,46 @@ namespace Share_Care.Controllers
                 return Problem("Błąd pobierania obrazu", statusCode: StatusCodes.Status500InternalServerError);
             }
         }
+
+        // Aktualizacja oferty
+        [Authorize]
+        [HttpPut("update-offer/{offerId}")]
+        public async Task<IActionResult> UpdateOffer([FromBody] CreateOfferRequest form, string offerId)
+        {
+            try
+            {
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrWhiteSpace(currentUserId))
+                {
+                    return Unauthorized();
+                }
+
+                var offer = await _collection.Find(x => x.OfferId == offerId).FirstOrDefaultAsync();
+                if (offer is null)
+                {
+                    return NotFound();
+                }
+
+                if (!string.Equals(offer.UserId, currentUserId, StringComparison.Ordinal))
+                {
+                    return Forbid();
+                }
+
+                var update = Builders<Offer>.Update.Set(x => x.Title, form.Title)
+                    .Set(x => x.ContactName, form.ContactName)
+                    .Set(x => x.Category, form.Category)
+                    .Set(x => x.ContactNumber, form.ContactNumber)
+                    .Set(x => x.Description, form.Description);
+
+                await _collection.FindOneAndUpdateAsync(x => x.OfferId == offerId, update);
+
+                return Ok("Pomyślnie zaktualizowano profil użytkownika");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Nie udało się zaktualizować informacji o użytkowniku");
+                return StatusCode(500);
+            }
+        }
     }
 }
