@@ -101,7 +101,7 @@ namespace Share_Care.Controllers
         // Aktualizacja profilu użytkownika
         [Authorize]
         [HttpPut("update-profile")]
-        public async Task<IActionResult> UpdateUserProfile([FromBody] RegistrationRequest form)
+        public async Task<IActionResult> UpdateUserProfile([FromBody] UserUpdateRequest form)
         {
             try
             {
@@ -111,8 +111,7 @@ namespace Share_Care.Controllers
                     return Unauthorized();
                 }
 
-                var update = Builders<UserData>.Update.Set(x => x.Password, form.Password) // Pomyśleć nad dodawaniem PostalCodu po wpisanaiu miasta
-                    .Set(x => x.Brithday, form.Birthday)
+                var update = Builders<UserData>.Update.Set(x => x.Brithday, form.Birthday) // Pomyśleć nad dodawaniem PostalCodu po wpisanaiu miasta
                     .Set(x => x.City, form.City)
                     .Set(x => x.PostalCode, form.PostalCode)
                     .Set(x => x.FirstName, form.FirstName)
