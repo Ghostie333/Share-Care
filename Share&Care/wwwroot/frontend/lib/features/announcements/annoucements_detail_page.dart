@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/classic_style.dart';
+import 'announcement_metadata.dart';
 import '../models/annoucement.dart';
 
 class AnnouncementDetailsDialog extends StatefulWidget {
@@ -63,6 +64,10 @@ class _AnnouncementDetailsDialogState
 
   @override
   Widget build(BuildContext context) {
+    final String type = AnnouncementMetadata.parseType(widget.ad.category);
+    final String category =
+        AnnouncementMetadata.parseCategory(widget.ad.category);
+
     return Dialog(
       insetPadding: const EdgeInsets.all(16),
       child: SizedBox(
@@ -161,11 +166,34 @@ class _AnnouncementDetailsDialogState
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text(
+                          'Typ: $type',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        if (category.isNotEmpty) ...[
+                          const SizedBox(width: 12),
+                          Text(
+                            'Kategoria: $category',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ],
+                      ],
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       'Ogłoszeniodawca: ${widget.ad.ownerName}',
                       style: const TextStyle(fontSize: 14),
                     ),
+                    if ((widget.ad.contactNumber ?? '').isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Telefon: ${widget.ad.contactNumber}',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     if (widget.ad.deposit != null)
                       Text(

@@ -67,7 +67,7 @@ namespace Share_Care.Controllers
             }
         }
 
-        // Pobiera informacje o użytkowniku (imię, nazwisko, email, miasto)
+        // Pobiera informacje o użytkowniku (imię, nazwisko, email, miasto, telefon, typ, ocena)
         [HttpGet("info/{userId}")]
         public async Task<IActionResult> GetProfileInfo(string userId)
         {
@@ -84,11 +84,15 @@ namespace Share_Care.Controllers
 
             try
             {
-                return Ok(new { 
-                    firstName = user.FirstName, 
-                    lastName = user.LastName, 
-                    email = user.Email, 
-                    city = user.City 
+                return Ok(new
+                {
+                    firstName = user.FirstName,
+                    lastName = user.LastName,
+                    email = user.Email,
+                    city = user.City,
+                    phoneNumber = user.PhoneNumber,
+                    raiting = user.Raiting,
+                    type = user.Type
                 });
             }
             catch (Exception ex)
@@ -106,12 +110,13 @@ namespace Share_Care.Controllers
             try
             {
                 var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if(string.IsNullOrWhiteSpace(currentUserId))
+                if (string.IsNullOrWhiteSpace(currentUserId))
                 {
                     return Unauthorized();
                 }
 
-                var update = Builders<UserData>.Update.Set(x => x.Brithday, form.Birthday) // Pomyśleć nad dodawaniem PostalCodu po wpisanaiu miasta
+                var update = Builders<UserData>.Update
+                    .Set(x => x.Brithday, form.Birthday)
                     .Set(x => x.City, form.City)
                     .Set(x => x.PostalCode, form.PostalCode)
                     .Set(x => x.FirstName, form.FirstName)
@@ -126,6 +131,35 @@ namespace Share_Care.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Nie udało się zaktualizować informacji o użytkowniku");
+                return StatusCode(500);
+            }
+        }
+
+        // Usunięcie profilu użytkownika wraz z danymi
+        [Authorize]
+        [HttpDelete("delete-profile")]
+        public async Task<IActionResult> DeleteUserProfile()
+        {
+            try
+            {
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrWhiteSpace(currentUserId))
+                {
+                    return Unauthorized();
+                }
+
+                var deleteResult = await _users.DeleteOneAsync(x => x.UserId == currentUserId);
+
+                if (deleteResult.DeletedCount == 0)
+                {
+                    return NotFound("User not found");
+                }
+
+                return Ok("Pomyślnie usunięto profil użytkownika");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Nie udało się usunąć profilu użytkownika");
                 return StatusCode(500);
             }
         }

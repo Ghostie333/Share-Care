@@ -4,7 +4,7 @@ import '../../services/auth_service.dart';
 import '../../services/announcement_service.dart';
 import '../../services/user_profile_service.dart';
 import '../models/annoucement.dart';
-import 'announcement_form_sheet.dart';
+import 'announcement_metadata.dart';
 import 'report_form_sheet.dart';
 
 /// Dolny sheet do tworzenia "zgłoszenia" (tu mapowane na Offer kategorię).
@@ -62,7 +62,7 @@ Future<void> showCreateReportSheet({
         initialType: initialType,
         onSubmit: (title, description, location, deposit, images, category, type) async {
           try {
-            final encodedCategory = '${type}|${category}';
+            final encodedCategory = AnnouncementMetadata.encode(type, category);
 
             final newAnnouncement = Announcement(
               id: '',

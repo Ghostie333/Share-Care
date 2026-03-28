@@ -9,9 +9,10 @@ import '../../config/app_config.dart';
 import '../../features/models/annoucement.dart';
 import '../../services/auth_service.dart';
 import '../../utils/animations.dart';
+import '../announcements/announcement_metadata.dart';
 import '../announcements/create_announcement_sheet.dart';
 import '../auth/auth_login_page.dart';
-import '../auth/auth_registration_page.dart';
+// import '../auth/auth_registration_page.dart';
 import '../home/home_page.dart';
 import '../home/widgets/profile_page.dart';
 import '../navigation/app_bar.dart';
@@ -172,7 +173,7 @@ class _ChatPageState extends State<ChatPage> {
 
   // Pending attachments (preview before send).
   final List<LocalChatAttachment> _pendingAttachments = [];
-  bool _isAuthOk = true;
+  // bool _isAuthOk = true;
 
   @override
   void initState() {
@@ -190,7 +191,6 @@ class _ChatPageState extends State<ChatPage> {
     final loggedIn = await AuthService.isLoggedIn();
     if (!loggedIn) {
       if (!mounted) return;
-      setState(() => _isAuthOk = false);
       Navigator.of(context).pushAndRemoveUntil(
         createSlideFadeRoute(const LoginScreen()),
         (_) => false,
@@ -410,6 +410,10 @@ class _ChatPageState extends State<ChatPage> {
           showCreateAnnouncementSheet(
             context: context,
             authResult: widget.authResult,
+            initialCategory: AnnouncementMetadata.defaultCategory,
+            initialType: AnnouncementMetadata.defaultAnnouncementType,
+            categories: AnnouncementMetadata.categories,
+            types: AnnouncementMetadata.types,
             onCreated: (_) async {},
           );
         },
@@ -749,7 +753,7 @@ class _ChatTile extends StatelessWidget {
                   style: const TextStyle(fontSize: 12, color: Colors.black54),
                 ),
               ],
-              const Spacer(),
+              const SizedBox(height: 8), 
               if (isActive)
                 Row(
                   children: const [

@@ -4,22 +4,41 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../features/models/annoucement.dart';
+import 'announcement_metadata.dart';
 
 class AnnouncementFormSheet extends StatefulWidget {
   final Announcement? existingAd;
   final String ownerName;
+
+  final List<String> categories;
+  final List<String> types;
+
+  final String? initialCategory;
+  final String? initialType;
+  final String? initialCity;
+  final String? initialPhoneNumber;
+
   final void Function(
     String title,
     String description,
     String location,
     double? deposit,
     List<XFile> images,
+    String category,
+    String type,
+    String contactNumber,
   ) onSubmit;
 
   const AnnouncementFormSheet({
     super.key,
     this.existingAd,
     required this.ownerName,
+    required this.categories,
+    required this.types,
+    this.initialCategory,
+    this.initialType,
+    this.initialCity,
+    this.initialPhoneNumber,
     required this.onSubmit,
   });
 
@@ -29,26 +48,46 @@ class AnnouncementFormSheet extends StatefulWidget {
 
 class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
   final _formKey = GlobalKey<FormState>();
+
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
   late final TextEditingController _locationController;
   late final TextEditingController _depositController;
+  late final TextEditingController _contactNumberController;
 
   final List<XFile> _selectedImages = [];
   final Map<String, Uint8List> _imageBytesByPath = {};
 
+  late String _selectedCategory;
+  late String _selectedType;
+  bool _useProfileCity = false;
+  bool _useProfilePhone = false;
+
   @override
   void initState() {
     super.initState();
-    _titleController =
-        TextEditingController(text: widget.existingAd?.title ?? '');
+    final existing = widget.existingAd;
+
+    _titleController = TextEditingController(text: existing?.title ?? '');
     _descriptionController =
-        TextEditingController(text: widget.existingAd?.description ?? '');
-    _locationController =
-        TextEditingController(text: widget.existingAd?.location ?? '');
-    _depositController = TextEditingController(
-      text: widget.existingAd?.deposit?.toString() ?? '',
+        TextEditingController(text: existing?.description ?? '');
+    _locationController = TextEditingController(
+      text: existing?.location ?? (widget.initialCity ?? ''),
     );
+    _depositController = TextEditingController(
+      text: existing?.deposit?.toString() ?? '',
+    );
+    _contactNumberController = TextEditingController(
+      text: widget.initialPhoneNumber ?? '',
+    );
+
+    _selectedCategory =
+        widget.initialCategory ?? AnnouncementMetadata.defaultCategory;
+    _selectedType =
+        widget.initialType ?? AnnouncementMetadata.defaultAnnouncementType;
+
+    _useProfileCity = (widget.initialCity ?? '').isNotEmpty;
+    _useProfilePhone = (widget.initialPhoneNumber ?? '').isNotEmpty;
   }
 
   @override
@@ -57,6 +96,7 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
     _descriptionController.dispose();
     _locationController.dispose();
     _depositController.dispose();
+    _contactNumberController.dispose();
     super.dispose();
   }
 
@@ -118,8 +158,57 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                 },
               ),
               const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedCategory,
+                      decoration: const InputDecoration(
+                        labelText: 'Kategoria',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: widget.categories
+                          .map(
+                            (c) => DropdownMenuItem(
+                              value: c,
+                              child: Text(c),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) {
+                        if (v == null) return;
+                        setState(() => _selectedCategory = v);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedType,
+                      decoration: const InputDecoration(
+                        labelText: 'Typ',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: widget.types
+                          .map(
+                            (t) => DropdownMenuItem(
+                              value: t,
+                              child: Text(t),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) {
+                        if (v == null) return;
+                        setState(() => _selectedType = v);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _locationController,
+                readOnly: _useProfileCity,
                 decoration: const InputDecoration(
                   labelText: 'Lokalizacja',
                   border: OutlineInputBorder(),
@@ -130,6 +219,49 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                   }
                   return null;
                 },
+              ),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _useProfileCity,
+                onChanged: (v) {
+                  setState(() {
+                    _useProfileCity = v ?? false;
+                    if (_useProfileCity) {
+                      _locationController.text = widget.initialCity ?? '';
+                    }
+                  });
+                },
+                title: Text(
+                  'Użyj miasta z profilu (${(widget.initialCity ?? '').isEmpty ? 'brak' : widget.initialCity})',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _contactNumberController,
+                readOnly: _useProfilePhone,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: 'Numer telefonu do kontaktu',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _useProfilePhone,
+                onChanged: (v) {
+                  setState(() {
+                    _useProfilePhone = v ?? false;
+                    if (_useProfilePhone) {
+                      _contactNumberController.text =
+                          widget.initialPhoneNumber ?? '';
+                    }
+                  });
+                },
+                title: Text(
+                  'Użyj numeru telefonu z profilu (${(widget.initialPhoneNumber ?? '').isEmpty ? 'brak' : widget.initialPhoneNumber})',
+                  style: const TextStyle(fontSize: 12),
+                ),
               ),
               const SizedBox(height: 12),
               _buildImagesPicker(),
@@ -303,6 +435,9 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
       _locationController.text.trim(),
       deposit,
       _selectedImages,
+      _selectedCategory,
+      _selectedType,
+      _contactNumberController.text.trim(),
     );
 
     Navigator.of(context).pop();

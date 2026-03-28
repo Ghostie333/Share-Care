@@ -5,6 +5,7 @@ import '../../services/announcement_service.dart';
 import '../../services/user_profile_service.dart';
 import '../models/annoucement.dart';
 import 'announcement_form_sheet.dart';
+import 'announcement_metadata.dart';
 
 /// Otwiera dolny sheet z formularzem tworzenia ogłoszenia.
 ///
@@ -12,6 +13,10 @@ import 'announcement_form_sheet.dart';
 Future<void> showCreateAnnouncementSheet({
   required BuildContext context,
   required AuthResult authResult,
+  required String initialCategory,
+  required String initialType,
+  required List<String> categories,
+  required List<String> types,
   required Future<void> Function(Announcement created) onCreated,
 }) async {
   final userId = authResult.userId;
@@ -45,6 +50,7 @@ Future<void> showCreateAnnouncementSheet({
 
   final ownerName = '${profile.firstName} ${profile.lastName}'.trim();
   final phoneNumber = profile.phoneNumber;
+    final city = profile.city;
 
   await showModalBottomSheet<void>(
     context: context,
@@ -57,8 +63,16 @@ Future<void> showCreateAnnouncementSheet({
       return AnnouncementFormSheet(
         existingAd: null,
         ownerName: ownerName,
-        onSubmit: (title, description, location, deposit, images) async {
+        categories: categories,
+        types: types,
+        initialCategory: initialCategory,
+        initialType: initialType,
+        initialCity: city,
+        initialPhoneNumber: phoneNumber,
+        onSubmit: (title, description, location, deposit, images, category, type, contactNumber) async {
           try {
+            final encodedCategory = AnnouncementMetadata.encode(type, category);
+
             final newAnnouncement = Announcement(
               id: '',
               userId: userId,
@@ -71,9 +85,9 @@ Future<void> showCreateAnnouncementSheet({
               createdAt: DateTime.now(),
               imageUrls: const [],
               isOwner: true,
-              category: 'Ogłoszenie|Inne',
+              category: encodedCategory,
               contactName: ownerName,
-              contactNumber: phoneNumber.isEmpty ? '' : phoneNumber,
+              contactNumber: contactNumber,
             );
 
             final created = await AnnouncementService.createOffer(

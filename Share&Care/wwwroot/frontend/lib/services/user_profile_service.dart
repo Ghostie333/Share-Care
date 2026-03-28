@@ -67,30 +67,43 @@ class UserProfileService {
     return UserProfileInfo.fromJson(data);
   }
 
-  /// PUT /UserProfile/info/{userId}
-  static Future<UserProfileInfo> updateProfile(
-    String userId, {
+  /// PUT /UserProfile/update-profile
+  /// Aktualizuje profil aktualnie zalogowanego użytkownika (na podstawie JWT).
+  static Future<void> updateProfile({
     required String firstName,
     required String lastName,
     required String email,
-    required String city,
+    String? birthday,
+    String? phoneNumber,
+    String? city,
+    String? postalCode,
   }) async {
     final body = <String, dynamic>{
-      'firstName': firstName,
-      'lastName': lastName,
-      'email': email,
-      'city': city,
+      'FirstName': firstName,
+      'LastName': lastName,
+      'Email': email,
+      'Birthday': birthday,
+      'PhoneNumber': phoneNumber,
+      'City': city,
+      'PostalCode': postalCode,
     };
 
     final http.Response res =
-        await ApiService.putJson('/UserProfile/info/$userId', body);
+        await ApiService.putJson('/UserProfile/update-profile', body);
 
     if (res.statusCode != 200) {
-      throw Exception('Błąd zapisu profilu: ${res.statusCode}');
+      throw Exception('Błąd zapisu profilu: ${res.statusCode} ${res.body}');
     }
+  }
 
-    final Map<String, dynamic> data =
-        jsonDecode(res.body) as Map<String, dynamic>;
-    return UserProfileInfo.fromJson(data);
+  /// DELETE /UserProfile/delete-profile
+  /// Usuwa profil aktualnie zalogowanego użytkownika.
+  static Future<void> deleteProfile() async {
+    final http.Response res =
+        await ApiService.delete('/UserProfile/delete-profile');
+
+    if (res.statusCode != 200) {
+      throw Exception('Błąd usuwania profilu: ${res.statusCode} ${res.body}');
+    }
   }
 }

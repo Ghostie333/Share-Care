@@ -10,6 +10,7 @@ import '../../models/annoucement.dart';
 import '../../settings/settings_page.dart';
 import '../../announcements/annoucements_detail_page.dart';
 import '../../announcements/announcement_form_sheet.dart';
+import '../../announcements/announcement_metadata.dart';
 import 'announcement_grid.dart';
 import '../../auth/auth_login_page.dart';
 import '../../chat/chat_page.dart';
@@ -451,6 +452,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _openAdForm({Announcement? existingAd}) async {
+    final userId = widget.authResult.userId;
+    if (userId == null || userId.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Brak identyfikatora użytkownika - nie można zapisać ogłoszenia.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
+    UserProfileInfo profile;
+    try {
+      profile = await UserProfileService.fetchProfile(userId);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nie udało się pobrać profilu: $e')),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _firstName = profile.firstName;
+      _lastName = profile.lastName;
+      _email = profile.email;
+      _city = profile.city;
+      _phoneNumber = profile.phoneNumber;
+      _raiting = profile.raiting;
+      _type = profile.type;
+    });
+
+    final ownerName = '${profile.firstName} ${profile.lastName}'.trim();
+    final phoneNumber = profile.phoneNumber;
+
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -461,38 +502,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (ctx) {
         return AnnouncementFormSheet(
           existingAd: existingAd,
-          ownerName: '$_firstName $_lastName',
-          onSubmit: (title, description, location, deposit, images) async {
-            final userId = widget.authResult.userId;
-            if (userId == null || userId.isEmpty) {
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Brak identyfikatora użytkownika - nie można zapisać ogłoszenia.',
-                    ),
-                  ),
-                );
-              }
-              return;
-            }
-
+          ownerName: ownerName,
+          categories: AnnouncementMetadata.categories,
+          types: AnnouncementMetadata.types,
+          initialCategory: AnnouncementMetadata.defaultCategory,
+          initialType: AnnouncementMetadata.defaultAnnouncementType,
+          initialCity: profile.city,
+          initialPhoneNumber: phoneNumber,
+          onSubmit: (title, description, location, deposit, images, category, type, contactNumber) async {
             try {
-              if (_firstName.isEmpty || _lastName.isEmpty) {
-                final fresh = await UserProfileService.fetchProfile(userId);
-                if (!mounted) return;
-                _firstName = fresh.firstName;
-                _lastName = fresh.lastName;
-                _email = fresh.email;
-                _city = fresh.city;
-                _phoneNumber = fresh.phoneNumber;
-                _raiting = fresh.raiting;
-                _type = fresh.type;
-              }
-
-              final ownerName = '$_firstName $_lastName'.trim();
-
               if (existingAd == null) {
+                final encodedCategory =
+                    AnnouncementMetadata.encode(type, category);
                 final newAnnouncement = Announcement(
                   id: '',
                   userId: userId,
@@ -505,9 +526,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   createdAt: DateTime.now(),
                   imageUrls: const [],
                   isOwner: true,
-                  category: 'Ogłoszenie|Inne',
+                  category: encodedCategory,
                   contactName: ownerName,
-                  contactNumber: _phoneNumber.isEmpty ? '' : _phoneNumber,
+                  contactNumber: contactNumber,
                 );
 
                 final created = await AnnouncementService.createOffer(

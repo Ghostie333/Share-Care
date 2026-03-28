@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../announcements/annoucements_detail_page.dart';
+import '../announcements/announcement_metadata.dart';
 import '../home/widgets/announcement_grid.dart';
 import '../models/annoucement.dart';
 import '../../core/classic_style.dart';
@@ -33,17 +34,6 @@ class _HomePageState extends State<HomePage> {
   String _searchQuery = '';
   String? _selectedCategory;
 
-  static const List<String> _categories = [
-    'Książki',
-    'Elektronika',
-    'Artykuły budowlane',
-  ];
-
-  static const List<String> _types = [
-    'Ogłoszenie',
-    'Zgłoszenie',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -75,26 +65,14 @@ class _HomePageState extends State<HomePage> {
     final theme = Theme.of(context);
 
     List<Announcement> filtered = _allOffers;
-
-    String parseType(String? categoryEncoded) {
-      final raw = (categoryEncoded ?? '').trim();
-      if (raw.isEmpty) return 'Ogłoszenie';
-      if (raw.contains('|')) return raw.split('|').first.trim();
-      // kompatybilnosc dla starych danych
-      return raw == 'Zgłoszenie' ? 'Zgłoszenie' : 'Ogłoszenie';
-    }
-
-    String parseCategory(String? categoryEncoded) {
-      final raw = (categoryEncoded ?? '').trim();
-      if (raw.isEmpty) return '';
-      if (raw.contains('|')) return raw.split('|').skip(1).join('|').trim();
-      return raw;
-    }
-
     if (_mode == HomeFeedMode.announcements) {
-      filtered = filtered.where((a) => parseType(a.category) == 'Ogłoszenie').toList();
+      filtered = filtered
+          .where((a) => AnnouncementMetadata.parseType(a.category) == 'Ogłoszenie')
+          .toList();
     } else if (_mode == HomeFeedMode.reports) {
-      filtered = filtered.where((a) => parseType(a.category) == 'Zgłoszenie').toList();
+      filtered = filtered
+          .where((a) => AnnouncementMetadata.parseType(a.category) == 'Zgłoszenie')
+          .toList();
     }
 
     final q = _searchQuery.trim().toLowerCase();
@@ -108,7 +86,7 @@ class _HomePageState extends State<HomePage> {
 
     if (_selectedCategory != null && _selectedCategory!.isNotEmpty) {
       filtered = filtered
-          .where((a) => parseCategory(a.category) == _selectedCategory)
+          .where((a) => AnnouncementMetadata.parseCategory(a.category) == _selectedCategory)
           .toList();
     }
 
@@ -212,16 +190,22 @@ class _HomePageState extends State<HomePage> {
               authResult: widget.authResult,
               initialCategory: _selectedCategory?.isNotEmpty == true
                   ? _selectedCategory!
-                  : _categories.first,
-              initialType: 'Zgłoszenie',
-              categories: _categories,
-              types: _types,
+                  : AnnouncementMetadata.defaultCategory,
+              initialType: AnnouncementMetadata.defaultReportType,
+              categories: AnnouncementMetadata.categories,
+              types: AnnouncementMetadata.types,
               onCreated: (_) async => _loadOffers(),
             );
           } else {
             showCreateAnnouncementSheet(
               context: context,
               authResult: widget.authResult,
+              initialCategory: _selectedCategory?.isNotEmpty == true
+                  ? _selectedCategory!
+                  : AnnouncementMetadata.defaultCategory,
+              initialType: AnnouncementMetadata.defaultAnnouncementType,
+              categories: AnnouncementMetadata.categories,
+              types: AnnouncementMetadata.types,
               onCreated: (_) async => _loadOffers(),
             );
           }
@@ -266,7 +250,7 @@ class _HomePageState extends State<HomePage> {
               value: null,
               child: Text('Wszystko'),
             ),
-            ..._categories.map(
+            ...AnnouncementMetadata.categories.map(
               (c) => DropdownMenuItem<String?>(
                 value: c,
                 child: Text(c),

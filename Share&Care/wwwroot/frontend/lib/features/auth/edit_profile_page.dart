@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../services/auth_service.dart';
+import '../../services/user_profile_service.dart';
 import '../../core/classic_style.dart';
 import '../../utils/animations.dart';
 import 'auth_login_page.dart';
@@ -24,6 +25,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late String _lastName;
   late String _email;
   String _city = '';
+  String? _phoneNumber;
+  String? _birthday;
+  String? _postalCode;
 
   @override
   void initState() {
@@ -31,6 +35,31 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _firstName = widget.authResult.firstName;
     _lastName = widget.authResult.lastName;
     _email = widget.authResult.email;
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    final userId = widget.authResult.userId;
+    if (userId == null || userId.isEmpty) {
+      return;
+    }
+
+    try {
+      final info = await UserProfileService.fetchProfile(userId);
+      if (!mounted) return;
+      setState(() {
+        _firstName = info.firstName;
+        _lastName = info.lastName;
+        _email = info.email;
+        _city = info.city;
+        _phoneNumber = info.phoneNumber.isEmpty ? null : info.phoneNumber;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nie udało się pobrać profilu: $e')),
+      );
+    }
   }
 
   Future<void> _pickAvatar() async {
@@ -159,6 +188,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       title: 'Miasto',
                       initialValue: _city,
                       applyValue: (v) => _city = v,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildEditableField(
+                    'Telefon',
+                    _phoneNumber ?? '',
+                    () => _editField(
+                      title: 'Telefon',
+                      initialValue: _phoneNumber ?? '',
+                      applyValue: (v) => _phoneNumber = v,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -306,12 +345,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         applyValue(result);
       });
 
-      // TODO: tutaj dodaj wywołanie endpointu w backendzie, aby
-      // zapisać zmiany w bazie danych (np. /UserProfile/update).
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$title zaktualizowano lokalnie. Dodaj zapis do bazy w backendzie.')),
+      try {
+        await UserProfileService.updateProfile(
+          firstName: _firstName,
+          lastName: _lastName,
+          email: _email,
+          birthday: _birthday,
+          phoneNumber: _phoneNumber,
+          city: _city,
+          postalCode: _postalCode,
         );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('$title zaktualizowano.')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Błąd zapisu profilu: $e')),
+          );
+        }
       }
     }
   }
@@ -331,15 +386,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           builder: (context) {
             return AlertDialog(
               title: const Text('Usuń profil'),
-              content: const Text('Czy na pewno chcesz usunąć profil?'),
+              content:
+                  const Text('Czy na pewno chcesz usunąć profil? Tej operacji nie można cofnąć.'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('Anuluj'),
+                  child: const Text('Nie'),
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('Usuń'),
+                  child: const Text('Tak, usuń'),
                 ),
               ],
             );
@@ -349,23 +405,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     if (!confirmed) return;
 
-    // TODO: tutaj wywołaj endpoint kasujący użytkownika z bazy danych
-    // (np. /UserProfile/delete z userId z widget.authResult.userId).
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Logika usuwania profilu musi zostać dodana w backendzie (kasowanie z bazy).',
-          ),
-        ),
+    try {
+      await UserProfileService.deleteProfile();
+      await AuthService.logout();
+
+      if (!mounted) return;
+
+      Navigator.of(context).pushAndRemoveUntil(
+        createSlideFadeRoute(const LoginScreen()),
+        (route) => false,
       );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Błąd usuwania profilu: $e')),
+        );
+      }
     }
-
-    if (!mounted) return;
-
-    Navigator.of(context).pushAndRemoveUntil(
-      createSlideFadeRoute(const LoginScreen()),
-      (route) => false,
-    );
   }
 }

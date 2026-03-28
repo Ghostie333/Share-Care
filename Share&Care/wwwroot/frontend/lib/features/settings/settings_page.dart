@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../core/app_theme.dart';
 import '../../utils/animations.dart';
+import '../announcements/announcement_metadata.dart';
 import '../announcements/create_announcement_sheet.dart';
 import '../chat/chat_page.dart';
 import '../home/home_page.dart';
@@ -66,6 +67,10 @@ class _SettingsPageState extends State<SettingsPage> {
           showCreateAnnouncementSheet(
             context: context,
             authResult: widget.authResult,
+            initialCategory: AnnouncementMetadata.defaultCategory,
+            initialType: AnnouncementMetadata.defaultAnnouncementType,
+            categories: AnnouncementMetadata.categories,
+            types: AnnouncementMetadata.types,
             onCreated: (_) async {
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
