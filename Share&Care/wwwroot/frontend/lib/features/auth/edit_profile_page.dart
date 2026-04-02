@@ -200,31 +200,34 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       applyValue: (v) => _phoneNumber = v,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  _buildPasswordField(),
-
+                  const SizedBox(height: 24),
                   const SizedBox(height: 24),
 
-                  // Przyciski akcji: Wyloguj i Usuń profil
+                  // Przyciski akcji: Zapisz i Usuń profil
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      TextButton(
-                        onPressed: _onLogoutPressed,
-                        child: const Text('Wyloguj'),
-                      ),
-                      const SizedBox(width: 12),
                       ElevatedButton(
-                        onPressed: _onDeleteProfilePressed,
+                        onPressed: _onSavePressed,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: ClassicStyle.my_light_green,
                           foregroundColor: Colors.white,
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
                           textStyle: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
+                        ),
+                        child: const Text('Zapisz'),
+                      ),
+                      const SizedBox(width: 12),
+                      OutlinedButton(
+                        onPressed: _onDeleteProfilePressed,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.redAccent,
                         ),
                         child: const Text('Usuń profil'),
                       ),
@@ -270,44 +273,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  Widget _buildPasswordField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Hasło',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            color: ClassicStyle.my_beige,
-          ),
-          child: Row(
-            children: [
-              const Expanded(child: Text('********')),
-              IconButton(
-                icon: const Icon(Icons.edit),
-                onPressed: () {
-                  _editField(
-                    title: 'Hasło',
-                    initialValue: '',
-                    applyValue: (_) {},
-                    obscure: true,
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   Future<void> _editField({
     required String title,
     required String initialValue,
@@ -344,40 +309,59 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       setState(() {
         applyValue(result);
       });
-
-      try {
-        await UserProfileService.updateProfile(
-          firstName: _firstName,
-          lastName: _lastName,
-          email: _email,
-          birthday: _birthday,
-          phoneNumber: _phoneNumber,
-          city: _city,
-          postalCode: _postalCode,
-        );
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$title zaktualizowano.')),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Błąd zapisu profilu: $e')),
-          );
-        }
-      }
     }
   }
 
-  void _onLogoutPressed() {
-    // TODO: gdy dodasz endpoint wylogowania w backendzie (np. /UserLogin/logout),
-    // wywołaj go tutaj przed przejściem na ekran logowania.
-    Navigator.of(context).pushAndRemoveUntil(
-      createSlideFadeRoute(const LoginScreen()),
-      (route) => false,
-    );
+  Future<void> _onSavePressed() async {
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text('Zapisz zmiany'),
+              content: const Text('Czy na pewno chcesz zapisać zmiany?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Nie'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Tak'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (!confirmed) return;
+
+    try {
+      await UserProfileService.updateProfile(
+        firstName: _firstName,
+        lastName: _lastName,
+        email: _email,
+        birthday: _birthday,
+        phoneNumber: _phoneNumber,
+        city: _city,
+        postalCode: _postalCode,
+      );
+
+      if (_avatarFile != null) {
+        await UserProfileService.uploadAvatar(_avatarFile!);
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profil został zapisany.')),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Błąd zapisu profilu: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _onDeleteProfilePressed() async {

@@ -4,4 +4,11 @@ class AppConfig {
     'API_BASE_URL',
     defaultValue: 'http://localhost:7070',
   );
+
+  /// Klucz MapTiler używany w widoku mapy na stronie głównej.
+  /// Ustaw w --dart-define=MAPTILER_API_KEY=... przy budowaniu.
+  static const String mapTilerApiKey = String.fromEnvironment(
+    'MAPTILER_API_KEY',
+    defaultValue: '',
+  );
 }

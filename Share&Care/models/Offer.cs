@@ -23,6 +23,9 @@ namespace Share_Care.models
         // GeoJSON Point (dla zapytań geolokalizacyjnych i indeksu 2dsphere)
         public GeoJsonPoint<GeoJson2DGeographicCoordinates>? Location { get; set; } 
 
+        // Tekstowa lokalizacja (miasto / adres) widoczna w szczegółach ogłoszenia.
+        public string? LocationText { get; set; }
+
         // Wiele obrazów w GridFS (lista ObjectId jako string)
         [BsonRepresentation(BsonType.ObjectId)]
         public List<string> ImageIds { get; set; } = new(); 

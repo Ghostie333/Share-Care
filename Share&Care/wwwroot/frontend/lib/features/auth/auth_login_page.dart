@@ -3,11 +3,14 @@ import '../../utils/animations.dart';
 import 'auth_registration_page.dart';
 import '../../core/classic_style.dart';
 import '../../services/auth_service.dart';
+import '../home/home_page.dart';
 import '../home/widgets/profile_page.dart';
 
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final void Function(AuthResult)? onLoginSuccess;
+
+  const LoginScreen({super.key, this.onLoginSuccess});
 
   @override
   _LoginScreenState createState() => _LoginScreenState();
@@ -40,10 +43,13 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (!mounted) return;
-
-      Navigator.of(context).pushReplacement(
-        createSlideFadeRoute(ProfileScreen(authResult: result)),
-      );
+      if (widget.onLoginSuccess != null) {
+        widget.onLoginSuccess!(result);
+      } else {
+        Navigator.of(context).pushReplacement(
+          createSlideFadeRoute(HomePage(authResult: result)),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -59,6 +65,29 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        elevation: 0,
+        title: const Text('Logowanie'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else {
+              // Brak poprzedniej strony w stosie – wróć na stronę główną jako gość.
+              final guestAuth = AuthResult(
+                userId: null,
+                email: '',
+                firstName: '',
+                lastName: '',
+              );
+              Navigator.of(context).pushReplacement(
+                createSlideFadeRoute(HomePage(authResult: guestAuth)),
+              );
+            }
+          },
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Center(
@@ -96,16 +125,20 @@ class _LoginScreenState extends State<LoginScreen> {
                           controller: emailController,
                           decoration: const InputDecoration(
                             labelText: "Email",
-                            filled: true, 
+                            filled: true,
                             fillColor: Colors.transparent,
                           ),
-                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                           cursorColor: Theme.of(context).colorScheme.primary,
                           keyboardType: TextInputType.emailAddress,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return "Podaj email";
                             }
+                            // Ten sam wzorzec jak w rejestracji, bez błędnego \$ na końcu,
+                            // żeby prawidłowe adresy nie były odrzucane.
                             final emailRegex = RegExp(r'^[\w\.\-]+@([\w\-]+\.)+[a-zA-Z]{2,4}$');
                             if (!emailRegex.hasMatch(value)) {
                               return "Niepoprawny email";
@@ -116,14 +149,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         const SizedBox(height: 5),
                         TextFormField(
-                         controller: passwordController,
+                          controller: passwordController,
                           obscureText: true,
                           decoration: const InputDecoration(
                             labelText: "Hasło",
                             filled: true,
                             fillColor: Colors.transparent,
                           ),
-                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                           cursorColor: Theme.of(context).colorScheme.primary,
                           validator: (value) {
                             if (value == null || value.isEmpty) {

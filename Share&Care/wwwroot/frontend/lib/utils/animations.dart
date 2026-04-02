@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-Route createSlideFadeRoute(Widget page) {
-  return PageRouteBuilder(
+Route<T> createSlideFadeRoute<T>(Widget page) {
+  return PageRouteBuilder<T>(
     pageBuilder: (context, animation, secondaryAnimation) => FadeTransition(
       opacity: animation,
       child: SlideTransition(

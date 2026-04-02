@@ -3,6 +3,7 @@ class AnnouncementMetadata {
 
   /// Lista dostępnych kategorii ogłoszeń / zgłoszeń.
   static const List<String> categories = <String>[
+    'Wszystkie kategorie',
     'Książki',
     'Elektronika',
     'Artykuły budowlane',

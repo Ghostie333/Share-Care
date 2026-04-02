@@ -17,6 +17,8 @@ class ReportFormSheet extends StatefulWidget {
     List<XFile> images,
     String category,
     String type,
+    bool isUrgent,
+    DateTime? expiresAt,
   ) onSubmit;
 
   final List<String> categories;
@@ -46,12 +48,15 @@ class _ReportFormSheetState extends State<ReportFormSheet> {
   late final TextEditingController _descriptionController;
   late final TextEditingController _locationController;
   late final TextEditingController _depositController;
+  late final TextEditingController _expiresAtController;
 
   final List<XFile> _selectedImages = [];
   final Map<String, Uint8List> _imageBytesByPath = {};
 
   late String _selectedCategory;
   late String _selectedType;
+    bool _isUrgent = false;
+    DateTime? _expiresAt;
 
   @override
   void initState() {
@@ -68,6 +73,8 @@ class _ReportFormSheetState extends State<ReportFormSheet> {
       text: widget.existingAd?.deposit?.toString() ?? '',
     );
 
+    _expiresAtController = TextEditingController();
+
     _selectedCategory = widget.initialCategory;
     _selectedType = widget.initialType;
   }
@@ -78,6 +85,7 @@ class _ReportFormSheetState extends State<ReportFormSheet> {
     _descriptionController.dispose();
     _locationController.dispose();
     _depositController.dispose();
+    _expiresAtController.dispose();
     super.dispose();
   }
 
@@ -198,6 +206,42 @@ class _ReportFormSheetState extends State<ReportFormSheet> {
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'Podaj lokalizacje';
+                }
+                return null;
+              },
+            ),
+
+            const SizedBox(height: 12),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _isUrgent,
+              onChanged: (v) {
+                setState(() {
+                  _isUrgent = v ?? false;
+                });
+              },
+              title: const Text('Zgłoszenie pilne'),
+            ),
+
+            TextFormField(
+              controller: _expiresAtController,
+              keyboardType: TextInputType.datetime,
+              decoration: InputDecoration(
+                labelText: 'Wyświetlaj zgłoszenie do (DD.MM.RRRR)',
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.calendar_today_outlined),
+                  onPressed: () => _pickExpiryDate(context),
+                ),
+              ),
+              validator: (value) {
+                final raw = value?.trim() ?? '';
+                if (raw.isEmpty) {
+                  return null; // pole opcjonalne
+                }
+                final dateRegex = RegExp(r'^\d{2}\.\d{2}\.\d{4}$');
+                if (!dateRegex.hasMatch(raw)) {
+                  return 'Format daty: DD.MM.RRRR';
                 }
                 return null;
               },
@@ -368,6 +412,22 @@ class _ReportFormSheetState extends State<ReportFormSheet> {
       _depositController.text.replaceAll(',', '.'),
     );
 
+    DateTime? expiresAt = _expiresAt;
+    final raw = _expiresAtController.text.trim();
+    if (expiresAt == null && raw.isNotEmpty) {
+      try {
+        final parts = raw.split('.');
+        if (parts.length == 3) {
+          final day = int.parse(parts[0]);
+          final month = int.parse(parts[1]);
+          final year = int.parse(parts[2]);
+          expiresAt = DateTime(year, month, day);
+        }
+      } catch (_) {
+        // Jeśli parsowanie się nie uda – zostawiamy null.
+      }
+    }
+
     widget.onSubmit(
       _titleController.text.trim(),
       _descriptionController.text.trim(),
@@ -376,9 +436,32 @@ class _ReportFormSheetState extends State<ReportFormSheet> {
       _selectedImages,
       _selectedCategory,
       _selectedType,
+      _isUrgent,
+      expiresAt,
     );
 
     Navigator.of(context).pop();
+  }
+
+  Future<void> _pickExpiryDate(BuildContext context) async {
+    final now = DateTime.now();
+    final initial = _expiresAt ?? now;
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365)),
+    );
+
+    if (selected == null) return;
+
+    setState(() {
+      _expiresAt = selected;
+      final day = selected.day.toString().padLeft(2, '0');
+      final month = selected.month.toString().padLeft(2, '0');
+      final year = selected.year.toString();
+      _expiresAtController.text = '$day.$month.$year';
+    });
   }
 }
 

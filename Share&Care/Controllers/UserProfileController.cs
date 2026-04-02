@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.GridFS;
 using Share_Care.models;
+using Share_Care.Services;
 using System.IO;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
@@ -13,12 +15,17 @@ namespace Share_Care.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class UserProfileController(IMongoDatabase database, ILogger<UserProfileController> logger) : ControllerBase
+    public class UserProfileController(IMongoDatabase database, ILogger<UserProfileController> logger, SecurityService securityService) : ControllerBase
     {
         private readonly IMongoDatabase _database = database;
         private readonly GridFSBucket _bucket = new(database);
         private readonly IMongoCollection<UserData> _users = database.GetCollection<UserData>("users");
         private readonly ILogger<UserProfileController> _logger = logger;
+        private readonly SecurityService _security = securityService;
+
+        // Prosty 1x1 przezroczysty PNG (unikamy 404, gdy brak zdjęcia)
+        private static readonly byte[] _emptyPng = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=");
 
         // Pobierz obraz: zwraca zawartość z GridFS
         [HttpGet("photo/{userId}")]
@@ -27,14 +34,24 @@ namespace Share_Care.Controllers
             if (string.IsNullOrWhiteSpace(userId))
             {
                 _logger.LogWarning("GetProfileImage wywołane z pustym userId");
-                return BadRequest();
+                // Zwracamy pusty obraz zamiast 400, żeby uniknąć błędów w kliencie.
+                return File(_emptyPng, "image/png");
             }
 
             var user = await _users.Find(u => u.UserId == userId).FirstOrDefaultAsync();
-            if (user == null || string.IsNullOrEmpty(user.ProfileImageId))
+            if (user == null)
             {
-                _logger.LogWarning("Nie znaleziono obrazu dla użytkownika {UserId}", userId);
-                return NotFound();
+                _logger.LogWarning("Nie znaleziono użytkownika {UserId} przy pobieraniu zdjęcia", userId);
+                // Dla spójności po stronie frontendu również zwracamy pusty obraz.
+                return File(_emptyPng, "image/png");
+            }
+
+            if (string.IsNullOrEmpty(user.ProfileImageId))
+            {
+                // Brak zdjęcia profilowego – zwracamy pusty obraz zamiast 404,
+                // aby frontend (NetworkImage) nie zgłaszał błędów.
+                _logger.LogDebug("Użytkownik {UserId} nie ma ustawionego zdjęcia profilowego", userId);
+                return File(_emptyPng, "image/png");
             }
 
             try
@@ -56,13 +73,77 @@ namespace Share_Care.Controllers
             }
             catch (GridFSFileNotFoundException)
             {
-                _logger.LogWarning("Plik GridFS nie istnieje dla użytkownika {UserId}, imageId: {ImageId}", 
+                _logger.LogWarning("Plik GridFS nie istnieje dla użytkownika {UserId}, imageId: {ImageId}",
                     userId, user.ProfileImageId);
-                return NotFound();
+                // Zwracamy pusty obraz zamiast 404.
+                return File(_emptyPng, "image/png");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Błąd pobierania obrazu z GridFS dla użytkownika {UserId}", userId);
+                return StatusCode(500);
+            }
+        }
+
+        // Prześlij / zaktualizuj zdjęcie profilowe aktualnie zalogowanego użytkownika
+        [Authorize]
+        [HttpPost("photo")]
+        public async Task<IActionResult> UploadProfileImage([FromForm] IFormFile file)
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(currentUserId))
+            {
+                return Unauthorized();
+            }
+
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest("Brak pliku do przesłania.");
+            }
+
+            var user = await _users.Find(u => u.UserId == currentUserId).FirstOrDefaultAsync();
+            if (user == null)
+            {
+                return NotFound("User not found");
+            }
+
+            try
+            {
+                // Usuń poprzedni obraz jeśli istnieje
+                if (!string.IsNullOrEmpty(user.ProfileImageId))
+                {
+                    if (ObjectId.TryParse(user.ProfileImageId, out var oldId))
+                    {
+                        await _bucket.DeleteAsync(oldId);
+                    }
+                }
+
+                // Zapisz nowy obraz w GridFS
+                ObjectId newId;
+                await using (var stream = file.OpenReadStream())
+                {
+                    newId = await _bucket.UploadFromStreamAsync(
+                        file.FileName,
+                        stream,
+                        new GridFSUploadOptions
+                        {
+                            Metadata = new BsonDocument
+                            {
+                                { "contentType", file.ContentType }
+                            }
+                        });
+                }
+
+                var update = Builders<UserData>.Update
+                    .Set(u => u.ProfileImageId, newId.ToString());
+
+                await _users.UpdateOneAsync(u => u.UserId == currentUserId, update);
+
+                return Ok("Profile image updated.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Błąd zapisu zdjęcia profilowego dla użytkownika {UserId}", currentUserId);
                 return StatusCode(500);
             }
         }
@@ -131,6 +212,48 @@ namespace Share_Care.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Nie udało się zaktualizować informacji o użytkowniku");
+                return StatusCode(500);
+            }
+        }
+
+        // Zmiana hasła aktualnie zalogowanego użytkownika
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+        {
+            try
+            {
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrWhiteSpace(currentUserId))
+                {
+                    return Unauthorized();
+                }
+
+                var user = await _users.Find(u => u.UserId == currentUserId).FirstOrDefaultAsync();
+                if (user == null || string.IsNullOrWhiteSpace(user.Password))
+                {
+                    return NotFound("User not found");
+                }
+
+                var ok = _security.ComparePasswords(request.CurrentPassword ?? string.Empty, user.Password);
+                if (!ok)
+                {
+                    return BadRequest("Obecne hasło jest nieprawidłowe.");
+                }
+
+                var newHashBytes = _security.HashPassword(request.NewPassword ?? string.Empty);
+                var newHash = Convert.ToBase64String(newHashBytes);
+
+                var update = Builders<UserData>.Update
+                    .Set(u => u.Password, newHash);
+
+                await _users.UpdateOneAsync(u => u.UserId == currentUserId, update);
+
+                return Ok("Password changed.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Nie udało się zmienić hasła użytkownika");
                 return StatusCode(500);
             }
         }

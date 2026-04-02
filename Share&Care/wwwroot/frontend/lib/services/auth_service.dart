@@ -49,6 +49,16 @@ class AuthResult {
           ?.toString(),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'userId': userId,
+      'email': email,
+      'firstName': firstName,
+      'lastName': lastName,
+      'accessToken': accessToken,
+    };
+  }
 }
 
 class AuthService {
@@ -132,8 +142,15 @@ class AuthService {
       } else {
         print('Brak tokenu w response!');
       }
+      final result = AuthResult.fromJson(decoded);
 
-      return AuthResult.fromJson(decoded);
+      // Zapisz również podstawowe dane użytkownika, aby móc odtworzyć je przy starcie aplikacji.
+      await _secureStorage.write(
+        key: 'auth_result',
+        value: jsonEncode(result.toJson()),
+      );
+
+      return result;
     } else {
       throw Exception('Nieprawidłowy email lub hasło');
     }
@@ -150,6 +167,7 @@ class AuthService {
   // Wyloguj użytkownika
   static Future<void> logout() async {
     await _secureStorage.delete(key: 'jwt_token');
+      await _secureStorage.delete(key: 'auth_result');
     print('Użytkownik wylogowany, token usunięty');
   }
 
@@ -157,5 +175,18 @@ class AuthService {
   static Future<String?> getToken() async {
     final token = await _secureStorage.read(key: 'jwt_token');
     return token;
+  }
+
+   // Pobierz zapamiętane dane zalogowanego użytkownika (o ile istnieją).
+  static Future<AuthResult?> getStoredAuthResult() async {
+    final raw = await _secureStorage.read(key: 'auth_result');
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final Map<String, dynamic> data =
+          jsonDecode(raw) as Map<String, dynamic>;
+      return AuthResult.fromJson(data);
+    } catch (_) {
+      return null;
+    }
   }
 }

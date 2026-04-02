@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import '../config/app_config.dart';
 import 'api_service.dart';
+import 'auth_service.dart';
 
 class UserProfileInfo {
   final String firstName;
@@ -104,6 +107,51 @@ class UserProfileService {
 
     if (res.statusCode != 200) {
       throw Exception('Błąd usuwania profilu: ${res.statusCode} ${res.body}');
+    }
+  }
+
+  /// POST /UserProfile/change-password
+  /// Zmienia hasło zalogowanego użytkownika.
+  static Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final body = <String, dynamic>{
+      'CurrentPassword': currentPassword,
+      'NewPassword': newPassword,
+    };
+
+    final http.Response res =
+        await ApiService.postJson('/UserProfile/change-password', body);
+
+    if (res.statusCode != 200) {
+      throw Exception('Błąd zmiany hasła: ${res.statusCode} ${res.body}');
+    }
+  }
+
+  /// POST /UserProfile/photo
+  /// Wysyła nowe zdjęcie profilowe użytkownika do backendu.
+  static Future<void> uploadAvatar(File imageFile) async {
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/UserProfile/photo');
+    final request = http.MultipartRequest('POST', uri);
+
+    final token = await AuthService.getToken();
+    if (token != null && token.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'file',
+        imageFile.path,
+      ),
+    );
+
+    final streamed = await request.send();
+    final res = await http.Response.fromStream(streamed);
+
+    if (res.statusCode != 200) {
+      throw Exception('Błąd zapisu zdjęcia profilowego: ${res.statusCode} ${res.body}');
     }
   }
 }

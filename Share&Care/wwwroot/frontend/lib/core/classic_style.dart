@@ -25,19 +25,19 @@ class ClassicStyle {
     // Motyw jasny aplikacji
     static ThemeData lightTheme = ThemeData(
         colorScheme: ColorScheme.fromSeed(
-            seedColor: my_light_green,
+            seedColor: my_dark_green,
             brightness: Brightness.light,
-            primary: my_light_green,
+            primary: my_dark_green,
             secondary: my_orange,
             background: my_beige,
         ),
-        scaffoldBackgroundColor: my_dark_green,
+        scaffoldBackgroundColor: my_emerald,
         appBarTheme: const AppBarTheme(
-            backgroundColor: my_dark_green,
+            backgroundColor: my_emerald,
             foregroundColor: Colors.white,
         ),
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
-            backgroundColor: my_light_green,
+            backgroundColor: my_emerald,
             foregroundColor: Colors.white,
         ),
     );
@@ -45,15 +45,15 @@ class ClassicStyle {
     // Motyw ciemny aplikacji
     static ThemeData darkTheme = ThemeData(
         colorScheme: ColorScheme.fromSeed(
-            seedColor: my_emerald,
+            seedColor: my_light_green,
             brightness: Brightness.dark,
-            primary: my_emerald,
+            primary: my_light_green,
             secondary: my_dark_beige,
             background: my_dark_theme,
         ),
         scaffoldBackgroundColor: my_dark_theme,
         appBarTheme: const AppBarTheme(
-            backgroundColor: my_emerald,
+            backgroundColor: my_light_green,
             foregroundColor: Colors.white,
         ),
         floatingActionButtonTheme: const FloatingActionButtonThemeData(

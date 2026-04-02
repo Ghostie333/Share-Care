@@ -8,5 +8,16 @@ namespace Share_Care.Services
         Task<List<Message>?> GetMessagesAsync(string chatId, string? requestingUserId);
         Task<bool> UserBelongsToChatAsync(string? chatId, string? userId);
         Task<Message?> SaveMessageAsync(string chatId, string? senderId, string content);
+
+        /// <summary>
+        /// Zwraca wszystkie czaty, w których bierze udział dany użytkownik
+        /// (jako kupujący lub sprzedający).
+        /// </summary>
+        Task<List<Chat>> GetUserChatsAsync(string userId);
+
+        /// <summary>
+        /// Ustawia stan archiwizacji (aktywne/nieaktywne) dla konkretnego użytkownika.
+        /// </summary>
+        Task<bool> SetArchivedForUserAsync(string chatId, string userId, bool archived);
     }
 }

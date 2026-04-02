@@ -54,7 +54,8 @@ class AnnouncementService {
 
     final offers = items
         .map((e) => Announcement.fromJson(e as Map<String, dynamic>))
-        .toList();
+      .where((a) => a.isActive)
+      .toList();
 
     if (currentUserId != null && currentUserId.isNotEmpty) {
       for (final a in offers) {
@@ -87,6 +88,7 @@ class AnnouncementService {
       'Category': announcement.category ?? 'Inne',
       'ContactNumber': announcement.contactNumber ?? '',
       'Description': announcement.description,
+      'LocationText': announcement.location,
       // Lat/Lng są opcjonalne po stronie backendu (i walidowane dopiero gdy
       // jeden z nich jest podany).
       // Na razie nie próbujemy mapować tekstowej lokalizacji na współrzędne.
@@ -140,8 +142,10 @@ class AnnouncementService {
   static Future<Announcement> updateOffer(Announcement announcement) async {
     final Map<String, dynamic> body = announcement.toJson();
 
-    final http.Response res =
-        await ApiService.putJson('/offer/${announcement.id}', body);
+    final http.Response res = await ApiService.putJson(
+      '/offer/update-offer/${announcement.id}',
+      body,
+    );
 
     if (res.statusCode != 200) {
       throw Exception('Błąd aktualizacji ogłoszenia: ${res.statusCode}');
@@ -155,10 +159,24 @@ class AnnouncementService {
   /// Usuwa ofertę (Offer) po OfferId – WYMAGA odpowiedniego endpointu
   /// po stronie .NET (np. DELETE /offer/{offerId}).
   static Future<void> deleteOffer(String id) async {
-    final http.Response res = await ApiService.delete('/offer/$id');
+    final http.Response res = await ApiService.delete('/offer/remove-offer/$id');
 
     if (res.statusCode != 200 && res.statusCode != 204) {
       throw Exception('Błąd usuwania ogłoszenia: ${res.statusCode}');
+    }
+  }
+
+  /// Oznacza ofertę jako nieaktywną (Status = "Inactive") po stronie backendu.
+  ///
+  /// Backend: POST /offer/close-offer/{offerId}
+  static Future<void> closeOffer(String id) async {
+    final http.Response res = await ApiService.postJson(
+      '/offer/close-offer/$id',
+      <String, dynamic>{},
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception('Błąd zamykania ogłoszenia: ${res.statusCode}');
     }
   }
 }

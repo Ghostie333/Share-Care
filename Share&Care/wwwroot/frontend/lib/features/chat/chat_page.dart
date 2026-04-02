@@ -406,7 +406,23 @@ class _ChatPageState extends State<ChatPage> {
             createSlideFadeRoute(SearchPage(authResult: widget.authResult)),
           );
         },
-        onAddTap: () {
+        onAddTap: () async {
+          final loggedIn = await AuthService.isLoggedIn();
+          if (!loggedIn) {
+            if (!context.mounted) return;
+            await Navigator.of(context).push(
+              createSlideFadeRoute(
+                LoginScreen(
+                  onLoginSuccess: (_) {
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ),
+            );
+            return;
+          }
+
+          if (!context.mounted) return;
           showCreateAnnouncementSheet(
             context: context,
             authResult: widget.authResult,
@@ -418,7 +434,25 @@ class _ChatPageState extends State<ChatPage> {
           );
         },
         onMessagesTap: () {},
-        onProfileTap: () {
+        onProfileTap: () async {
+          final loggedIn = await AuthService.isLoggedIn();
+          if (!loggedIn) {
+            if (!context.mounted) return;
+            await Navigator.of(context).push(
+              createSlideFadeRoute(
+                LoginScreen(
+                  onLoginSuccess: (auth) {
+                    Navigator.of(context).pushReplacement(
+                      createSlideFadeRoute(ProfileScreen(authResult: auth)),
+                    );
+                  },
+                ),
+              ),
+            );
+            return;
+          }
+
+          if (!context.mounted) return;
           Navigator.of(context).pushReplacement(
             createSlideFadeRoute(ProfileScreen(authResult: widget.authResult)),
           );
@@ -571,6 +605,7 @@ class _ChatPageState extends State<ChatPage> {
                         ad: ad,
                         onEdit: null,
                         onDelete: null,
+                        onClose: null,
                       ),
                     );
                   },

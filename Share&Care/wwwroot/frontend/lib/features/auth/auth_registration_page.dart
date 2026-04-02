@@ -5,7 +5,9 @@ import '../../core/classic_style.dart';
 import 'package:flutter/services.dart';
 
 import '../../services/auth_service.dart';
+import '../../services/address_validation_service.dart';
 import '../home/widgets/profile_page.dart';
+import '../home/home_page.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -71,6 +73,26 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final city = addressNameController.text.trim();
+      final postalCode = postCodeController.text.trim();
+
+      final isAddressValid = await AddressValidationService
+          .validateCityAndPostalCode(city: city, postalCode: postalCode);
+
+      if (!isAddressValid) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Miasto i kod pocztowy wydają się nie pasować. Sprawdź dane.',
+              ),
+            ),
+          );
+        }
+        setState(() => _isLoading = false);
+        return;
+      }
+
       await AuthService.registerUser(
       email: emailController.text.trim(),
       password: passwordController.text,
@@ -110,11 +132,70 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
+
+  Future<void> _pickBirthday(BuildContext context) async {
+    final now = DateTime.now();
+    DateTime? initial;
+    final raw = dateBirthController.text.trim();
+    if (raw.isNotEmpty) {
+      try {
+        final parts = raw.split('.');
+        if (parts.length == 3) {
+          final day = int.parse(parts[0]);
+          final month = int.parse(parts[1]);
+          final year = int.parse(parts[2]);
+          initial = DateTime(year, month, day);
+        }
+      } catch (_) {
+        initial = null;
+      }
+    }
+
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: initial ?? DateTime(now.year - 18, now.month, now.day),
+      firstDate: DateTime(1900),
+      lastDate: now,
+    );
+
+    if (selected == null) return;
+
+    final day = selected.day.toString().padLeft(2, '0');
+    final month = selected.month.toString().padLeft(2, '0');
+    final year = selected.year.toString();
+
+    setState(() {
+      dateBirthController.text = '$day.$month.$year';
+    });
+  }
   
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        elevation: 0,
+        title: const Text('Rejestracja'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else {
+              // Jak w ekranie logowania: brak poprzedniej strony – wróć na stronę główną jako gość.
+              final guestAuth = AuthResult(
+                userId: null,
+                email: '',
+                firstName: '',
+                lastName: '',
+              );
+              Navigator.of(context).pushReplacement(
+                createSlideFadeRoute(HomePage(authResult: guestAuth)),
+              );
+            }
+          },
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Center(
@@ -265,17 +346,22 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: dateBirthController,
-                          decoration: const InputDecoration(
+                          keyboardType: TextInputType.datetime,
+                          decoration: InputDecoration(
                             labelText: "Data urodzenia (DD.MM.RRRR)",
                             filled: true,
                             fillColor: Colors.transparent,
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.calendar_today_outlined),
+                              onPressed: () => _pickBirthday(context),
+                            ),
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return "Podaj datę urodzenia";
                             }
                             final dateRegex =
-                                RegExp(r'^\d{2}\.\d{2}\.\d{4}$');
+								RegExp(r'^\d{2}\.\d{2}\.\d{4}$');
                             if (!dateRegex.hasMatch(value)) {
                               return "Format daty: DD.MM.RRRR";
                             }

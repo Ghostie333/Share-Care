@@ -30,6 +30,20 @@ namespace Share_Care.Services
                 return null;
             }
 
+            // jeśli czat dla tego ogłoszenia i tej pary użytkowników już istnieje – zwróć go
+            var chatsCollection = _db.GetCollection<Chat>("chats");
+            var existingCursor = await chatsCollection.FindAsync(c =>
+                c.ListingId == listingId &&
+                c.BuyerId == buyerId &&
+                c.SellerId == sellerId);
+            var existing = existingCursor is null
+                ? null
+                : await existingCursor.FirstOrDefaultAsync();
+            if (existing is not null)
+            {
+                return existing;
+            }
+
             var chat = new Chat
             {
                 BuyerId = buyerId,
@@ -37,10 +51,12 @@ namespace Share_Care.Services
                 ListingId = listingId,
                 CreatedAt = DateTime.UtcNow,
                 LastMessage = null,
-                LastMessageAt = null
+                LastMessageAt = null,
+                BuyerArchived = false,
+                SellerArchived = false
             };
 
-            await _db.GetCollection<Chat>("chats").InsertOneAsync(chat);
+            await chatsCollection.InsertOneAsync(chat);
 
             return chat;
         }
@@ -106,6 +122,65 @@ namespace Share_Care.Services
             var chat = await chatCursor.FirstOrDefaultAsync();
 
             return chat != null;
+        }
+
+        public async Task<List<Chat>> GetUserChatsAsync(string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return new List<Chat>();
+            }
+
+            var chatsCollection = _db.GetCollection<Chat>("chats");
+
+            var filter = Builders<Chat>.Filter.Or(
+                Builders<Chat>.Filter.Eq(c => c.BuyerId, userId),
+                Builders<Chat>.Filter.Eq(c => c.SellerId, userId));
+
+            var cursor = await chatsCollection.FindAsync(filter,
+                new FindOptions<Chat, Chat>
+                {
+                    Sort = Builders<Chat>.Sort.Descending(c => c.LastMessageAt) // nowsze na górze
+                });
+
+            return await cursor.ToListAsync();
+        }
+
+        public async Task<bool> SetArchivedForUserAsync(string chatId, string userId, bool archived)
+        {
+            if (string.IsNullOrWhiteSpace(chatId) || string.IsNullOrWhiteSpace(userId))
+            {
+                return false;
+            }
+
+            var chatsCollection = _db.GetCollection<Chat>("chats");
+
+            var cursor = await chatsCollection.FindAsync(c => c.Id == chatId);
+            var chat = await cursor.FirstOrDefaultAsync();
+            if (chat is null)
+            {
+                return false;
+            }
+
+            var updateBuilder = Builders<Chat>.Update;
+            var update = (UpdateDefinition<Chat>)null!;
+
+            if (chat.BuyerId == userId)
+            {
+                update = updateBuilder.Set(c => c.BuyerArchived, archived);
+            }
+            else if (chat.SellerId == userId)
+            {
+                update = updateBuilder.Set(c => c.SellerArchived, archived);
+            }
+            else
+            {
+                // użytkownik nie należy do tego czatu
+                return false;
+            }
+
+            var result = await chatsCollection.UpdateOneAsync(c => c.Id == chatId, update);
+            return result.MatchedCount == 1;
         }
     }
 }

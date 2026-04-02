@@ -19,6 +19,8 @@ class Announcement {
 	String? category;
 	String? contactName;
 	String? contactNumber;
+	bool isUrgent;
+	DateTime? expiresAt;
 
 	Announcement({
 		required this.id,
@@ -35,6 +37,8 @@ class Announcement {
 		this.category,
 		this.contactName,
 		this.contactNumber,
+		this.isUrgent = false,
+		this.expiresAt,
 	}) : imageUrls = imageUrls ?? [];
 
 	factory Announcement.fromJson(Map<String, dynamic> json) {
@@ -70,7 +74,12 @@ class Announcement {
 			return value.toString();
 		}
 
-		return Announcement(
+			// Najpierw spróbuj odczytać pole Location/LocationText, które może być
+			// albo GeoJSON-em, albo zwykłym stringiem z miastem.
+			final dynamic locationRaw =
+				json['location'] ?? json['Location'] ?? json['locationText'] ?? json['LocationText'];
+
+			return Announcement(
 			// Obsługa OfferId/offerId/id z backendu.
 			id: (json['offerId'] ?? json['OfferId'] ?? json['id'] ?? json['Id'])
 					.toString(),
@@ -79,7 +88,7 @@ class Announcement {
 			title: (json['title'] ?? json['Title'] ?? '').toString(),
 			description:
 				(json['description'] ?? json['Description'] ?? '').toString(),
-			location: parseLocation(json['location'] ?? json['Location']),
+				location: parseLocation(locationRaw),
 			deposit: json['deposit'] != null
 					? double.tryParse(json['deposit'].toString())
 					: null,
@@ -105,7 +114,12 @@ class Announcement {
 			contactName:
 				(json['contactName'] ?? json['ContactName'])?.toString(),
 			contactNumber:
-				(json['contactNumber'] ?? json['ContactNumber'])?.toString(),
+					(json['contactNumber'] ?? json['ContactNumber'])?.toString(),
+				isUrgent:
+					(json['isUrgent'] ?? json['IsUrgent'] ?? false) as bool,
+				expiresAt: DateTime.tryParse(
+						(json['expiresAt'] ?? json['ExpiresAt'] ?? '').toString(),
+					),
 		);
 	}
 
@@ -126,6 +140,8 @@ class Announcement {
 			'CreatedAt': createdAt.toIso8601String(),
 			'ImageIds': imageUrls,
 			'IsOwner': isOwner,
+			'IsUrgent': isUrgent,
+			'ExpiresAt': expiresAt?.toIso8601String(),
 		};
 	}
 }

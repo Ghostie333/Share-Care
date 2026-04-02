@@ -17,6 +17,9 @@ public sealed class CreateOfferRequest
     public string ContactNumber { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
 
+    // Tekstowa lokalizacja podawana w formularzu (miasto / adres).
+    public string? LocationText { get; set; }
+
     [Range(-90, 90, ErrorMessage = "Lat musi być w zakresie [-90, 90].")]
     public double? Lat { get; set; }
 

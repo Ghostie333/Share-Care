@@ -11,6 +11,7 @@
 /home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/bundle/data/flutter_assets/kernel_blob.bin
 /home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/bundle/data/flutter_assets/AssetManifest.bin.json
 /home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/bundle/data/flutter_assets/NativeAssetsManifest.json
+/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/bundle/data/flutter_assets/packages/flutter_map/lib/assets/flutter_map_logo.png
 /home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/bundle/data/flutter_assets/packages/cupertino_icons/assets/CupertinoIcons.ttf
 /home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/bundle/data/flutter_assets/version.json
 /home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/bundle/data/flutter_assets/NOTICES

@@ -60,7 +60,17 @@ Future<void> showCreateReportSheet({
         types: types,
         initialCategory: initialCategory,
         initialType: initialType,
-        onSubmit: (title, description, location, deposit, images, category, type) async {
+        onSubmit: (
+          title,
+          description,
+          location,
+          deposit,
+          images,
+          category,
+          type,
+          isUrgent,
+          expiresAt,
+        ) async {
           try {
             final encodedCategory = AnnouncementMetadata.encode(type, category);
 
@@ -79,6 +89,8 @@ Future<void> showCreateReportSheet({
               category: encodedCategory,
               contactName: ownerName,
               contactNumber: phoneNumber.isEmpty ? '' : phoneNumber,
+              isUrgent: isUrgent,
+              expiresAt: expiresAt,
             );
 
             final created = await AnnouncementService.createOffer(

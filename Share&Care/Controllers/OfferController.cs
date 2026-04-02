@@ -85,6 +85,9 @@ namespace Share_Care.Controllers
                     Category = form.Category!,
                     ContactNumber = form.ContactNumber ?? string.Empty,
                     Description = form.Description ?? string.Empty,
+                    LocationText = string.IsNullOrWhiteSpace(form.LocationText)
+                        ? null
+                        : form.LocationText!.Trim(),
                     CreatedAt = DateTime.UtcNow,
                     Location = (form.Lat.HasValue && form.Lng.HasValue)
                         ? new GeoJsonPoint<GeoJson2DGeographicCoordinates>(

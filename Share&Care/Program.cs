@@ -62,7 +62,14 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseRouting();
-app.UseHttpsRedirection();
+
+// W kontenerze wystawiamy tylko HTTP (brak nasłuchu HTTPS),
+// więc w środowisku deweloperskim NIE wymuszamy przekierowania na HTTPS,
+// bo skutkuje to błędem "Connection refused" po przekierowaniu na https://127.0.0.1:7070.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseAuthentication();
 app.UseAuthorization();
 

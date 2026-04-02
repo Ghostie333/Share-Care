@@ -18,5 +18,10 @@ namespace Share_Care.models
         // przyspiesza listę chatów bez odpytywania Messages
         public string? LastMessage { get; set; }    // podgląd ostatniej wiadomości
         public DateTime? LastMessageAt { get; set; }
+
+        // Archiwizacja per-użytkownik: pozwala ukryć czat z listy,
+        // ale bez usuwania wiadomości z bazy.
+        public bool BuyerArchived { get; set; } = false;
+        public bool SellerArchived { get; set; } = false;
     }
 }
