@@ -1,13 +1,13 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:async';
+import 'dart:convert';
 
 import '../../core/classic_style.dart';
 import '../../config/app_config.dart';
 import '../../features/models/annoucement.dart';
 import '../../services/auth_service.dart';
+import '../../services/chat_service.dart';
 import '../../utils/animations.dart';
 import '../announcements/announcement_metadata.dart';
 import '../announcements/create_announcement_sheet.dart';
@@ -45,106 +45,6 @@ class LocalChatAttachment {
   }
 }
 
-class LocalChatMessage {
-  final String id;
-  final String senderId;
-  final String content;
-  final List<LocalChatAttachment> attachments;
-  final DateTime sentAt;
-  bool isRead;
-
-  LocalChatMessage({
-    required this.id,
-    required this.senderId,
-    required this.content,
-    required this.attachments,
-    required this.sentAt,
-    required this.isRead,
-  });
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'senderId': senderId,
-        'content': content,
-        'attachments': attachments.map((e) => e.toJson()).toList(),
-        'sentAt': sentAt.toIso8601String(),
-        'isRead': isRead,
-      };
-
-  factory LocalChatMessage.fromJson(Map<String, dynamic> json) {
-    return LocalChatMessage(
-      id: (json['id'] ?? '').toString(),
-      senderId: (json['senderId'] ?? '').toString(),
-      content: (json['content'] ?? '').toString(),
-      attachments: (json['attachments'] as List<dynamic>? ?? const [])
-          .map((e) => LocalChatAttachment.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      sentAt: DateTime.tryParse((json['sentAt'] ?? '').toString()) ??
-          DateTime.now(),
-      isRead: (json['isRead'] ?? false) as bool,
-    );
-  }
-}
-
-class LocalChatThread {
-  final String id;
-  final String listingId;
-  final String sellerId;
-  final String buyerId;
-
-  final String listingTitle;
-  final double? listingDeposit;
-  final String? listingFirstImageId;
-
-  final String sellerName;
-  final String buyerName;
-
-  List<LocalChatMessage> messages;
-
-  LocalChatThread({
-    required this.id,
-    required this.listingId,
-    required this.sellerId,
-    required this.buyerId,
-    required this.listingTitle,
-    required this.listingDeposit,
-    required this.listingFirstImageId,
-    required this.sellerName,
-    required this.buyerName,
-    required this.messages,
-  });
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'listingId': listingId,
-        'sellerId': sellerId,
-        'buyerId': buyerId,
-        'listingTitle': listingTitle,
-        'listingDeposit': listingDeposit,
-        'listingFirstImageId': listingFirstImageId,
-        'sellerName': sellerName,
-        'buyerName': buyerName,
-        'messages': messages.map((e) => e.toJson()).toList(),
-      };
-
-  factory LocalChatThread.fromJson(Map<String, dynamic> json) {
-    return LocalChatThread(
-      id: (json['id'] ?? '').toString(),
-      listingId: (json['listingId'] ?? '').toString(),
-      sellerId: (json['sellerId'] ?? '').toString(),
-      buyerId: (json['buyerId'] ?? '').toString(),
-      listingTitle: (json['listingTitle'] ?? '').toString(),
-      listingDeposit: (json['listingDeposit'] as num?)?.toDouble(),
-      listingFirstImageId: json['listingFirstImageId']?.toString(),
-      sellerName: (json['sellerName'] ?? '').toString(),
-      buyerName: (json['buyerName'] ?? '').toString(),
-      messages: (json['messages'] as List<dynamic>? ?? const [])
-          .map((e) => LocalChatMessage.fromJson(e as Map<String, dynamic>))
-          .toList(),
-    );
-  }
-}
-
 class ChatPage extends StatefulWidget {
   final AuthResult authResult;
   final Announcement? initialListing;
@@ -160,16 +60,24 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
-  final _secureStorage = const FlutterSecureStorage();
   final _messageController = TextEditingController();
 
-  static const String _threadsStoragePrefix = 'local_chat_threads_v1_';
-
   String? get _userId => widget.authResult.userId;
-  String get _displayName => '${widget.authResult.firstName} ${widget.authResult.lastName}'.trim();
+  // Nazwa do ewentualnego rozszerzenia w przyszłości – obecnie nieużywana.
 
-  List<LocalChatThread> _threads = [];
-  String? _selectedThreadId;
+  List<ChatThreadSummary> _threads = [];
+  String? _selectedChatId;
+
+  // Wiadomości w aktualnie wybranym czacie.
+  List<ChatMessage> _messages = [];
+
+  // Filtrowanie czatów po statusie ogłoszenia.
+  // null = wszystkie, "Active" = tylko aktywne, "Inactive" = tylko nieaktywne.
+  String? _statusFilter;
+
+  // Prosty polling na czas otwartego czatu.
+  // ignore: cancel_subscriptions
+  Timer? _pollTimer;
 
   // Pending attachments (preview before send).
   final List<LocalChatAttachment> _pendingAttachments = [];
@@ -181,8 +89,62 @@ class _ChatPageState extends State<ChatPage> {
     _init();
   }
 
+  Widget _buildStatusFilterRow() {
+    final theme = Theme.of(context);
+    final isActiveSelected = _statusFilter?.toLowerCase() == 'active';
+    final isInactiveSelected = _statusFilter?.toLowerCase() == 'inactive';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: isActiveSelected
+                    ? ClassicStyle.my_light_green.withOpacity(0.2)
+                    : Colors.transparent,
+                foregroundColor: theme.textTheme.bodyMedium?.color,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+              ),
+              onPressed: () {
+                setState(() {
+                  _statusFilter = isActiveSelected ? null : 'Active';
+                });
+              },
+              child: const Text('Aktywne ogłoszenia'),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: isInactiveSelected
+                    ? ClassicStyle.my_light_green.withOpacity(0.2)
+                    : Colors.transparent,
+                foregroundColor: theme.textTheme.bodyMedium?.color,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+              ),
+              onPressed: () {
+                setState(() {
+                  _statusFilter = isInactiveSelected ? null : 'Inactive';
+                });
+              },
+              child: const Text('Nieaktywne ogłoszenia'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _messageController.dispose();
     super.dispose();
   }
@@ -198,99 +160,100 @@ class _ChatPageState extends State<ChatPage> {
       return;
     }
 
-    await _loadThreads();
+    await _loadThreadsFromBackend();
 
     if (widget.initialListing != null && _userId != null) {
       await _openOrCreateThreadForListing(widget.initialListing!);
-    } else if (_threads.isNotEmpty && _selectedThreadId == null) {
-      _selectedThreadId = _threads.first.id;
+    } else if (_threads.isNotEmpty && _selectedChatId == null) {
+      _selectedChatId = _threads.first.chatId;
+      await _loadMessagesForSelected();
     }
   }
 
-  String _storageKey() => '$_threadsStoragePrefix${_userId ?? 'unknown'}';
+  ChatThreadSummary? get _selectedThread {
+    if (_selectedChatId == null) return null;
+    return _threads.firstWhereOrNull((t) => t.chatId == _selectedChatId);
+  }
 
-  Future<void> _loadThreads() async {
-    final raw = await _secureStorage.read(key: _storageKey());
-    if (raw == null || raw.isEmpty) return;
-
+  Future<void> _loadThreadsFromBackend() async {
     try {
-      final decoded = jsonDecode(raw) as List<dynamic>;
-      _threads = decoded
-          .map((e) => LocalChatThread.fromJson(e as Map<String, dynamic>))
-          .toList();
-    } catch (_) {
-      _threads = [];
+      final threads = await ChatService.getMyChats();
+      if (!mounted) return;
+      setState(() {
+        _threads = threads;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nie udało się pobrać listy czatów: $e')),
+      );
     }
   }
-
-  Future<void> _persistThreads() async {
-    final raw = jsonEncode(_threads.map((e) => e.toJson()).toList());
-    await _secureStorage.write(key: _storageKey(), value: raw);
-  }
-
-  LocalChatThread? get _selectedThread {
-    if (_selectedThreadId == null) return null;
-    return _threads.where((t) => t.id == _selectedThreadId).cast<LocalChatThread?>().firstOrNull;
-  }
-
-  LocalChatThread? _threadById(String id) =>
-      _threads.where((t) => t.id == id).firstOrNull;
 
   Future<void> _openOrCreateThreadForListing(Announcement listing) async {
     final currentUserId = _userId;
     if (currentUserId == null || currentUserId.isEmpty) return;
 
     final sellerId = listing.userId ?? '';
-    final listingFirstImageId =
-        listing.imageUrls.isNotEmpty ? listing.imageUrls.first : null;
+    if (sellerId.isEmpty) return;
 
-    final existing = _threads.where((t) {
-      return t.listingId == listing.id && t.buyerId == currentUserId;
-    }).toList();
+    try {
+      final chatId = await ChatService.createChat(
+        listingId: listing.id,
+        sellerId: sellerId,
+      );
 
-    if (existing.isNotEmpty) {
-      _selectedThreadId = existing.first.id;
-      _markThreadAsRead(existing.first.id);
-      setState(() {});
-      return;
+      await _loadThreadsFromBackend();
+
+      if (!mounted) return;
+      setState(() {
+        _selectedChatId = chatId;
+      });
+
+      await _loadMessagesForSelected();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nie udało się otworzyć czatu: $e')),
+      );
     }
-
-    final newThread = LocalChatThread(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      listingId: listing.id,
-      sellerId: sellerId,
-      buyerId: currentUserId,
-      listingTitle: listing.title,
-      listingDeposit: listing.deposit,
-      listingFirstImageId: listingFirstImageId,
-      sellerName: listing.ownerName,
-      buyerName: _displayName,
-      messages: [],
-    );
-
-    _threads.insert(0, newThread);
-    _selectedThreadId = newThread.id;
-    await _persistThreads();
-
-    _markThreadAsRead(newThread.id);
-    setState(() {});
   }
 
-  Future<void> _markThreadAsRead(String threadId) async {
-    final t = _threadById(threadId);
-    if (t == null) return;
+  Future<void> _loadMessagesForSelected() async {
+    final chatId = _selectedChatId;
+    if (chatId == null || chatId.isEmpty) return;
 
-    bool changed = false;
-    for (final m in t.messages) {
-      if (m.senderId != _userId && !m.isRead) {
-        m.isRead = true;
-        changed = true;
+    try {
+      final msgs = await ChatService.getMessages(chatId);
+      if (!mounted) return;
+      setState(() {
+        _messages = msgs..sort((a, b) => a.sentAt.compareTo(b.sentAt));
+      });
+
+      _startPolling(chatId);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nie udało się pobrać wiadomości: $e')),
+      );
+    }
+  }
+
+  void _startPolling(String chatId) {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) async {
+      if (!mounted) return;
+      if (_selectedChatId != chatId) return;
+      try {
+        final msgs = await ChatService.getMessages(chatId);
+        if (!mounted) return;
+        setState(() {
+          _messages = msgs..sort((a, b) => a.sentAt.compareTo(b.sentAt));
+        });
+      } catch (_) {
+        // ciche pomijanie błędów w pollingu
       }
-    }
-
-    if (changed) {
-      await _persistThreads();
-    }
+    });
   }
 
   String _formatTime(DateTime dt) {
@@ -323,28 +286,92 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _onSendPressed() async {
     final thread = _selectedThread;
     final currentUserId = _userId;
-    if (thread == null || currentUserId == null || currentUserId.isEmpty) return;
+    final chatId = _selectedChatId;
+    if (thread == null || chatId == null || chatId.isEmpty || currentUserId == null || currentUserId.isEmpty) return;
 
     final text = _messageController.text.trim();
     if (text.isEmpty && _pendingAttachments.isEmpty) return;
 
-    final msg = LocalChatMessage(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      senderId: currentUserId,
-      content: text,
-      attachments: List<LocalChatAttachment>.from(_pendingAttachments),
-      sentAt: DateTime.now(),
-      isRead: true, // w lokalnym trybie symulujemy odczyt po otwarciu czatu
-    );
+    try {
+      final sent = await ChatService.sendMessage(chatId: chatId, content: text);
 
-    thread.messages.add(msg);
-    thread.messages.sort((a, b) => a.sentAt.compareTo(b.sentAt));
+      _messageController.clear();
+      _pendingAttachments.clear();
 
-    _messageController.clear();
-    _pendingAttachments.clear();
+      setState(() {
+        _messages = List<ChatMessage>.from(_messages)..add(sent);
+        _messages.sort((a, b) => a.sentAt.compareTo(b.sentAt));
 
-    await _persistThreads();
-    setState(() {});
+        // zaktualizuj podgląd ostatniej wiadomości w liście czatów
+        final idx = _threads.indexWhere((t) => t.chatId == chatId);
+        if (idx != -1) {
+          final t = _threads[idx];
+          _threads[idx] = ChatThreadSummary(
+            chatId: t.chatId,
+            listingId: t.listingId,
+            listingTitle: t.listingTitle,
+            listingStatus: t.listingStatus,
+            otherUserId: t.otherUserId,
+            otherUserName: t.otherUserName,
+            lastMessage: sent.content,
+            lastMessageAt: sent.sentAt,
+            listingFirstImageId: t.listingFirstImageId,
+          );
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nie udało się wysłać wiadomości: $e')),
+      );
+    }
+  }
+
+  Future<void> _onDeleteCurrentChat() async {
+    final chatId = _selectedChatId;
+    if (chatId == null || chatId.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) {
+            return AlertDialog(
+              title: const Text('Usuń czat'),
+              content: const Text('Czy na pewno chcesz usunąć czat?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: const Text('Nie'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: const Text('Tak'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (!confirmed) return;
+
+    try {
+      await ChatService.archiveChat(chatId);
+      if (!mounted) return;
+      setState(() {
+        _threads.removeWhere((t) => t.chatId == chatId);
+        _selectedChatId = null;
+        _messages = [];
+      });
+      _pollTimer?.cancel();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Czat został usunięty.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nie udało się usunąć czatu: $e')),
+      );
+    }
   }
 
   @override
@@ -355,6 +382,14 @@ class _ChatPageState extends State<ChatPage> {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Wiadomości'),
+        actions: [
+          if (_selectedThread != null)
+            IconButton(
+              tooltip: 'Usuń czat',
+              icon: const Icon(Icons.delete_outline),
+              onPressed: _onDeleteCurrentChat,
+            ),
+        ],
       ),
       body: SafeArea(
         bottom: false,
@@ -365,7 +400,12 @@ class _ChatPageState extends State<ChatPage> {
             // Narrow: grid tiles first, then conversation.
             if (isNarrow) {
               if (_selectedThread == null) {
-                return _buildThreadTilesGrid();
+                return Column(
+                  children: [
+                    _buildStatusFilterRow(),
+                    Expanded(child: _buildThreadTilesGrid()),
+                  ],
+                );
               }
               return _buildConversation(thread: _selectedThread!, isNarrow: true);
             }
@@ -376,7 +416,12 @@ class _ChatPageState extends State<ChatPage> {
               children: [
                 SizedBox(
                   width: 360,
-                  child: _buildThreadTilesList(),
+                  child: Column(
+                    children: [
+                      _buildStatusFilterRow(),
+                      Expanded(child: _buildThreadTilesList()),
+                    ],
+                  ),
                 ),
                 const VerticalDivider(width: 1),
                 Expanded(
@@ -462,17 +507,17 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildThreadTilesGrid() {
-    if (_threads.isEmpty) {
+    final visibleThreads = _filteredThreads();
+
+    if (visibleThreads.isEmpty) {
       return Center(
         child: Text(
-          'Brak czatów. Otwórz czat z poziomu oferty.',
+          'Brak czatów.',
           style: Theme.of(context).textTheme.titleMedium,
           textAlign: TextAlign.center,
         ),
       );
     }
-
-    final visibleThreads = _threads;
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -486,17 +531,17 @@ class _ChatPageState extends State<ChatPage> {
         ),
         itemBuilder: (context, index) {
           final t = visibleThreads[index];
-          final last = t.messages.isNotEmpty ? t.messages.last : null;
 
           return _ChatTile(
             title: t.listingTitle,
-            subtitle: last == null ? '' : last.content,
+            subtitle: t.lastMessage ?? '',
             imageId: t.listingFirstImageId,
-            isActive: last != null,
+            listingStatus: t.listingStatus,
             onTap: () async {
-              _selectedThreadId = t.id;
-              await _markThreadAsRead(t.id);
-              setState(() {});
+              setState(() {
+                _selectedChatId = t.chatId;
+              });
+              await _loadMessagesForSelected();
             },
           );
         },
@@ -504,8 +549,16 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  List<ChatThreadSummary> _filteredThreads() {
+    if (_statusFilter == null) return _threads;
+    final f = _statusFilter!.toLowerCase();
+    return _threads
+        .where((t) => t.listingStatus.toLowerCase() == f)
+        .toList();
+  }
+
   Widget _buildThreadTilesList() {
-    final visibleThreads = _threads;
+    final visibleThreads = _filteredThreads();
 
     if (visibleThreads.isEmpty) {
       return Center(
@@ -522,17 +575,17 @@ class _ChatPageState extends State<ChatPage> {
       itemCount: visibleThreads.length,
       itemBuilder: (context, index) {
         final t = visibleThreads[index];
-        final last = t.messages.isNotEmpty ? t.messages.last : null;
 
         return _ChatTile(
           title: t.listingTitle,
-          subtitle: last == null ? '' : last.content,
+          subtitle: t.lastMessage ?? '',
           imageId: t.listingFirstImageId,
-          isActive: last != null,
+          listingStatus: t.listingStatus,
           onTap: () async {
-            _selectedThreadId = t.id;
-            await _markThreadAsRead(t.id);
-            setState(() {});
+            setState(() {
+              _selectedChatId = t.chatId;
+            });
+            await _loadMessagesForSelected();
           },
         );
       },
@@ -541,7 +594,7 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildConversation({
-    required LocalChatThread thread,
+    required ChatThreadSummary thread,
     required bool isNarrow,
   }) {
     final currentUserId = _userId ?? '';
@@ -555,7 +608,11 @@ class _ChatPageState extends State<ChatPage> {
               tooltip: 'Wróć do listy',
               icon: const Icon(Icons.arrow_back),
               onPressed: () {
-                setState(() => _selectedThreadId = null);
+                setState(() {
+                  _selectedChatId = null;
+                  _messages = [];
+                  _pollTimer?.cancel();
+                });
               },
             ),
           ),
@@ -565,15 +622,13 @@ class _ChatPageState extends State<ChatPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${thread.sellerName} - ${thread.buyerName}',
+                thread.otherUserName,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
               ),
               const SizedBox(height: 4),
               Text(thread.listingTitle),
-              if (thread.listingDeposit != null)
-                Text('Kaucja: ${thread.listingDeposit!.toStringAsFixed(2)} zł'),
               const SizedBox(height: 8),
               Align(
                 alignment: Alignment.centerLeft,
@@ -583,20 +638,20 @@ class _ChatPageState extends State<ChatPage> {
                     // ale dialog może działać z placeholderem.
                     final ad = Announcement(
                       id: thread.listingId,
-                      userId: thread.sellerId,
+                      userId: null,
                       title: thread.listingTitle,
                       description: '',
                       location: '',
-                      deposit: thread.listingDeposit,
-                      ownerName: thread.sellerName,
-                      isActive: true,
+                      deposit: null,
+                      ownerName: thread.otherUserName,
+                      isActive: thread.listingStatus.toLowerCase() == 'active',
                       createdAt: DateTime.now(),
                       imageUrls: thread.listingFirstImageId == null
                           ? const []
                           : [thread.listingFirstImageId!],
                       isOwner: false,
                       category: null,
-                      contactName: thread.sellerName,
+                      contactName: thread.otherUserName,
                       contactNumber: '',
                     );
                     showDialog<void>(
@@ -620,18 +675,18 @@ class _ChatPageState extends State<ChatPage> {
         Expanded(
           child: ListView.separated(
             padding: const EdgeInsets.all(16),
-            itemCount: thread.messages.length,
+            itemCount: _messages.length,
             reverse: false,
             separatorBuilder: (_, __) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
-              final m = thread.messages[index];
+              final m = _messages[index];
               final isMine = m.senderId == currentUserId;
               return _MessageBubble(
                 isMine: isMine,
                 content: m.content,
                 time: _formatTime(m.sentAt),
                 isRead: m.isRead,
-                attachments: m.attachments,
+                attachments: const <LocalChatAttachment>[],
               );
             },
           ),
@@ -640,41 +695,52 @@ class _ChatPageState extends State<ChatPage> {
           top: false,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-            child: Row(
-              children: [
-                IconButton(
-                  tooltip: 'Dodaj zdjęcie/plik',
-                  icon: const Icon(Icons.attach_file),
-                  onPressed: () async {
-                    final att = await _pickSingleImageAttachment();
-                    if (att == null) return;
-                    setState(() => _pendingAttachments.add(att));
-                  },
-                ),
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: InputDecoration(
-                      hintText: 'Wpisz wiadomość...',
-                      filled: true,
-                      fillColor: Theme.of(context).cardColor,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
+            child: thread.listingStatus.toLowerCase() != 'active'
+                ? Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Czat tylko do odczytu (ogłoszenie nieaktywne lub usunięte).',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: Colors.black54),
                     ),
-                    minLines: 1,
-                    maxLines: 4,
+                  )
+                : Row(
+                    children: [
+                      IconButton(
+                        tooltip: 'Dodaj zdjęcie/plik',
+                        icon: const Icon(Icons.attach_file),
+                        onPressed: () async {
+                          final att = await _pickSingleImageAttachment();
+                          if (att == null) return;
+                          setState(() => _pendingAttachments.add(att));
+                        },
+                      ),
+                      Expanded(
+                        child: TextField(
+                          controller: _messageController,
+                          decoration: InputDecoration(
+                            hintText: 'Wpisz wiadomość...',
+                            filled: true,
+                            fillColor: Theme.of(context).cardColor,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                          minLines: 1,
+                          maxLines: 4,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        tooltip: 'Wyślij',
+                        icon: const Icon(Icons.send),
+                        onPressed: _onSendPressed,
+                        color: ClassicStyle.my_light_green,
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  tooltip: 'Wyślij',
-                  icon: const Icon(Icons.send),
-                  onPressed: _onSendPressed,
-                  color: ClassicStyle.my_light_green,
-                ),
-              ],
-            ),
           ),
         ),
 
@@ -726,14 +792,14 @@ class _ChatTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final String? imageId;
-  final bool isActive;
+  final String listingStatus;
   final VoidCallback onTap;
 
   const _ChatTile({
     required this.title,
     required this.subtitle,
     required this.imageId,
-    required this.isActive,
+    required this.listingStatus,
     required this.onTap,
   });
 
@@ -789,17 +855,50 @@ class _ChatTile extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 8), 
-              if (isActive)
-                Row(
-                  children: const [
-                    Icon(Icons.circle, size: 10, color: Colors.greenAccent),
-                    SizedBox(width: 6),
-                    Text('Nowe', style: TextStyle(fontSize: 12)),
-                  ],
-                ),
+              Row(
+                children: [
+                  _buildStatusChip(listingStatus),
+                ],
+              ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildStatusChip(String status) {
+    final lower = status.toLowerCase();
+    Color color;
+    String label;
+
+    if (lower == 'active') {
+      color = Colors.greenAccent;
+      label = 'Aktywne ogłoszenie';
+    } else if (lower == 'inactive') {
+      color = Colors.orangeAccent;
+      label = 'Nieaktywne ogłoszenie';
+    } else {
+      color = Colors.redAccent;
+      label = 'Usunięte ogłoszenie';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.circle, size: 10, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11),
+          ),
+        ],
       ),
     );
   }
@@ -925,11 +1024,12 @@ class _PendingAttachmentPreview extends StatelessWidget {
   }
 }
 
-extension _FirstOrNullExt<T> on Iterable<T> {
-  T? get firstOrNull {
-    final it = iterator;
-    if (!it.moveNext()) return null;
-    return it.current;
+extension _FirstWhereOrNullExt<T> on Iterable<T> {
+  T? firstWhereOrNull(bool Function(T) test) {
+    for (final element in this) {
+      if (test(element)) return element;
+    }
+    return null;
   }
 }
 

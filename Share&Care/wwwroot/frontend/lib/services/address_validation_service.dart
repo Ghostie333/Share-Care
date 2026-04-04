@@ -23,7 +23,7 @@ class AddressValidationService {
     }
 
     try {
-      final uri = Uri.parse('https://api.zippopotam.us/pl/$trimmedPostal');
+      final uri = Uri.parse('https://api.zippopotam.us/PL/$trimmedPostal');
       final res = await http.get(uri);
       if (res.statusCode != 200) {
         return false;

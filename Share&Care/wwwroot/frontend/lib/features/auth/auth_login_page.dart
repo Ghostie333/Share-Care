@@ -4,7 +4,6 @@ import 'auth_registration_page.dart';
 import '../../core/classic_style.dart';
 import '../../services/auth_service.dart';
 import '../home/home_page.dart';
-import '../home/widgets/profile_page.dart';
 
 
 class LoginScreen extends StatefulWidget {

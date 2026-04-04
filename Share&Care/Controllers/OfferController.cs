@@ -204,7 +204,9 @@ namespace Share_Care.Controllers
         [HttpGet("get-user-offers/{userId}")]
         public async Task<IActionResult> GetUserOffers(string userId)
         {
-            return await GetAll(new OfferFiltersRequest { UserId = userId });
+            // Chcemy pobrać wszystkie oferty użytkownika (aktywne i nieaktywne),
+            // dlatego nadpisujemy Status na null.
+            return await GetAll(new OfferFiltersRequest { UserId = userId, Status = null });
         }
 
         [HttpGet("get-offer/{offerId}")]

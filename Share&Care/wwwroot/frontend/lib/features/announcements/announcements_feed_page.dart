@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../core/classic_style.dart';
 import '../../services/announcement_service.dart';
 import '../../services/auth_service.dart';
-import '../../services/user_profile_service.dart';
 import '../auth/auth_login_page.dart';
 import '../chat/chat_page.dart';
 import '../home/home_page.dart' show HomeFeedMode, HomePage;

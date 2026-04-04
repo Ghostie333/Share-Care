@@ -15,7 +15,6 @@ import '../announcements/create_announcement_sheet.dart';
 import '../../utils/animations.dart';
 import '../auth/auth_login_page.dart';
 import '../chat/chat_page.dart';
-import '../../config/app_config.dart';
 import '../navigation/app_bar.dart';
 import '../search/search_page.dart';
 import 'widgets/profile_page.dart';

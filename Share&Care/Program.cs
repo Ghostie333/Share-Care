@@ -76,8 +76,10 @@ app.UseAuthorization();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+// Najpierw mapujemy API i SignalR, aby ścieżki /chat/* nie były
+// przechwytywane przez fallback SPA (index.html).
+app.MapControllers();
 app.MapHub<ChatHub>("/chubs/chat");
-
 
 // Serwuj Flutter Web spod / (root)
 var flutterAppRoot = Path.Combine(app.Environment.WebRootPath, "frontend", "build", "web");
@@ -93,13 +95,12 @@ if (Directory.Exists(flutterAppRoot))
     });
 
     // Fallback dla SPA: tylko jeśli nie trafiono w żaden endpoint ani plik statyczny
+    // ani w żaden endpoint API.
     app.MapFallbackToFile("index.html", new StaticFileOptions
     {
         FileProvider = flutterProvider
     });
 }
-
-app.MapControllers();
 
 app.MapGet("/userprofilepage", async context =>
 {

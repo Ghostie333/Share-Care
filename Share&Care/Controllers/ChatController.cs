@@ -1,15 +1,21 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MongoDB.Driver;
 using Share_Care.Services;
 using Share_Care.Models.Requests;
+using Share_Care.models;
 using System.Security.Claims;
 
 namespace Share_Care.Controllers
 {
     [ApiController]
     [Route("chat")]
-    public class ChatController(IChatService chatService) : ControllerBase
+    public class ChatController(IChatService chatService, IMongoDatabase db) : ControllerBase
     {
+        private readonly IChatService _chatService = chatService;
+        private readonly IMongoCollection<Offer> _offers = db.GetCollection<Offer>("offers");
+        private readonly IMongoCollection<UserData> _users = db.GetCollection<UserData>("users");
+
         [Authorize]
         [HttpGet("{chatId}/messages")]
         public async Task<IActionResult> GetHistory(string chatId)
@@ -18,7 +24,7 @@ namespace Share_Care.Controllers
             if (string.IsNullOrWhiteSpace(userId))
                 return Unauthorized();
 
-            var messages = await chatService.GetMessagesAsync(chatId, userId);
+            var messages = await _chatService.GetMessagesAsync(chatId, userId);
 
             if (messages == null)
                 return Forbid();
@@ -34,12 +40,122 @@ namespace Share_Care.Controllers
             if (string.IsNullOrWhiteSpace(buyerId))
                 return Unauthorized();
 
-            var chat = await chatService.CreateChatAsync(request.ListingId, buyerId, request.SellerId);
+            var chat = await _chatService.CreateChatAsync(request.ListingId, buyerId, request.SellerId);
 
             if (chat == null)
                 return NotFound("Sprzedający lub oferta nie istnieje.");
 
             return CreatedAtAction(nameof(GetHistory), new { chatId = chat.Id }, chat);
+        }
+
+        /// <summary>
+        /// Zwraca listę czatów zalogowanego użytkownika wraz z podstawowymi
+        /// informacjami o ogłoszeniu i drugim uczestniku rozmowy.
+        /// </summary>
+        [Authorize]
+        [HttpGet("my")]
+        public async Task<IActionResult> GetMyChats()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+                return Unauthorized();
+
+            var chats = await _chatService.GetUserChatsAsync(userId);
+
+            if (chats.Count == 0)
+            {
+                return Ok(Array.Empty<ChatSummary>());
+            }
+
+            var listingIds = chats.Select(c => c.ListingId).Distinct().ToList();
+            var offersCursor = await _offers.FindAsync(o => listingIds.Contains(o.OfferId));
+            var offers = await offersCursor.ToListAsync();
+            var offersById = offers.ToDictionary(o => o.OfferId, o => o);
+
+            var otherUserIds = chats
+                .Select(c => c.BuyerId == userId ? c.SellerId : c.BuyerId)
+                .Distinct()
+                .ToList();
+
+            var usersCursor = await _users.FindAsync(u => otherUserIds.Contains(u.UserId!));
+            var users = await usersCursor.ToListAsync();
+            var usersById = users.Where(u => u.UserId != null)
+                .ToDictionary(u => u.UserId!, u => u);
+
+            var result = chats
+                .Select(c =>
+                {
+                    offersById.TryGetValue(c.ListingId, out var offer);
+                    var otherUserId = c.BuyerId == userId ? c.SellerId : c.BuyerId;
+                    usersById.TryGetValue(otherUserId, out var otherUser);
+
+                    var listingStatus = offer?.Status ?? "Deleted";
+
+                    return new ChatSummary
+                    {
+                        ChatId = c.Id,
+                        ListingId = c.ListingId,
+                        ListingTitle = offer?.Title ?? string.Empty,
+                        ListingStatus = listingStatus,
+                        OtherUserId = otherUserId,
+                        OtherUserName = ((otherUser?.FirstName ?? string.Empty) + " " + (otherUser?.LastName ?? string.Empty)).Trim(),
+                        LastMessage = c.LastMessage,
+                        LastMessageAt = c.LastMessageAt,
+                        ListingFirstImageId = offer?.ImageIds?.FirstOrDefault()
+                    };
+                })
+                .OrderByDescending(c => c.LastMessageAt ?? DateTime.MinValue)
+                .ToList();
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Wysyła wiadomość w kontekście konkretnego czatu.
+        /// </summary>
+        [Authorize]
+        [HttpPost("{chatId}/messages")]
+        public async Task<IActionResult> SendMessage(string chatId, [FromBody] SendMessageRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return ValidationProblem(ModelState);
+            }
+
+            var senderId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(senderId))
+                return Unauthorized();
+
+            var message = await _chatService.SaveMessageAsync(chatId, senderId, request.Content!);
+
+            if (message is null)
+            {
+                // użytkownik nie należy do czatu lub czat nie istnieje
+                return Forbid();
+            }
+
+            return Ok(message);
+        }
+
+        /// <summary>
+        /// "Usuwa" czat dla bieżącego użytkownika poprzez oznaczenie go jako zarchiwizowany.
+        /// Drugi uczestnik nadal widzi konwersację.
+        /// </summary>
+        [Authorize]
+        [HttpDelete("{chatId}")]
+        public async Task<IActionResult> ArchiveChat(string chatId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+                return Unauthorized();
+
+            var success = await _chatService.SetArchivedForUserAsync(chatId, userId, true);
+            if (!success)
+            {
+                return NotFound();
+            }
+
+            return NoContent();
         }
     }
 }

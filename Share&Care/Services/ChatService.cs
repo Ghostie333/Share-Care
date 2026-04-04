@@ -133,14 +133,21 @@ namespace Share_Care.Services
 
             var chatsCollection = _db.GetCollection<Chat>("chats");
 
+            // Zwracamy tylko czaty nie zarchiwizowane dla danego użytkownika.
             var filter = Builders<Chat>.Filter.Or(
-                Builders<Chat>.Filter.Eq(c => c.BuyerId, userId),
-                Builders<Chat>.Filter.Eq(c => c.SellerId, userId));
+                Builders<Chat>.Filter.And(
+                    Builders<Chat>.Filter.Eq(c => c.BuyerId, userId),
+                    Builders<Chat>.Filter.Eq(c => c.BuyerArchived, false)
+                ),
+                Builders<Chat>.Filter.And(
+                    Builders<Chat>.Filter.Eq(c => c.SellerId, userId),
+                    Builders<Chat>.Filter.Eq(c => c.SellerArchived, false)
+                ));
 
             var cursor = await chatsCollection.FindAsync(filter,
                 new FindOptions<Chat, Chat>
                 {
-                    Sort = Builders<Chat>.Sort.Descending(c => c.LastMessageAt) // nowsze na górze
+                    Sort = Builders<Chat>.Sort.Descending(c => c.LastMessageAt)
                 });
 
             return await cursor.ToListAsync();
