@@ -8,6 +8,7 @@ namespace Share_Care.Services
     {
         public PaymentService(ILogger<PaymentService> logger, IMongoDatabase db)
         {
+
         }
     }
 }

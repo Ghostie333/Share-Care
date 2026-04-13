@@ -36,6 +36,7 @@ builder.Services.AddScoped<ILoginService, LoginService>();
 builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddScoped<IWalletService, WalletService>();
 builder.Services.AddScoped<IEscrowService, EscrowService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
 
 // AUTH: JWT dla Flutter (Web + Mobile)
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

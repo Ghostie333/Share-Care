@@ -5,6 +5,7 @@ namespace Share_Care.Services
 {
     public interface IPaymentService
     {
-
+        Task<string> CreatePayUOrderAsync();
+        Task<string> GetAccessTokenAsync();
     }
 }
