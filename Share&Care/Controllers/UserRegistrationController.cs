@@ -49,6 +49,17 @@ namespace Share_Care.Controllers
                 _logger.LogInformation("Pomyœlnie utworzono u¿ytkownika {UserId}, email: {Email}", 
                     user.UserId, user.Email);
 
+                var userForWallet = await _users.Find(u => u.Email == userRegistration.Email).FirstOrDefaultAsync();
+
+                if(string.IsNullOrWhiteSpace(userForWallet.UserId))
+                    return Problem("B³¹d podczas tworzenia portfela u¿ytkownika");
+                else
+                {
+                    var wallet = new Wallet { UserId = userForWallet.UserId };
+                    var walletCollection = db.GetCollection<Wallet>("wallets");
+                    await walletCollection.InsertOneAsync(wallet);
+                }
+
                 try
                 {
                     var token = _loginService.GenerateJwtToken(user, out var expiresUtc);

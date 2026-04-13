@@ -1,4 +1,6 @@
-﻿using MongoDB.Driver;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using MongoDB.Driver;
 using Share_Care.models;
 using System.Linq;
 
@@ -8,6 +10,15 @@ namespace Share_Care.Services
     {
         private readonly ILogger<WalletService> _logger = logger;
         private readonly IMongoCollection<Wallet> _collection = db.GetCollection<Wallet>("wallets");
+
+        public async Task<Wallet?> CreateUsersWallet(string userId)
+        {
+            var wallet = new Wallet { UserId = userId };
+
+            await _collection.InsertOneAsync(wallet);
+
+            return wallet;
+        }
 
         public async Task<Wallet?> GetWalletByUserIdAsync(string userId)
         {
