@@ -30,12 +30,11 @@ builder.Services.AddSingleton(mongoDatabase);
 builder.Services.AddSingleton(new GridFSBucket(mongoDatabase));
 
 
-// SecurityService i LoginService
+// Serwisy
 builder.Services.AddSingleton<SecurityService>();
 builder.Services.AddScoped<ILoginService, LoginService>();
-
-// Chat
 builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddScoped<IWalletService, WalletService>();
 
 // AUTH: JWT dla Flutter (Web + Mobile)
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

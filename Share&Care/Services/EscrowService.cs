@@ -6,8 +6,6 @@ namespace Share_Care.Services
 {
     public class EscrowService : IEscrowService
     {
-        public EscrowService(ILogger<ChatService> logger, IMongoDatabase db)
-        {
-        }
+        Task<Escrow> CreateEscrow() 
     }
 }

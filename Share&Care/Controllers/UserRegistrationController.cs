@@ -9,12 +9,14 @@ namespace Share_Care.Controllers
     [ApiController]
     [Route("[controller]")]
     public class UserRegistrationController(IMongoDatabase db, ILogger<UserRegistrationController> logger,
-                                           SecurityService security, ILoginService loginService) : ControllerBase
+                                           SecurityService security, ILoginService loginService,
+                                           IWalletService walletService) : ControllerBase
     {
         private readonly IMongoCollection<UserData> _users = db.GetCollection<UserData>("users");
         private readonly ILogger<UserRegistrationController> _logger = logger;
         private readonly SecurityService _security = security;
         private readonly ILoginService _loginService = loginService;
+        private readonly IWalletService _walletService = walletService;
 
         [HttpPost("user-registry")]
         public async Task<IActionResult> UserRegistration([FromBody] RegistrationRequest userRegistration)
@@ -51,14 +53,13 @@ namespace Share_Care.Controllers
 
                 var userForWallet = await _users.Find(u => u.Email == userRegistration.Email).FirstOrDefaultAsync();
 
-                if(string.IsNullOrWhiteSpace(userForWallet.UserId))
-                    return Problem("B³¹d podczas tworzenia portfela u¿ytkownika");
-                else
-                {
-                    var wallet = new Wallet { UserId = userForWallet.UserId };
-                    var walletCollection = db.GetCollection<Wallet>("wallets");
-                    await walletCollection.InsertOneAsync(wallet);
-                }
+                if (string.IsNullOrWhiteSpace(userForWallet.UserId))
+                    return Problem("Nie uda³o siê utworzyæ portfela dla u¿ytkownika");
+                
+                var wallet = _walletService.CreateUsersWallet(userForWallet.UserId);
+
+                if(wallet == null)
+                    return Problem("Nie uda³o siê utworzyæ portfela dla u¿ytkownika");
 
                 try
                 {
