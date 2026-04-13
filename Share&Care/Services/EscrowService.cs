@@ -7,10 +7,10 @@ using System.Linq;
 
 namespace Share_Care.Services
 {
-    public class EscrowService(ILogger<WalletService> logger, IMongoDatabase db,
+    public class EscrowService(ILogger<EscrowService> logger, IMongoDatabase db,
                                 IWalletService walletSerivce) : IEscrowService
     {
-        private readonly ILogger<WalletService> _logger = logger;
+        private readonly ILogger<EscrowService> _logger = logger;
         private readonly IWalletService _walletService = walletSerivce;
         private readonly IMongoCollection<Escrow> _collection = db.GetCollection<Escrow>("escrows");
 
@@ -80,6 +80,7 @@ namespace Share_Care.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Nie udało się zwolnić depozytu");
                 return false;
             }
         }
@@ -95,6 +96,7 @@ namespace Share_Care.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Nie udało się przyjąć depozytu");
                 return false;
             }
         }

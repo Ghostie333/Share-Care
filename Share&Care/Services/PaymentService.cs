@@ -6,7 +6,7 @@ namespace Share_Care.Services
 {
     public class PaymentService : IPaymentService
     {
-        public PaymentService(ILogger<ChatService> logger, IMongoDatabase db)
+        public PaymentService(ILogger<PaymentService> logger, IMongoDatabase db)
         {
         }
     }
