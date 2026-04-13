@@ -11,5 +11,19 @@ namespace Share_Care.models
         public string Id { get; set; } = null!;
         public required string UserId { get; set; }
         public decimal Balance { get; set; } = decimal.Zero;
+        public decimal LockedBalance { get; set; } = decimal.Zero;
+
+        public decimal GetAvailableBalance()
+        {
+            return Balance;
+        }
+
+        public bool HasSufficientFunds(decimal amount)
+        {
+            if (Balance >= amount)
+                return true;
+            else
+                return false;
+        }
     }
 }
