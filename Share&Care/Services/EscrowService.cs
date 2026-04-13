@@ -74,6 +74,10 @@ namespace Share_Care.Services
             try
             {
                 var escrow = await GetEscrowByOfferIdAsync(offerId);
+
+                if (escrow == null)
+                    return false;
+
                 await _walletService.UnlockFundsAsync(escrow.BorrowerId, escrow.Amount);
                 await _collection.DeleteOneAsync(e => e.Id == escrow.Id);
                 return true;
@@ -90,6 +94,14 @@ namespace Share_Care.Services
             try
             {
                 var escrow = await GetEscrowByOfferIdAsync(offerId);
+
+                if (escrow == null)
+                    return false;
+
+                // ZŁA FUNKCJA
+                // ZROBIĆ ŻEBY TA OPERACJA BYŁA TRANSAKCJA A NIE UNLOCKIEM U LENDERA
+                // TU I W REALEASEESCROW NIE USUWAC ESCROWA TYLKO ZMIENIAC MU STATUS
+
                 await _walletService.UnlockFundsAsync(escrow.LenderId, escrow.Amount);
                 await _collection.DeleteOneAsync(e => e.Id == escrow.Id);
                 return true;

@@ -15,6 +15,8 @@ namespace Share_Care.Services
         {
             var wallet = new Wallet { UserId = userId };
 
+            // DODAC SPRAWDZANIE CZY PORTFEL JUZ ISTNIEJE
+
             await _collection.InsertOneAsync(wallet);
 
             return wallet;
@@ -35,10 +37,18 @@ namespace Share_Care.Services
             if (string.IsNullOrWhiteSpace(userId))
                 return 0;
 
-            var wallet = await _collection.Find(x => x.UserId == userId).FirstOrDefaultAsync();
+            var wallet = await GetWalletByUserIdAsync(userId);
+
+            if (wallet == null)
+                return 0;
+
             var newBalance = wallet.Balance + amount;
 
-            var update = Builders<Wallet>.Update.Set(w => w.Balance, newBalance);
+            await _collection.UpdateOneAsync(
+                x => x.UserId == userId,
+                Builders<Wallet>.Update
+                    .Inc(w => w.Balance, amount)
+             );
 
             return newBalance;
         }
@@ -48,9 +58,20 @@ namespace Share_Care.Services
             if (string.IsNullOrWhiteSpace(userId))
                 return false;
 
-            var wallet = await _collection.Find(x => x.UserId == userId).FirstOrDefaultAsync();
-            wallet.Balance -= amount;
-            wallet.LockedBalance += amount;
+            var wallet = await GetWalletByUserIdAsync(userId);
+
+            if(wallet == null)
+                return false;
+
+            if (!wallet.HasSufficientFunds(amount))
+                return false;
+
+            await _collection.UpdateOneAsync(
+                x => x.UserId == userId,
+                Builders<Wallet>.Update
+                    .Inc(w => w.Balance, -amount)
+                    .Inc(w => w.LockedBalance, +amount)
+             );
 
             return true;
         }
@@ -60,9 +81,14 @@ namespace Share_Care.Services
             if (string.IsNullOrWhiteSpace(userId))
                 return null;
 
-            var wallet = await _collection.Find(x => x.UserId == userId).FirstOrDefaultAsync();
-            wallet.Balance += amount;
-            wallet.LockedBalance -= amount;
+            await _collection.UpdateOneAsync(
+                x => x.UserId == userId,
+                Builders<Wallet>.Update
+                    .Inc(w => w.Balance, amount)
+                    .Inc(w => w.LockedBalance, -amount)
+             );
+
+            var wallet = await GetWalletByUserIdAsync(userId);
 
             return wallet;
         }

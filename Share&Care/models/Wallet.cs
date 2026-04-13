@@ -20,10 +20,7 @@ namespace Share_Care.models
 
         public bool HasSufficientFunds(decimal amount)
         {
-            if (Balance >= amount)
-                return true;
-            else
-                return false;
+            return GetAvailableBalance() >= amount;
         }
     }
 }
