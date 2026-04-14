@@ -85,6 +85,7 @@ namespace Share_Care.Controllers
                     Category = form.Category!,
                     ContactNumber = form.ContactNumber ?? string.Empty,
                     Description = form.Description ?? string.Empty,
+                    Deposit = form.Deposit,
                     LocationText = string.IsNullOrWhiteSpace(form.LocationText)
                         ? null
                         : form.LocationText!.Trim(),

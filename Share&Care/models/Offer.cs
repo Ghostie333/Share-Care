@@ -14,6 +14,7 @@ namespace Share_Care.models
 
         public DateTime CreatedAt { get; set; }
         public string ContactName { get; set; }
+        public decimal Deposit { get; set; } = 0;
 
         public string ContactNumber { get; set; }
         public string? Description { get; set; }
