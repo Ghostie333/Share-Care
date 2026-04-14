@@ -13,9 +13,24 @@ namespace Share_Care.Services
 
         public async Task<Wallet?> CreateUsersWallet(string userId)
         {
-            var wallet = new Wallet { UserId = userId };
+            var user = await db.GetCollection<UserData>("users")
+                        .Find(u => u.UserId == userId).FirstOrDefaultAsync();
+            
+            if (user == null)
+            {
+                _logger.LogError("Użytkownik o tym ID nie istnieje");
+                return null;
+            }
+            
+            var walletCheck = await _collection.Find(w => w.UserId == userId).FirstOrDefaultAsync();
 
-            // DODAC SPRAWDZANIE CZY PORTFEL JUZ ISTNIEJE
+            if (walletCheck != null)
+            {
+                _logger.LogError("Portfel dla tego użytkownika już istnieje");
+                return null;
+            }
+
+            var wallet = new Wallet { UserId = userId };
 
             await _collection.InsertOneAsync(wallet);
 
