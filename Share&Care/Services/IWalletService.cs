@@ -11,6 +11,8 @@ namespace Share_Care.Services
         Task<Wallet?> CreateUsersWallet(string userId);
         Task<Wallet?> GetWalletByUserIdAsync(string userId);
         Task<decimal> AddFundsAsync(string userId, decimal amount);
+        Task<decimal> RemoveFundsAsync(string userId, decimal amount);
+        Task<decimal> RemoveLockedFundsAsync(string userId, decimal amount);
         Task<bool> LockFundsAsync(string userId, decimal amount);
         Task<Wallet?> UnlockFundsAsync(string userId, decimal amount);
     }

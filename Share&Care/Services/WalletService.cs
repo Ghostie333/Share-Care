@@ -68,6 +68,46 @@ namespace Share_Care.Services
             return newBalance;
         }
 
+        public async Task<decimal> RemoveFundsAsync(string userId, decimal amount)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                return 0;
+
+            var wallet = await GetWalletByUserIdAsync(userId);
+
+            if (wallet == null)
+                return 0;
+
+            var newBalance = wallet.Balance - amount;
+
+            await _collection.UpdateOneAsync(
+                x => x.UserId == userId,
+                Builders<Wallet>.Update
+                    .Inc(w => w.Balance, -amount)
+             );
+
+            return newBalance;
+        }
+
+        public async Task<decimal> RemoveLockedFundsAsync(string userId, decimal amount)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                return 0;
+
+            var wallet = await GetWalletByUserIdAsync(userId);
+
+            if (wallet == null)
+                return 0;
+
+            await _collection.UpdateOneAsync(
+                x => x.UserId == userId,
+                Builders<Wallet>.Update
+                    .Inc(w => w.LockedBalance, -amount)
+             );
+
+            return wallet.LockedBalance;
+        }
+
         public async Task<bool> LockFundsAsync(string userId, decimal amount)
         {
             if (string.IsNullOrWhiteSpace(userId))
