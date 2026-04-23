@@ -15,6 +15,58 @@ import '../features/models/annoucement.dart';
 class AnnouncementService {
   AnnouncementService._();
 
+  static ({double lat, double lng})? _tryParseLatLng(String raw) {
+    final parts = raw.split(',');
+    if (parts.length != 2) return null;
+    final lat = double.tryParse(parts[0].trim());
+    final lng = double.tryParse(parts[1].trim());
+    if (lat == null || lng == null) return null;
+    if (lat < -90 || lat > 90) return null;
+    if (lng < -180 || lng > 180) return null;
+    return (lat: lat, lng: lng);
+  }
+
+  static Future<({double lat, double lng})?> _geocodeWithMapTiler(
+    String query,
+  ) async {
+    final key = AppConfig.mapTilerApiKey;
+    if (key.isEmpty) return null;
+
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return null;
+
+    final encoded = Uri.encodeComponent(trimmed);
+    final uri = Uri.parse(
+      'https://api.maptiler.com/geocoding/$encoded.json?key=$key&limit=1',
+    );
+
+    try {
+      final res = await http.get(uri);
+      if (res.statusCode != 200) return null;
+
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final features = (data['features'] as List<dynamic>? ?? const []);
+      if (features.isEmpty) return null;
+
+      final first = features.first as Map<String, dynamic>;
+      final geometry = first['geometry'] as Map<String, dynamic>?;
+      final coords = geometry?['coordinates'];
+
+      // MapTiler geocoding: [lng, lat]
+      if (coords is List && coords.length >= 2) {
+        final lng = coords[0];
+        final lat = coords[1];
+        if (lat is num && lng is num) {
+          return (lat: lat.toDouble(), lng: lng.toDouble());
+        }
+      }
+    } catch (_) {
+      return null;
+    }
+
+    return null;
+  }
+
   /// Pobiera aktywne ogłoszenia użytkownika.
   static Future<List<Announcement>> getUserOffers(String userId) async {
     // Backend udostępnia alias GET /offer/get-user-offers/{userId}
@@ -91,8 +143,17 @@ class AnnouncementService {
       'LocationText': announcement.location,
       // Lat/Lng są opcjonalne po stronie backendu (i walidowane dopiero gdy
       // jeden z nich jest podany).
-      // Na razie nie próbujemy mapować tekstowej lokalizacji na współrzędne.
     });
+
+		final loc = announcement.location.trim();
+		({double lat, double lng})? coords;
+		if (loc.isNotEmpty) {
+			coords = _tryParseLatLng(loc) ?? await _geocodeWithMapTiler(loc);
+			if (coords != null) {
+				request.fields['Lat'] = coords.lat.toString();
+				request.fields['Lng'] = coords.lng.toString();
+			}
+		}
 
     if (images != null && images.isNotEmpty) {
       for (final image in images) {
@@ -134,6 +195,8 @@ class AnnouncementService {
       category: announcement.category,
       contactName: announcement.contactName,
       contactNumber: announcement.contactNumber,
+		lat: coords?.lat,
+		lng: coords?.lng,
     );
   }
 

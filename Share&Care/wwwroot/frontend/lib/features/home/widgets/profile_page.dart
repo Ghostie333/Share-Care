@@ -16,6 +16,7 @@ import '../../announcements/announcement_metadata.dart';
 import 'announcement_grid.dart';
 import '../../auth/auth_login_page.dart';
 import '../../chat/chat_page.dart';
+import '../../history/history_page.dart';
 import '../../navigation/app_bar.dart';
 import '../../search/search_page.dart';
 import '../home_page.dart';
@@ -454,7 +455,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   backgroundColor: _showActiveAds
                       ? ClassicStyle.my_light_green.withOpacity(0.2)
                       : Colors.transparent,
-                  foregroundColor: Colors.white,
+                  foregroundColor: Colors.black,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(24),
                   ),
@@ -474,7 +475,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   backgroundColor: !_showActiveAds
                       ? ClassicStyle.my_light_green.withOpacity(0.2)
                       : Colors.transparent,
-                  foregroundColor: Colors.white,
+                  foregroundColor: Colors.black,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(24),
                   ),
@@ -527,20 +528,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           trailing: const Icon(Icons.arrow_forward_ios, size: 16),
         ),
-        Text(
-          '- Historia wyszukiwania',
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        Text(
-          '- Historia czatów',
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        Text(
-          '- Historia ogłoszeń',
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodyMedium,
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text(
+            'Historia',
+            textAlign: TextAlign.center,
+          ),
+          subtitle: const Text(
+            'Wyszukiwania, ogłoszenia, czaty (w przygotowaniu)',
+            textAlign: TextAlign.center,
+          ),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          onTap: () {
+            Navigator.of(context).push(
+              createSlideFadeRoute(
+                HistoryPage(authResult: widget.authResult),
+              ),
+            );
+          },
         ),
         Text(
           '- Punkty / nagrody',

@@ -89,55 +89,83 @@ class _ChatPageState extends State<ChatPage> {
     _init();
   }
 
+  Widget _buildThreadsPanel({required Widget child}) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      decoration: BoxDecoration(
+        color: isDark ? theme.cardColor : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.dividerColor.withOpacity(0.6),
+        ),
+      ),
+      child: child,
+    );
+  }
+
   Widget _buildStatusFilterRow() {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final isActiveSelected = _statusFilter?.toLowerCase() == 'active';
     final isInactiveSelected = _statusFilter?.toLowerCase() == 'inactive';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextButton(
-              style: TextButton.styleFrom(
-                backgroundColor: isActiveSelected
-                    ? ClassicStyle.my_light_green.withOpacity(0.2)
-                    : Colors.transparent,
-                foregroundColor: theme.textTheme.bodyMedium?.color,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
-                ),
-              ),
-              onPressed: () {
-                setState(() {
-                  _statusFilter = isActiveSelected ? null : 'Active';
-                });
-              },
-              child: const Text('Aktywne ogłoszenia'),
-            ),
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: isDark ? theme.cardColor : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: theme.dividerColor.withOpacity(0.6),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: TextButton(
-              style: TextButton.styleFrom(
-                backgroundColor: isInactiveSelected
-                    ? ClassicStyle.my_light_green.withOpacity(0.2)
-                    : Colors.transparent,
-                foregroundColor: theme.textTheme.bodyMedium?.color,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  backgroundColor: isActiveSelected
+                      ? ClassicStyle.my_light_green.withOpacity(0.2)
+                      : Colors.transparent,
+                  foregroundColor: theme.textTheme.bodyMedium?.color,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
                 ),
+                onPressed: () {
+                  setState(() {
+                    _statusFilter = isActiveSelected ? null : 'Active';
+                  });
+                },
+                child: const Text('Aktywne'),
               ),
-              onPressed: () {
-                setState(() {
-                  _statusFilter = isInactiveSelected ? null : 'Inactive';
-                });
-              },
-              child: const Text('Nieaktywne ogłoszenia'),
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  backgroundColor: isInactiveSelected
+                      ? ClassicStyle.my_light_green.withOpacity(0.2)
+                      : Colors.transparent,
+                  foregroundColor: theme.textTheme.bodyMedium?.color,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                ),
+                onPressed: () {
+                  setState(() {
+                    _statusFilter = isInactiveSelected ? null : 'Inactive';
+                  });
+                },
+                child: const Text('Nieaktywne'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -403,7 +431,11 @@ class _ChatPageState extends State<ChatPage> {
                 return Column(
                   children: [
                     _buildStatusFilterRow(),
-                    Expanded(child: _buildThreadTilesGrid()),
+                    Expanded(
+                      child: _buildThreadsPanel(
+                        child: _buildThreadTilesGrid(),
+                      ),
+                    ),
                   ],
                 );
               }
@@ -419,11 +451,14 @@ class _ChatPageState extends State<ChatPage> {
                   child: Column(
                     children: [
                       _buildStatusFilterRow(),
-                      Expanded(child: _buildThreadTilesList()),
+                      Expanded(
+                        child: _buildThreadsPanel(
+                          child: _buildThreadTilesList(),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                const VerticalDivider(width: 1),
                 Expanded(
                   child: selected == null
                       ? Center(
@@ -510,13 +545,7 @@ class _ChatPageState extends State<ChatPage> {
     final visibleThreads = _filteredThreads();
 
     if (visibleThreads.isEmpty) {
-      return Center(
-        child: Text(
-          'Brak czatów.',
-          style: Theme.of(context).textTheme.titleMedium,
-          textAlign: TextAlign.center,
-        ),
-      );
+      return const SizedBox.expand();
     }
 
     return Padding(
@@ -561,13 +590,7 @@ class _ChatPageState extends State<ChatPage> {
     final visibleThreads = _filteredThreads();
 
     if (visibleThreads.isEmpty) {
-      return Center(
-        child: Text(
-          'Brak czatów.',
-          style: Theme.of(context).textTheme.titleMedium,
-          textAlign: TextAlign.center,
-        ),
-      );
+      return const SizedBox.expand();
     }
 
     return ListView.separated(
@@ -843,6 +866,7 @@ class _ChatTile extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
               ),
               if (subtitle.isNotEmpty) ...[
@@ -896,7 +920,7 @@ class _ChatTile extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(fontSize: 11),
+			style: const TextStyle(fontSize: 11, color: Colors.black87),
           ),
         ],
       ),

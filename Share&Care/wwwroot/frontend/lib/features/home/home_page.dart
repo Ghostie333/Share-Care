@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 import '../announcements/annoucements_detail_page.dart';
 import '../announcements/announcement_metadata.dart';
@@ -44,7 +46,11 @@ class _HomePageState extends State<HomePage> {
   final List<Announcement> _allOffers = [];
   bool _isLoading = true;
 
+	final MapController _mapController = MapController();
+
   UserProfileInfo? _profileInfo;
+	LatLng? _profileCenter;
+	bool _didMoveToProfileCenter = false;
 
   HomeFeedMode _mode = HomeFeedMode.all;
   String _searchQuery = '';
@@ -67,9 +73,74 @@ class _HomePageState extends State<HomePage> {
       final info = await UserProfileService.fetchProfile(userId);
       if (!mounted) return;
       setState(() => _profileInfo = info);
+      await _resolveAndCenterProfileLocation(info.city);
     } catch (_) {
       // Profil jest opcjonalny dla strony głównej – brak snackbara.
     }
+  }
+
+  Future<void> _resolveAndCenterProfileLocation(String? rawCity) async {
+    if (!mounted) return;
+    final city = (rawCity ?? '').trim();
+    if (city.isEmpty) return;
+
+    final parsed = _parseLatLng(city);
+    LatLng? center = parsed;
+
+    center ??= await _geocodeWithMapTiler(city);
+    if (center == null) return;
+
+    if (!mounted) return;
+    setState(() {
+      _profileCenter = center;
+    });
+
+    // Po pierwszym zbudowaniu mapy przesuń widok na lokalizację profilu.
+    if (_didMoveToProfileCenter) return;
+    _didMoveToProfileCenter = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _mapController.move(center!, 12);
+    });
+  }
+
+  Future<LatLng?> _geocodeWithMapTiler(String query) async {
+    final key = AppConfig.mapTilerApiKey;
+    if (key.isEmpty) return null;
+
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return null;
+
+    final encoded = Uri.encodeComponent(trimmed);
+    final uri = Uri.parse(
+      'https://api.maptiler.com/geocoding/$encoded.json?key=$key&limit=1',
+    );
+
+    try {
+      final res = await http.get(uri);
+      if (res.statusCode != 200) return null;
+
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final features = (data['features'] as List<dynamic>? ?? const []);
+      if (features.isEmpty) return null;
+
+      final first = features.first as Map<String, dynamic>;
+      final geometry = first['geometry'] as Map<String, dynamic>?;
+      final coords = geometry?['coordinates'];
+
+      // MapTiler geocoding: [lng, lat]
+      if (coords is List && coords.length >= 2) {
+        final lng = coords[0];
+        final lat = coords[1];
+        if (lat is num && lng is num) {
+          return LatLng(lat.toDouble(), lng.toDouble());
+        }
+      }
+    } catch (_) {
+      return null;
+    }
+
+    return null;
   }
 
   Future<void> _loadOffers() async {
@@ -418,25 +489,22 @@ class _HomePageState extends State<HomePage> {
     }
 
     final offersWithCoords = _allOffers
-        .where((a) => a.location.isNotEmpty && _parseLatLng(a.location) != null)
+        .where((a) => a.lat != null && a.lng != null)
         .toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    final topTen = offersWithCoords.take(1).toList();
-    if (topTen.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    final markerAds = offersWithCoords.take(10).toList();
+		final tileAds = offersWithCoords.take(5).toList();
 
     // Spróbuj użyć lokalizacji z profilu użytkownika (jeśli jest w formacie "lat,lng"),
-    // w przeciwnym razie środek mapy wyznaczany jest na podstawie najnowszego ogłoszenia
+    // w przeciwnym razie środek mapy wyznaczany jest na podstawie najnowszego markera
     // lub domyślnie ustawiany na Warszawę.
-    final LatLng? userCenter = _profileInfo == null
-      ? null
-      : _parseLatLng(_profileInfo!.city);
+    final LatLng? userCenter = _profileCenter ?? (_profileInfo == null ? null : _parseLatLng(_profileInfo!.city));
 
     final center = userCenter ??
-      _parseLatLng(topTen.first.location) ??
-      LatLng(52.2297, 21.0122); // Warszawa jako domyślne centrum
+        (markerAds.isNotEmpty
+            ? LatLng(markerAds.first.lat!, markerAds.first.lng!)
+            : const LatLng(52.2297, 21.0122)); // Warszawa jako domyślne centrum
 
     return Container(
       width: double.infinity,
@@ -455,39 +523,115 @@ class _HomePageState extends State<HomePage> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(10),
-        child: FlutterMap(
-          options: MapOptions(
-            initialCenter: center,
-            initialZoom: 12,
-          ),
+        child: Stack(
           children: [
-            TileLayer(
-              urlTemplate:
-                'https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=${AppConfig.mapTilerApiKey}',
-              userAgentPackageName: 'share_care_frontend',
-            ),
-            MarkerLayer(
-              markers: topTen
-                  .map((ad) {
-                    final latLng = _parseLatLng(ad.location);
-                    if (latLng == null) return null;
-                    return Marker(
-                      point: latLng,
-                      width: 40,
-                      height: 40,
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.location_on,
-                          color: Colors.redAccent,
-                          size: 30,
+            FlutterMap(
+						mapController: _mapController,
+              options: MapOptions(
+                initialCenter: center,
+                initialZoom: 12,
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate:
+                    'https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=${AppConfig.mapTilerApiKey}',
+                  userAgentPackageName: 'share_care_frontend',
+                ),
+                MarkerLayer(
+                  markers: [
+                    if (userCenter != null)
+                      Marker(
+                        point: userCenter,
+                        width: 46,
+                        height: 46,
+                        child: const Icon(
+                          Icons.person_pin_circle,
+                          size: 34,
+                          color: Colors.blueAccent,
                         ),
-                        onPressed: () => _openAdFromMap(ad),
                       ),
-                    );
-                  })
-                  .whereType<Marker>()
-                  .toList(),
+                    ...markerAds
+                        .map((ad) {
+                          final lat = ad.lat;
+                          final lng = ad.lng;
+                          if (lat == null || lng == null) return null;
+                          return Marker(
+                            point: LatLng(lat, lng),
+                            width: 40,
+                            height: 40,
+                            child: IconButton(
+                              icon: const Icon(Icons.location_on, color: Colors.redAccent, size: 30),
+                              onPressed: () => _openAdFromMap(ad),
+                            ),
+                          );
+                        })
+                        .whereType<Marker>(),
+                  ],
+                ),
+              ],
             ),
+            if (tileAds.isNotEmpty)
+              Positioned(
+                left: 12,
+                right: 12,
+                bottom: 12,
+                child: SizedBox(
+                  height: 88,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: tileAds.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 10),
+                    itemBuilder: (context, index) {
+                      final ad = tileAds[index];
+                      final city = ad.location.trim().isEmpty ? '—' : ad.location.trim();
+
+                      return GestureDetector(
+                        onTap: () {
+                          final lat = ad.lat;
+                          final lng = ad.lng;
+                          if (lat != null && lng != null) {
+                            _mapController.move(LatLng(lat, lng), 13);
+                          }
+                          _openAdFromMap(ad);
+                        },
+                        child: Container(
+                          width: 250,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: theme.cardColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: theme.dividerColor.withOpacity(0.7),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                city,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.textTheme.bodySmall?.color?.withOpacity(0.8),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                ad.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -588,6 +732,8 @@ class _HomePageState extends State<HomePage> {
     final lat = double.tryParse(parts[0].trim());
     final lng = double.tryParse(parts[1].trim());
     if (lat == null || lng == null) return null;
+		if (lat < -90 || lat > 90) return null;
+		if (lng < -180 || lng > 180) return null;
     return LatLng(lat, lng);
   }
 

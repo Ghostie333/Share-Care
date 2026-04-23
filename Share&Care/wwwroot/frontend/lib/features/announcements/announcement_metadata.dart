@@ -7,6 +7,7 @@ class AnnouncementMetadata {
     'Książki',
     'Elektronika',
     'Artykuły budowlane',
+		'Motoryzacja',
   ];
 
   /// Typy ogłoszeń.

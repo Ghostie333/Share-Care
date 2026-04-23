@@ -16,7 +16,6 @@ public sealed class CreateOfferRequest
 
     public string ContactNumber { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public decimal Deposit { get; set; } = 0;
 
     // Tekstowa lokalizacja podawana w formularzu (miasto / adres).
     public string? LocationText { get; set; }

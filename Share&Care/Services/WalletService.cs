@@ -13,24 +13,9 @@ namespace Share_Care.Services
 
         public async Task<Wallet?> CreateUsersWallet(string userId)
         {
-            var user = await db.GetCollection<UserData>("users")
-                        .Find(u => u.UserId == userId).FirstOrDefaultAsync();
-            
-            if (user == null)
-            {
-                _logger.LogError("Użytkownik o tym ID nie istnieje");
-                return null;
-            }
-            
-            var walletCheck = await _collection.Find(w => w.UserId == userId).FirstOrDefaultAsync();
-
-            if (walletCheck != null)
-            {
-                _logger.LogError("Portfel dla tego użytkownika już istnieje");
-                return null;
-            }
-
             var wallet = new Wallet { UserId = userId };
+
+            // DODAC SPRAWDZANIE CZY PORTFEL JUZ ISTNIEJE
 
             await _collection.InsertOneAsync(wallet);
 
@@ -66,46 +51,6 @@ namespace Share_Care.Services
              );
 
             return newBalance;
-        }
-
-        public async Task<decimal> RemoveFundsAsync(string userId, decimal amount)
-        {
-            if (string.IsNullOrWhiteSpace(userId))
-                return 0;
-
-            var wallet = await GetWalletByUserIdAsync(userId);
-
-            if (wallet == null)
-                return 0;
-
-            var newBalance = wallet.Balance - amount;
-
-            await _collection.UpdateOneAsync(
-                x => x.UserId == userId,
-                Builders<Wallet>.Update
-                    .Inc(w => w.Balance, -amount)
-             );
-
-            return newBalance;
-        }
-
-        public async Task<decimal> RemoveLockedFundsAsync(string userId, decimal amount)
-        {
-            if (string.IsNullOrWhiteSpace(userId))
-                return 0;
-
-            var wallet = await GetWalletByUserIdAsync(userId);
-
-            if (wallet == null)
-                return 0;
-
-            await _collection.UpdateOneAsync(
-                x => x.UserId == userId,
-                Builders<Wallet>.Update
-                    .Inc(w => w.LockedBalance, -amount)
-             );
-
-            return wallet.LockedBalance;
         }
 
         public async Task<bool> LockFundsAsync(string userId, decimal amount)

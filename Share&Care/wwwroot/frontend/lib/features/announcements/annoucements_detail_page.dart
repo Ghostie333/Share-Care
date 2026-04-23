@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/classic_style.dart';
 import 'announcement_metadata.dart';
 import '../models/annoucement.dart';
+import '../../config/app_config.dart';
 
 class AnnouncementDetailsDialog extends StatefulWidget {
   final Announcement ad;
@@ -36,13 +37,32 @@ class _AnnouncementDetailsDialogState
   List<String> get _images =>
       widget.ad.imageUrls.isEmpty ? ['placeholder'] : widget.ad.imageUrls;
 
+  bool get _hasImages => widget.ad.imageUrls.isNotEmpty;
+  int get _imageCount => _hasImages ? widget.ad.imageUrls.length : 1;
+
+  String _resolveImageUrl(String idOrUrl) {
+    final v = idOrUrl.trim();
+    if (v.startsWith('http://') || v.startsWith('https://')) return v;
+    return '${AppConfig.apiBaseUrl}/offer/image/$v';
+  }
+
+  Widget _imagePlaceholder() => Container(
+    decoration: BoxDecoration(
+      color: Colors.grey[300],
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: const Center(
+      child: Icon(Icons.image, size: 72, color: Colors.black45),
+    ),
+  );
+
   @override
   void initState() {
     super.initState();
     _currentIndex = 0;
     _pageController = PageController();
 
-    if (_images.length > 1) {
+    if (widget.ad.imageUrls.length > 1) {
       _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
         if (!mounted) return;
         setState(() {
@@ -128,25 +148,18 @@ class _AnnouncementDetailsDialogState
         Expanded(
           child: PageView.builder(
             controller: _pageController,
-            itemCount: _images.length,
-            onPageChanged: (index) {
-              setState(() {
-                _currentIndex = index;
-              });
-            },
+            itemCount: _imageCount,
+            onPageChanged: (index) => setState(() => _currentIndex = index),
             itemBuilder: (_, index) {
-              return Container(
-                margin: const EdgeInsets.only(right: 8),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.image,
-                    size: 72,
-                    color: Colors.black45,
-                  ),
+              if (!_hasImages) return _imagePlaceholder();
+
+              final url = _resolveImageUrl(widget.ad.imageUrls[index]);
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  url,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _imagePlaceholder(),
                 ),
               );
             },
@@ -157,38 +170,41 @@ class _AnnouncementDetailsDialogState
           height: 64,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemCount: _images.length,
+            itemCount: _imageCount,
             separatorBuilder: (_, __) => const SizedBox(width: 8),
             itemBuilder: (_, index) {
               final isSelected = index == _currentIndex;
+
               return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _currentIndex = index;
-                  });
-                  _pageController.animateToPage(
-                    index,
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                  );
-                },
+                onTap: !_hasImages
+                    ? null
+                    : () {
+                        setState(() => _currentIndex = index);
+                        _pageController.animateToPage(
+                          index,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
+                      },
                 child: Container(
                   width: 72,
                   decoration: BoxDecoration(
                     color: Colors.grey[200],
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: isSelected
-                          ? ClassicStyle.my_light_green
-                          : Colors.grey,
+                      color: isSelected ? ClassicStyle.my_light_green : Colors.grey,
                       width: isSelected ? 2 : 1,
                     ),
                   ),
-                  child: const Icon(
-                    Icons.image,
-                    size: 32,
-                    color: Colors.black38,
-                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: !_hasImages
+                      ? const Icon(Icons.image, size: 32, color: Colors.black38)
+                      : Image.network(
+                          _resolveImageUrl(widget.ad.imageUrls[index]),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              const Icon(Icons.image, size: 32, color: Colors.black38),
+                        ),
                 ),
               );
             },

@@ -121,23 +121,20 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        title: Text(
+          _mode == HomeFeedMode.announcements
+              ? 'Ogłoszenia'
+              : _mode == HomeFeedMode.reports
+                  ? 'Zgłoszenia'
+                  : 'Ogłoszenia i zgłoszenia',
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 8),
-            Text(
-              _mode == HomeFeedMode.announcements
-                  ? 'Ogłoszenia'
-                  : _mode == HomeFeedMode.reports
-                      ? 'Zgłoszenia'
-                      : 'Ogłoszenia i zgłoszenia',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
             _buildSearchBar(context),
             const SizedBox(height: 12),
             _buildFeedModeButtons(context),

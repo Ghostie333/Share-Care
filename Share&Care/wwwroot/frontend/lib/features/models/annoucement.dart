@@ -1,4 +1,8 @@
 class Announcement {
+
+  double? lat; 
+  double? lng; 
+
 	/// Id of the offer/announcement (maps to OfferId in backend).
 	final String id;
 
@@ -23,23 +27,25 @@ class Announcement {
 	DateTime? expiresAt;
 
 	Announcement({
-		required this.id,
-		this.userId,
-		required this.title,
-		required this.description,
-		required this.location,
-		this.deposit,
-		required this.ownerName,
-		required this.isActive,
-		required this.createdAt,
-		List<String>? imageUrls,
-		this.isOwner = true,
-		this.category,
-		this.contactName,
-		this.contactNumber,
-		this.isUrgent = false,
-		this.expiresAt,
-	}) : imageUrls = imageUrls ?? [];
+    required this.id,
+    this.userId,
+    required this.title,
+    required this.description,
+    required this.location,
+    this.deposit,
+    required this.ownerName,
+    required this.isActive,
+    required this.createdAt,
+    List<String>? imageUrls,
+    this.isOwner = true,
+    this.category,
+    this.contactName,
+    this.contactNumber,
+    this.isUrgent = false,
+    this.expiresAt,
+    this.lat,
+    this.lng,
+  }) : imageUrls = imageUrls ?? [];
 
 	factory Announcement.fromJson(Map<String, dynamic> json) {
 		final rawStatus = (json['status'] ?? json['Status'])?.toString();
@@ -52,34 +58,55 @@ class Announcement {
 					return true;
 				})();
 
-		String parseLocation(dynamic value) {
-			if (value == null) return '';
-			if (value is String) return value;
+		({double lat, double lng})? tryParseLatLngString(String raw) {
+			final parts = raw.split(',');
+			if (parts.length != 2) return null;
+			final lat = double.tryParse(parts[0].trim());
+			final lng = double.tryParse(parts[1].trim());
+			if (lat == null || lng == null) return null;
+			if (lat < -90 || lat > 90) return null;
+			if (lng < -180 || lng > 180) return null;
+			return (lat: lat, lng: lng);
+		}
 
-			// GeoJSON point - typowo: { "type": "Point", "coordinates": [lng, lat] }
+		({double lat, double lng})? parseCoords(dynamic value) {
+			if (value == null) return null;
+
+			// GeoJSON: { "type":"Point", "coordinates":[lng, lat] }
 			if (value is Map<String, dynamic>) {
 				final coords = value['coordinates'];
 				if (coords is List && coords.length >= 2) {
 					final lng = coords[0];
 					final lat = coords[1];
-					return '$lat,$lng';
+					if (lat is num && lng is num) {
+						return (lat: lat.toDouble(), lng: lng.toDouble());
+					}
 				}
 				final lat = value['lat'] ?? value['Lat'];
 				final lng = value['lng'] ?? value['Lng'];
-				if (lat != null && lng != null) {
-					return '${lat.toString()},${lng.toString()}';
+				if (lat is num && lng is num) {
+					return (lat: lat.toDouble(), lng: lng.toDouble());
 				}
 			}
 
-			return value.toString();
+			if (value is String) {
+				return tryParseLatLngString(value);
+			}
+
+			return null;
 		}
 
-			// Najpierw spróbuj odczytać pole Location/LocationText, które może być
-			// albo GeoJSON-em, albo zwykłym stringiem z miastem.
-			final dynamic locationRaw =
-				json['location'] ?? json['Location'] ?? json['locationText'] ?? json['LocationText'];
+		final locationText =
+			(json['locationText'] ?? json['LocationText'] ?? '').toString().trim();
 
-			return Announcement(
+		final coords = parseCoords(json['location'] ?? json['Location']) ??
+			(locationText.isNotEmpty ? tryParseLatLngString(locationText) : null);
+
+		final displayLocation = locationText.isNotEmpty
+			? locationText
+			: (coords != null ? '${coords.lat},${coords.lng}' : '');
+
+		return Announcement(
 			// Obsługa OfferId/offerId/id z backendu.
 			id: (json['offerId'] ?? json['OfferId'] ?? json['id'] ?? json['Id'])
 					.toString(),
@@ -88,7 +115,7 @@ class Announcement {
 			title: (json['title'] ?? json['Title'] ?? '').toString(),
 			description:
 				(json['description'] ?? json['Description'] ?? '').toString(),
-				location: parseLocation(locationRaw),
+			location: displayLocation,
 			deposit: json['deposit'] != null
 					? double.tryParse(json['deposit'].toString())
 					: null,
@@ -120,6 +147,8 @@ class Announcement {
 				expiresAt: DateTime.tryParse(
 						(json['expiresAt'] ?? json['ExpiresAt'] ?? '').toString(),
 					),
+			lat: coords?.lat,
+			lng: coords?.lng,
 		);
 	}
 
@@ -131,6 +160,9 @@ class Announcement {
 			'Title': title,
 			'Description': description,
 			'Location': location,
+			'LocationText': location,
+			'Lat': lat,
+			'Lng': lng,
 			'Category': category,
 			'ContactName': contactName ?? ownerName,
 			'ContactNumber': contactNumber,
