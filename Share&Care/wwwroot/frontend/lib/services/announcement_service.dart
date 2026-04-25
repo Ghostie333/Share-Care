@@ -89,6 +89,25 @@ class AnnouncementService {
         .toList();
   }
 
+  /// Pobiera pojedynczą ofertę po identyfikatorze.
+  static Future<Announcement> getOfferById(
+    String offerId, {
+    String? currentUserId,
+  }) async {
+    final http.Response res = await ApiService.get('/offer/get-offer/$offerId');
+
+    if (res.statusCode != 200) {
+      throw Exception('Błąd pobierania oferty: ${res.statusCode}');
+    }
+
+    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+    final ad = Announcement.fromJson(decoded);
+    if (currentUserId != null && currentUserId.isNotEmpty) {
+      ad.isOwner = ad.userId == currentUserId;
+    }
+    return ad;
+  }
+
   /// Pobiera aktywne ogłoszenia na stronę główną.
   static Future<List<Announcement>> getActiveOffers({
     String? currentUserId,
@@ -106,8 +125,8 @@ class AnnouncementService {
 
     final offers = items
         .map((e) => Announcement.fromJson(e as Map<String, dynamic>))
-      .where((a) => a.isActive)
-      .toList();
+        .where((a) => a.isActive)
+        .toList();
 
     if (currentUserId != null && currentUserId.isNotEmpty) {
       for (final a in offers) {
@@ -145,15 +164,21 @@ class AnnouncementService {
       // jeden z nich jest podany).
     });
 
-		final loc = announcement.location.trim();
-		({double lat, double lng})? coords;
-		if (loc.isNotEmpty) {
-			coords = _tryParseLatLng(loc) ?? await _geocodeWithMapTiler(loc);
-			if (coords != null) {
-				request.fields['Lat'] = coords.lat.toString();
-				request.fields['Lng'] = coords.lng.toString();
-			}
-		}
+    final deposit = announcement.deposit;
+    if (deposit != null) {
+      // Backend (.NET) używa pola Deposit (decimal?).
+      request.fields['Deposit'] = deposit.toString();
+    }
+
+    final loc = announcement.location.trim();
+    ({double lat, double lng})? coords;
+    if (loc.isNotEmpty) {
+      coords = _tryParseLatLng(loc) ?? await _geocodeWithMapTiler(loc);
+      if (coords != null) {
+        request.fields['Lat'] = coords.lat.toString();
+        request.fields['Lng'] = coords.lng.toString();
+      }
+    }
 
     if (images != null && images.isNotEmpty) {
       for (final image in images) {
@@ -195,8 +220,8 @@ class AnnouncementService {
       category: announcement.category,
       contactName: announcement.contactName,
       contactNumber: announcement.contactNumber,
-		lat: coords?.lat,
-		lng: coords?.lng,
+      lat: coords?.lat,
+      lng: coords?.lng,
     );
   }
 
@@ -222,7 +247,9 @@ class AnnouncementService {
   /// Usuwa ofertę (Offer) po OfferId – WYMAGA odpowiedniego endpointu
   /// po stronie .NET (np. DELETE /offer/{offerId}).
   static Future<void> deleteOffer(String id) async {
-    final http.Response res = await ApiService.delete('/offer/remove-offer/$id');
+    final http.Response res = await ApiService.delete(
+      '/offer/remove-offer/$id',
+    );
 
     if (res.statusCode != 200 && res.statusCode != 204) {
       throw Exception('Błąd usuwania ogłoszenia: ${res.statusCode}');

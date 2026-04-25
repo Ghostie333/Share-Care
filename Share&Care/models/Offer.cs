@@ -12,6 +12,9 @@ namespace Share_Care.models
         public string UserId { get; set; }
         public string Title { get; set; }
 
+        [BsonRepresentation(BsonType.Decimal128)]
+        public decimal? Deposit { get; set; }
+
         public DateTime CreatedAt { get; set; }
         public string ContactName { get; set; }
 

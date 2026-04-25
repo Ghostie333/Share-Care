@@ -5,6 +5,21 @@ import 'package:http/http.dart' as http;
 
 import 'api_service.dart';
 
+enum SocialAuthProvider { google, outlook, apple }
+
+extension _SocialAuthProviderApiValue on SocialAuthProvider {
+  String get apiValue {
+    switch (this) {
+      case SocialAuthProvider.google:
+        return 'Google';
+      case SocialAuthProvider.outlook:
+        return 'Outlook';
+      case SocialAuthProvider.apple:
+        return 'Apple';
+    }
+  }
+}
+
 class AuthResult {
   final String? userId;
   final String email;
@@ -22,31 +37,36 @@ class AuthResult {
 
   factory AuthResult.fromJson(Map<String, dynamic> json) {
     return AuthResult(
-      userId: (json['userId'] ??
-              json['user_id'] ??
-              json['UserId'] ??
-              json['UserID'] ??
-              json['User_ID'])
-          ?.toString(),
-      email: (json['email'] ?? json['Email'] ?? json['userEmail'])?.toString() ??
+      userId:
+          (json['userId'] ??
+                  json['user_id'] ??
+                  json['UserId'] ??
+                  json['UserID'] ??
+                  json['User_ID'])
+              ?.toString(),
+      email:
+          (json['email'] ?? json['Email'] ?? json['userEmail'])?.toString() ??
           '',
-      firstName: (json['firstName'] ??
-              json['FirstName'] ??
-              json['name'] ??
-              json['Name'])
-          ?.toString() ??
+      firstName:
+          (json['firstName'] ??
+                  json['FirstName'] ??
+                  json['name'] ??
+                  json['Name'])
+              ?.toString() ??
           '',
-      lastName: (json['lastName'] ??
-              json['LastName'] ??
-              json['surname'] ??
-              json['Surname'])
-          ?.toString() ??
+      lastName:
+          (json['lastName'] ??
+                  json['LastName'] ??
+                  json['surname'] ??
+                  json['Surname'])
+              ?.toString() ??
           '',
-      accessToken: (json['access_token'] ??
-              json['accessToken'] ??
-              json['token'] ??
-              json['Token'])
-          ?.toString(),
+      accessToken:
+          (json['access_token'] ??
+                  json['accessToken'] ??
+                  json['token'] ??
+                  json['Token'])
+              ?.toString(),
     );
   }
 
@@ -87,12 +107,14 @@ class AuthService {
       'PostalCode': postalCode,
     };
 
-    final http.Response res =
-        await ApiService.postJson('/UserRegistration/user-registry', body, includeAuth: false);
+    final http.Response res = await ApiService.postJson(
+      '/UserRegistration/user-registry',
+      body,
+      includeAuth: false,
+    );
 
     debugPrint('[registerUser] status: ${res.statusCode}');
     debugPrint('[registerUser] body: ${res.body}');
-
 
     if (res.statusCode == 200) {
       final decoded = jsonDecode(res.body) as Map<String, dynamic>;
@@ -117,19 +139,18 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    final body = <String, dynamic>{
-      'Email': email,
-      'Password': password,
-    };
+    final body = <String, dynamic>{'Email': email, 'Password': password};
 
     debugPrint('[login] body: $body');
 
-    final http.Response res =
-        await ApiService.postJson('/UserLogin/login', body, includeAuth: false);
+    final http.Response res = await ApiService.postJson(
+      '/UserLogin/login',
+      body,
+      includeAuth: false,
+    );
 
-     debugPrint('[login] status: ${res.statusCode}');
+    debugPrint('[login] status: ${res.statusCode}');
     debugPrint('[login] body: ${res.body}');
-
 
     if (res.statusCode == 200) {
       final decoded = jsonDecode(res.body) as Map<String, dynamic>;
@@ -143,12 +164,7 @@ class AuthService {
         print('Brak tokenu w response!');
       }
       final result = AuthResult.fromJson(decoded);
-
-      // Zapisz również podstawowe dane użytkownika, aby móc odtworzyć je przy starcie aplikacji.
-      await _secureStorage.write(
-        key: 'auth_result',
-        value: jsonEncode(result.toJson()),
-      );
+      await _persistAuthResult(result);
 
       return result;
     } else {
@@ -156,18 +172,118 @@ class AuthService {
     }
   }
 
+  /// Logowanie społecznościowe przez backend API.
+  ///
+  /// Frontend wysyła wybranego providera, a backend realizuje docelowy flow.
+  static Future<AuthResult> loginWithSocial({
+    required SocialAuthProvider provider,
+    String? idToken,
+  }) async {
+    final body = <String, dynamic>{
+      'Provider': provider.apiValue,
+      if (idToken != null && idToken.isNotEmpty) 'IdToken': idToken,
+    };
+
+    final http.Response res = await ApiService.postJson(
+      '/UserLogin/social-login',
+      body,
+      includeAuth: false,
+    );
+
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      if (res.statusCode == 404) {
+        throw Exception(
+          'Endpoint logowania ${provider.apiValue} jest niedostępny.',
+        );
+      }
+      throw Exception(
+        'Błąd logowania ${provider.apiValue}: ${res.statusCode} ${res.body}',
+      );
+    }
+
+    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+    final result = _parseAuthResultPayload(decoded);
+    await _persistAuthResult(result);
+    return result;
+  }
+
+  /// Rejestracja społecznościowa przez backend API.
+  ///
+  /// Frontend wysyła wybranego providera, a backend realizuje docelowy flow.
+  static Future<AuthResult> registerWithSocial({
+    required SocialAuthProvider provider,
+    String? idToken,
+  }) async {
+    final body = <String, dynamic>{
+      'Provider': provider.apiValue,
+      if (idToken != null && idToken.isNotEmpty) 'IdToken': idToken,
+    };
+
+    final http.Response res = await ApiService.postJson(
+      '/UserRegistration/social-register',
+      body,
+      includeAuth: false,
+    );
+
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      if (res.statusCode == 404) {
+        throw Exception(
+          'Endpoint rejestracji ${provider.apiValue} jest niedostępny.',
+        );
+      }
+      throw Exception(
+        'Błąd rejestracji ${provider.apiValue}: ${res.statusCode} ${res.body}',
+      );
+    }
+
+    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+    final result = _parseAuthResultPayload(decoded);
+    await _persistAuthResult(result);
+    return result;
+  }
+
+  static AuthResult _parseAuthResultPayload(Map<String, dynamic> decoded) {
+    final userRaw = decoded['user'];
+    if (userRaw is Map<String, dynamic>) {
+      final merged = <String, dynamic>{
+        ...userRaw,
+        'access_token':
+            decoded['access_token'] ??
+            decoded['accessToken'] ??
+            decoded['token'],
+      };
+      return AuthResult.fromJson(merged);
+    }
+
+    return AuthResult.fromJson(decoded);
+  }
+
+  static Future<void> _persistAuthResult(AuthResult result) async {
+    final token = result.accessToken;
+    if (token != null && token.isNotEmpty) {
+      await _secureStorage.write(key: 'jwt_token', value: token);
+    }
+
+    await _secureStorage.write(
+      key: 'auth_result',
+      value: jsonEncode(result.toJson()),
+    );
+  }
+
   // Sprawdź czy użytkownik jest zalogowany
   static Future<bool> isLoggedIn() async {
     final token = await _secureStorage.read(key: 'jwt_token');
     final loggedIn = token != null && token.isNotEmpty;
-    print('isLoggedIn sprawdza token: ${token != null ? "ISTNIEJE" : "BRAK"} → $loggedIn');
+    print(
+      'isLoggedIn sprawdza token: ${token != null ? "ISTNIEJE" : "BRAK"} → $loggedIn',
+    );
     return loggedIn;
   }
 
   // Wyloguj użytkownika
   static Future<void> logout() async {
     await _secureStorage.delete(key: 'jwt_token');
-      await _secureStorage.delete(key: 'auth_result');
+    await _secureStorage.delete(key: 'auth_result');
     print('Użytkownik wylogowany, token usunięty');
   }
 
@@ -177,13 +293,12 @@ class AuthService {
     return token;
   }
 
-   // Pobierz zapamiętane dane zalogowanego użytkownika (o ile istnieją).
+  // Pobierz zapamiętane dane zalogowanego użytkownika (o ile istnieją).
   static Future<AuthResult?> getStoredAuthResult() async {
     final raw = await _secureStorage.read(key: 'auth_result');
     if (raw == null || raw.isEmpty) return null;
     try {
-      final Map<String, dynamic> data =
-          jsonDecode(raw) as Map<String, dynamic>;
+      final Map<String, dynamic> data = jsonDecode(raw) as Map<String, dynamic>;
       return AuthResult.fromJson(data);
     } catch (_) {
       return null;

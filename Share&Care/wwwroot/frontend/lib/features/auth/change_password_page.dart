@@ -47,13 +47,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       return;
     }
 
-    final confirmed = await showDialog<bool>(
+    final confirmed =
+        await showDialog<bool>(
           context: context,
           builder: (context) {
             return AlertDialog(
               title: const Text('Zapisz zmiany hasła'),
-              content:
-                  const Text('Czy na pewno chcesz zapisać zmiany hasła?'),
+              content: const Text('Czy na pewno chcesz zapisać zmiany hasła?'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
@@ -80,15 +80,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Hasło zostało zmienione.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Hasło zostało zmienione.')));
       Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Błąd zmiany hasła: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Błąd zmiany hasła: $e')));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -104,21 +104,19 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text('Zmiana hasła'),
-        backgroundColor: ClassicStyle.my_dark_green,
-        foregroundColor: Colors.white,
         elevation: 0,
       ),
-      backgroundColor: ClassicStyle.my_dark_green,
+      backgroundColor: ClassicStyle.my_light_green,
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Center(
           child: SingleChildScrollView(
             child: Container(
-              width: MediaQuery.of(context).size.width * 0.4,
+              width: MediaQuery.of(context).size.width * 0.5,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.surface,
                 boxShadow: const [
                   BoxShadow(
                     color: Colors.black,

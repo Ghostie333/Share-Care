@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/classic_style.dart';
 import '../../services/announcement_service.dart';
 import '../../services/auth_service.dart';
 import '../auth/auth_login_page.dart';
@@ -15,6 +14,7 @@ import '../search/filters_page.dart';
 import '../search/search_filters.dart';
 import '../announcements/annoucements_detail_page.dart';
 import '../announcements/announcement_metadata.dart';
+import '../payments/payment_authorization_page.dart';
 import '../../utils/animations.dart';
 
 class AnnouncementsFeedPage extends StatefulWidget {
@@ -84,26 +84,36 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
     List<Announcement> filtered = _allOffers;
     if (_mode == HomeFeedMode.announcements) {
       filtered = filtered
-          .where((a) => AnnouncementMetadata.parseType(a.category) == 'Ogłoszenie')
+          .where(
+            (a) => AnnouncementMetadata.parseType(a.category) == 'Ogłoszenie',
+          )
           .toList();
     } else if (_mode == HomeFeedMode.reports) {
       filtered = filtered
-          .where((a) => AnnouncementMetadata.parseType(a.category) == 'Zgłoszenie')
+          .where(
+            (a) => AnnouncementMetadata.parseType(a.category) == 'Zgłoszenie',
+          )
           .toList();
     }
 
     final q = _searchQuery.trim().toLowerCase();
     if (q.isNotEmpty) {
       filtered = filtered
-          .where((a) =>
-              a.title.toLowerCase().contains(q) ||
-              a.description.toLowerCase().contains(q))
+          .where(
+            (a) =>
+                a.title.toLowerCase().contains(q) ||
+                a.description.toLowerCase().contains(q),
+          )
           .toList();
     }
 
     if (_selectedCategory != null && _selectedCategory!.isNotEmpty) {
       filtered = filtered
-          .where((a) => AnnouncementMetadata.parseCategory(a.category) == _selectedCategory)
+          .where(
+            (a) =>
+                AnnouncementMetadata.parseCategory(a.category) ==
+                _selectedCategory,
+          )
           .toList();
     }
 
@@ -126,8 +136,8 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
           _mode == HomeFeedMode.announcements
               ? 'Ogłoszenia'
               : _mode == HomeFeedMode.reports
-                  ? 'Zgłoszenia'
-                  : 'Ogłoszenia i zgłoszenia',
+              ? 'Zgłoszenia'
+              : 'Ogłoszenia i zgłoszenia',
         ),
       ),
       body: Padding(
@@ -256,9 +266,7 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
             );
 
             final result = await Navigator.of(context).push<SearchFilters>(
-              createSlideFadeRoute(
-                FiltersPage(initial: initialFilters),
-              ),
+              createSlideFadeRoute(FiltersPage(initial: initialFilters)),
             );
 
             if (result != null && mounted) {
@@ -280,6 +288,7 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
   }
 
   Widget _buildFeedModeButtons(BuildContext context) {
+    final theme = Theme.of(context);
     final bool isAnnouncements = _mode == HomeFeedMode.announcements;
     final bool isReports = _mode == HomeFeedMode.reports;
 
@@ -292,9 +301,9 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
           child: TextButton(
             style: TextButton.styleFrom(
               backgroundColor: isAnnouncements
-                  ? ClassicStyle.my_light_green.withOpacity(0.2)
+                  ? theme.colorScheme.primary.withOpacity(0.18)
                   : Colors.transparent,
-              foregroundColor: Colors.white,
+              foregroundColor: theme.colorScheme.onSurface,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(24),
               ),
@@ -312,9 +321,9 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
           child: TextButton(
             style: TextButton.styleFrom(
               backgroundColor: isReports
-                  ? ClassicStyle.my_light_green.withOpacity(0.2)
+                  ? theme.colorScheme.primary.withOpacity(0.18)
                   : Colors.transparent,
-              foregroundColor: Colors.white,
+              foregroundColor: theme.colorScheme.onSurface,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(24),
               ),
@@ -360,8 +369,8 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
                 _mode == HomeFeedMode.announcements
                     ? 'Aktywne ogłoszenia'
                     : _mode == HomeFeedMode.reports
-                        ? 'Aktywne zgłoszenia'
-                        : 'Aktywne ogłoszenia / zgłoszenia',
+                    ? 'Aktywne zgłoszenia'
+                    : 'Aktywne ogłoszenia / zgłoszenia',
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -406,6 +415,16 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
                               ChatPage(
                                 authResult: widget.authResult,
                                 initialListing: ad,
+                              ),
+                            ),
+                          );
+                        },
+                        onPayment: () {
+                          Navigator.of(context).push(
+                            createSlideFadeRoute(
+                              PaymentAuthorizationPage(
+                                authResult: widget.authResult,
+                                announcement: ad,
                               ),
                             ),
                           );

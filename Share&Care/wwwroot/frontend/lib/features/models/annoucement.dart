@@ -116,8 +116,8 @@ class Announcement {
 			description:
 				(json['description'] ?? json['Description'] ?? '').toString(),
 			location: displayLocation,
-			deposit: json['deposit'] != null
-					? double.tryParse(json['deposit'].toString())
+			deposit: (json['Deposit'] ?? json['deposit']) != null
+					? double.tryParse((json['Deposit'] ?? json['deposit']).toString())
 					: null,
 			ownerName:
 				(json['ownerName'] ?? json['OwnerName'] ?? json['contactName'] ?? json['ContactName'] ?? '')
@@ -166,6 +166,8 @@ class Announcement {
 			'Category': category,
 			'ContactName': contactName ?? ownerName,
 			'ContactNumber': contactNumber,
+			'Deposit': deposit,
+			// fallback dla starszych backendów / danych
 			'deposit': deposit,
 			'ownerName': ownerName,
 			'IsActive': isActive,

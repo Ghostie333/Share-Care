@@ -8,6 +8,7 @@ import '../../config/app_config.dart';
 import '../../features/models/annoucement.dart';
 import '../../services/auth_service.dart';
 import '../../services/chat_service.dart';
+import '../../services/announcement_service.dart';
 import '../../utils/animations.dart';
 import '../announcements/announcement_metadata.dart';
 import '../announcements/create_announcement_sheet.dart';
@@ -18,23 +19,20 @@ import '../home/widgets/profile_page.dart';
 import '../navigation/app_bar.dart';
 import '../search/search_page.dart';
 import '../announcements/annoucements_detail_page.dart';
+import '../payments/payment_authorization_page.dart';
 
 class LocalChatAttachment {
   final String kind; // e.g. 'image'
   final String? fileName;
   final String? base64Data;
 
-  LocalChatAttachment({
-    required this.kind,
-    this.fileName,
-    this.base64Data,
-  });
+  LocalChatAttachment({required this.kind, this.fileName, this.base64Data});
 
   Map<String, dynamic> toJson() => {
-        'kind': kind,
-        'fileName': fileName,
-        'base64Data': base64Data,
-      };
+    'kind': kind,
+    'fileName': fileName,
+    'base64Data': base64Data,
+  };
 
   factory LocalChatAttachment.fromJson(Map<String, dynamic> json) {
     return LocalChatAttachment(
@@ -49,11 +47,7 @@ class ChatPage extends StatefulWidget {
   final AuthResult authResult;
   final Announcement? initialListing;
 
-  const ChatPage({
-    super.key,
-    required this.authResult,
-    this.initialListing,
-  });
+  const ChatPage({super.key, required this.authResult, this.initialListing});
 
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -98,9 +92,7 @@ class _ChatPageState extends State<ChatPage> {
       decoration: BoxDecoration(
         color: isDark ? theme.cardColor : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.dividerColor.withOpacity(0.6),
-        ),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.6)),
       ),
       child: child,
     );
@@ -119,9 +111,7 @@ class _ChatPageState extends State<ChatPage> {
         decoration: BoxDecoration(
           color: isDark ? theme.cardColor : Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: theme.dividerColor.withOpacity(0.6),
-          ),
+          border: Border.all(color: theme.dividerColor.withOpacity(0.6)),
         ),
         child: Row(
           children: [
@@ -267,6 +257,41 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
+  Future<void> _openListingDetailsFromThread(ChatThreadSummary thread) async {
+    try {
+      final ad = await AnnouncementService.getOfferById(
+        thread.listingId,
+        currentUserId: _userId,
+      );
+      if (!mounted) return;
+
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => AnnouncementDetailsDialog(
+          ad: ad,
+          onEdit: null,
+          onDelete: null,
+          onClose: null,
+          onPayment: () {
+            Navigator.of(context).push(
+              createSlideFadeRoute(
+                PaymentAuthorizationPage(
+                  authResult: widget.authResult,
+                  announcement: ad,
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nie udało się otworzyć pełnej oferty: $e')),
+      );
+    }
+  }
+
   void _startPolling(String chatId) {
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) async {
@@ -298,7 +323,10 @@ class _ChatPageState extends State<ChatPage> {
 
   Future<LocalChatAttachment?> _pickSingleImageAttachment() async {
     final picker = ImagePicker();
-    final xfile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    final xfile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
     if (xfile == null) return null;
 
     final bytes = await xfile.readAsBytes();
@@ -315,7 +343,12 @@ class _ChatPageState extends State<ChatPage> {
     final thread = _selectedThread;
     final currentUserId = _userId;
     final chatId = _selectedChatId;
-    if (thread == null || chatId == null || chatId.isEmpty || currentUserId == null || currentUserId.isEmpty) return;
+    if (thread == null ||
+        chatId == null ||
+        chatId.isEmpty ||
+        currentUserId == null ||
+        currentUserId.isEmpty)
+      return;
 
     final text = _messageController.text.trim();
     if (text.isEmpty && _pendingAttachments.isEmpty) return;
@@ -359,7 +392,8 @@ class _ChatPageState extends State<ChatPage> {
     final chatId = _selectedChatId;
     if (chatId == null || chatId.isEmpty) return;
 
-    final confirmed = await showDialog<bool>(
+    final confirmed =
+        await showDialog<bool>(
           context: context,
           builder: (ctx) {
             return AlertDialog(
@@ -391,14 +425,14 @@ class _ChatPageState extends State<ChatPage> {
         _messages = [];
       });
       _pollTimer?.cancel();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Czat został usunięty.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Czat został usunięty.')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Nie udało się usunąć czatu: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Nie udało się usunąć czatu: $e')));
     }
   }
 
@@ -432,14 +466,15 @@ class _ChatPageState extends State<ChatPage> {
                   children: [
                     _buildStatusFilterRow(),
                     Expanded(
-                      child: _buildThreadsPanel(
-                        child: _buildThreadTilesGrid(),
-                      ),
+                      child: _buildThreadsPanel(child: _buildThreadTilesGrid()),
                     ),
                   ],
                 );
               }
-              return _buildConversation(thread: _selectedThread!, isNarrow: true);
+              return _buildConversation(
+                thread: _selectedThread!,
+                isNarrow: true,
+              );
             }
 
             // Wide: split view always.
@@ -581,9 +616,7 @@ class _ChatPageState extends State<ChatPage> {
   List<ChatThreadSummary> _filteredThreads() {
     if (_statusFilter == null) return _threads;
     final f = _statusFilter!.toLowerCase();
-    return _threads
-        .where((t) => t.listingStatus.toLowerCase() == f)
-        .toList();
+    return _threads.where((t) => t.listingStatus.toLowerCase() == f).toList();
   }
 
   Widget _buildThreadTilesList() {
@@ -646,9 +679,9 @@ class _ChatPageState extends State<ChatPage> {
             children: [
               Text(
                 thread.otherUserName,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
               Text(thread.listingTitle),
@@ -656,37 +689,7 @@ class _ChatPageState extends State<ChatPage> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    // Brak pełnego modelu ogłoszenia tutaj,
-                    // ale dialog może działać z placeholderem.
-                    final ad = Announcement(
-                      id: thread.listingId,
-                      userId: null,
-                      title: thread.listingTitle,
-                      description: '',
-                      location: '',
-                      deposit: null,
-                      ownerName: thread.otherUserName,
-                      isActive: thread.listingStatus.toLowerCase() == 'active',
-                      createdAt: DateTime.now(),
-                      imageUrls: thread.listingFirstImageId == null
-                          ? const []
-                          : [thread.listingFirstImageId!],
-                      isOwner: false,
-                      category: null,
-                      contactName: thread.otherUserName,
-                      contactNumber: '',
-                    );
-                    showDialog<void>(
-                      context: context,
-                      builder: (ctx) => AnnouncementDetailsDialog(
-                        ad: ad,
-                        onEdit: null,
-                        onDelete: null,
-                        onClose: null,
-                      ),
-                    );
-                  },
+                  onPressed: () => _openListingDetailsFromThread(thread),
                   icon: const Icon(Icons.link),
                   label: const Text('Otwórz ofertę'),
                 ),
@@ -723,10 +726,9 @@ class _ChatPageState extends State<ChatPage> {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Czat tylko do odczytu (ogłoszenie nieaktywne lub usunięte).',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: Colors.black54),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: Colors.black54),
                     ),
                   )
                 : Row(
@@ -853,7 +855,10 @@ class _ChatTile extends StatelessWidget {
                           errorBuilder: (_, __, ___) {
                             return Container(
                               color: Colors.grey[200],
-                              child: const Icon(Icons.image, color: Colors.black38),
+                              child: const Icon(
+                                Icons.image,
+                                color: Colors.black38,
+                              ),
                             );
                           },
                         ),
@@ -878,12 +883,8 @@ class _ChatTile extends StatelessWidget {
                   style: const TextStyle(fontSize: 12, color: Colors.black54),
                 ),
               ],
-              const SizedBox(height: 8), 
-              Row(
-                children: [
-                  _buildStatusChip(listingStatus),
-                ],
-              ),
+              const SizedBox(height: 8),
+              Row(children: [_buildStatusChip(listingStatus)]),
             ],
           ),
         ),
@@ -920,7 +921,7 @@ class _ChatTile extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             label,
-			style: const TextStyle(fontSize: 11, color: Colors.black87),
+            style: const TextStyle(fontSize: 11, color: Colors.black87),
           ),
         ],
       ),
@@ -953,8 +954,9 @@ class _MessageBubble extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520),
         child: Column(
-          crossAxisAlignment:
-              isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isMine
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
           children: [
             DecoratedBox(
               decoration: BoxDecoration(
@@ -988,10 +990,7 @@ class _MessageBubble extends StatelessWidget {
                     if (content.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          content,
-                          style: TextStyle(color: fg),
-                        ),
+                        child: Text(content, style: TextStyle(color: fg)),
                       ),
                   ],
                 ),
@@ -1012,7 +1011,7 @@ class _MessageBubble extends StatelessWidget {
                     size: 16,
                     color: isRead ? Colors.black54 : Colors.black54,
                   ),
-                ]
+                ],
               ],
             ),
           ],
@@ -1040,10 +1039,7 @@ class _PendingAttachmentPreview extends StatelessWidget {
     return SizedBox(
       width: 90,
       height: 90,
-      child: Image.memory(
-        base64Decode(att.base64Data!),
-        fit: BoxFit.cover,
-      ),
+      child: Image.memory(base64Decode(att.base64Data!), fit: BoxFit.cover),
     );
   }
 }
@@ -1056,5 +1052,3 @@ extension _FirstWhereOrNullExt<T> on Iterable<T> {
     return null;
   }
 }
-
-

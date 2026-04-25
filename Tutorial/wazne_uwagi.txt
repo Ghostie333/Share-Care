@@ -1,0 +1,3 @@
+Ważne uwagi z kursu od Linowieckiego: 
+
+- Najlepiej jest użyć AutoMappera do przechowywania i wyświetlania nie w sposób jawny produktów, danych itp. tylko za pomocą InputDto 

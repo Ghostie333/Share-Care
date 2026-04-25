@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
+import '../../utils/animations.dart';
+import 'announcement_history_page.dart';
+import 'chats_history_page.dart';
 
 class HistoryPage extends StatelessWidget {
   final AuthResult authResult;
@@ -13,12 +16,10 @@ class HistoryPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text('Historia'),
-      ),
+      appBar: AppBar(title: const Text('Historia')),
       body: ListView(
         padding: const EdgeInsets.all(16),
-        children: const [
+        children: [
           _HistoryCategoryTile(
             title: 'Historia wyszukiwania',
             subtitle: 'Ostatnie wyszukiwania (w przygotowaniu)',
@@ -27,16 +28,28 @@ class HistoryPage extends StatelessWidget {
           SizedBox(height: 12),
           _HistoryCategoryTile(
             title: 'Historia ogłoszeń',
-            subtitle: 'Twoje utworzone/edytowane ogłoszenia (w przygotowaniu)',
+            subtitle: 'Nieaktywne ogłoszenia',
             icon: Icons.campaign_outlined,
+            onTap: () {
+              Navigator.of(context).push(
+                createSlideFadeRoute(
+                  AnnouncementHistoryPage(authResult: authResult),
+                ),
+              );
+            },
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           _HistoryCategoryTile(
             title: 'Historia czatów',
-            subtitle: 'Ostatnie rozmowy/archiwum (w przygotowaniu)',
+            subtitle: 'Nieaktywne chaty',
             icon: Icons.chat_bubble_outline,
+            onTap: () {
+              Navigator.of(context).push(
+                createSlideFadeRoute(ChatsHistoryPage(authResult: authResult)),
+              );
+            },
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           _HistoryCategoryTile(
             title: 'Inne',
             subtitle: 'Dodatkowe historie (w przygotowaniu)',
@@ -52,11 +65,13 @@ class _HistoryCategoryTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final IconData icon;
+  final VoidCallback? onTap;
 
   const _HistoryCategoryTile({
     required this.title,
     required this.subtitle,
     required this.icon,
+    this.onTap,
   });
 
   @override
@@ -66,9 +81,13 @@ class _HistoryCategoryTile extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ta sekcja jest w przygotowaniu.')),
-        );
+        if (onTap != null) {
+          onTap!.call();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Ta sekcja jest w przygotowaniu.')),
+          );
+        }
       },
       child: Container(
         padding: const EdgeInsets.all(14),
@@ -92,10 +111,7 @@ class _HistoryCategoryTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: theme.textTheme.bodySmall,
-                  ),
+                  Text(subtitle, style: theme.textTheme.bodySmall),
                 ],
               ),
             ),

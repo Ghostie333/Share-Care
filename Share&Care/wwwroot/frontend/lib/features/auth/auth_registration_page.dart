@@ -32,8 +32,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   bool showEmailConfirm = false;
   bool showPasswordConfirm = false;
-  
+
   bool _isLoading = false;
+  SocialAuthProvider? _socialLoadingProvider;
 
   @override
   void initState() {
@@ -66,7 +67,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     passwordConfirmController.dispose();
     super.dispose();
   }
- 
+
   Future<void> _submitRegistration() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -76,8 +77,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       final city = addressNameController.text.trim();
       final postalCode = postCodeController.text.trim();
 
-      final isAddressValid = await AddressValidationService
-          .validateCityAndPostalCode(city: city, postalCode: postalCode);
+      final isAddressValid =
+          await AddressValidationService.validateCityAndPostalCode(
+            city: city,
+            postalCode: postalCode,
+          );
 
       if (!isAddressValid) {
         if (mounted) {
@@ -94,21 +98,21 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       }
 
       await AuthService.registerUser(
-      email: emailController.text.trim(),
-      password: passwordController.text,
-      firstName: firstNameController.text.trim(),
-      lastName: lastNameController.text.trim(),
-      phoneNumber: phoneNumberController.text.trim().isEmpty
-          ? null
-          : phoneNumberController.text.trim(),
-      birthday: dateBirthController.text.trim(),
-      city: addressNameController.text.trim().isEmpty
-          ? null
-          : addressNameController.text.trim(),
-      postalCode: postCodeController.text.trim().isEmpty
-          ? null
-          : postCodeController.text.trim(),
-    );
+        email: emailController.text.trim(),
+        password: passwordController.text,
+        firstName: firstNameController.text.trim(),
+        lastName: lastNameController.text.trim(),
+        phoneNumber: phoneNumberController.text.trim().isEmpty
+            ? null
+            : phoneNumberController.text.trim(),
+        birthday: dateBirthController.text.trim(),
+        city: addressNameController.text.trim().isEmpty
+            ? null
+            : addressNameController.text.trim(),
+        postalCode: postCodeController.text.trim().isEmpty
+            ? null
+            : postCodeController.text.trim(),
+      );
 
       // Auto-logowanie po pomyślnej rejestracji — używamy tego samego
       // endpointu co przy normalnym logowaniu.
@@ -124,13 +128,62 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Błąd: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Błąd: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _submitSocialRegistration(SocialAuthProvider provider) async {
+    setState(() => _socialLoadingProvider = provider);
+
+    try {
+      final authResult = await AuthService.registerWithSocial(
+        provider: provider,
+      );
+      if (!mounted) return;
+
+      Navigator.of(context).pushReplacement(
+        createSlideFadeRoute(ProfileScreen(authResult: authResult)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Błąd rejestracji społecznościowej: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _socialLoadingProvider = null);
+      }
+    }
+  }
+
+  Widget _buildSocialRegisterButton({
+    required String label,
+    required IconData icon,
+    required SocialAuthProvider provider,
+  }) {
+    final isLoading = _socialLoadingProvider == provider;
+
+    return OutlinedButton.icon(
+      onPressed: (_isLoading || _socialLoadingProvider != null)
+          ? null
+          : () => _submitSocialRegistration(provider),
+      icon: isLoading
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Icon(icon),
+      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+      ),
+    );
   }
 
   Future<void> _pickBirthday(BuildContext context) async {
@@ -168,11 +221,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       dateBirthController.text = '$day.$month.$year';
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: ClassicStyle.my_light_green,
       appBar: AppBar(
         elevation: 0,
         title: const Text('Rejestracja'),
@@ -225,7 +278,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         const Text(
                           "Rejestracja",
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 20),
 
@@ -281,7 +337,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                             if (value == null || value.isEmpty) {
                               return "Podaj email";
                             }
-                            final emailRegex = RegExp(r'^[\w\.\-]+@([\w\-]+\.)+[a-zA-Z]{2,4}$');
+                            final emailRegex = RegExp(
+                              r'^[\w\.\-]+@([\w\-]+\.)+[a-zA-Z]{2,4}$',
+                            );
                             if (!emailRegex.hasMatch(value)) {
                               return "Niepoprawny email";
                             }
@@ -301,7 +359,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                     decoration: const InputDecoration(
                                       labelText: "Potwierdź email",
                                       filled: true,
-                                  fillColor: Colors.transparent,
+                                      fillColor: Colors.transparent,
                                     ),
                                     validator: (value) {
                                       if (showEmailConfirm) {
@@ -360,8 +418,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                             if (value == null || value.isEmpty) {
                               return "Podaj datę urodzenia";
                             }
-                            final dateRegex =
-								RegExp(r'^\d{2}\.\d{2}\.\d{4}$');
+                            final dateRegex = RegExp(r'^\d{2}\.\d{2}\.\d{4}$');
                             if (!dateRegex.hasMatch(value)) {
                               return "Format daty: DD.MM.RRRR";
                             }
@@ -398,8 +455,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                             if (value == null || value.isEmpty) {
                               return "Podaj kod pocztowy";
                             }
-                            final postRegex =
-                                RegExp(r'^[0-9]{2}-[0-9]{3}$');
+                            final postRegex = RegExp(r'^[0-9]{2}-[0-9]{3}$');
                             if (!postRegex.hasMatch(value)) {
                               return "Format kodu: NN-NNN";
                             }
@@ -466,24 +522,58 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             textStyle: const TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold),
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           child: _isLoading
-                          ? const SizedBox(
-                              height: 20, 
-                              width: 20, 
-                              child: 
-                              CircularProgressIndicator(strokeWidth: 2, 
-                              color: Colors.white)
-                          )
-                          : const Text("Utwórz konto"),
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text("Utwórz konto"),
+                        ),
+
+                        const SizedBox(height: 14),
+                        const Row(
+                          children: [
+                            Expanded(child: Divider()),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 10),
+                              child: Text('lub'),
+                            ),
+                            Expanded(child: Divider()),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        _buildSocialRegisterButton(
+                          label: 'Zarejestruj przez Google',
+                          icon: Icons.g_mobiledata,
+                          provider: SocialAuthProvider.google,
+                        ),
+                        const SizedBox(height: 8),
+                        _buildSocialRegisterButton(
+                          label: 'Zarejestruj przez Outlook',
+                          icon: Icons.mail_outline,
+                          provider: SocialAuthProvider.outlook,
+                        ),
+                        const SizedBox(height: 8),
+                        _buildSocialRegisterButton(
+                          label: 'Zarejestruj przez Apple',
+                          icon: Icons.apple,
+                          provider: SocialAuthProvider.apple,
                         ),
 
                         const SizedBox(height: 20),
                         GestureDetector(
                           onTap: () {
-                            Navigator.of(context)
-                                .push(createSlideFadeRoute(LoginScreen()));
+                            Navigator.of(
+                              context,
+                            ).push(createSlideFadeRoute(LoginScreen()));
                           },
                           child: const Text(
                             "Masz już konto? Zaloguj się",

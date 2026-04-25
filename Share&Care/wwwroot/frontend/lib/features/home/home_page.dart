@@ -21,6 +21,7 @@ import '../navigation/app_bar.dart';
 import '../search/search_page.dart';
 import 'widgets/profile_page.dart';
 import '../announcements/create_report_sheet.dart';
+import '../payments/payment_authorization_page.dart';
 
 enum HomeFeedMode { all, announcements, reports }
 
@@ -46,11 +47,11 @@ class _HomePageState extends State<HomePage> {
   final List<Announcement> _allOffers = [];
   bool _isLoading = true;
 
-	final MapController _mapController = MapController();
+  final MapController _mapController = MapController();
 
   UserProfileInfo? _profileInfo;
-	LatLng? _profileCenter;
-	bool _didMoveToProfileCenter = false;
+  LatLng? _profileCenter;
+  bool _didMoveToProfileCenter = false;
 
   HomeFeedMode _mode = HomeFeedMode.all;
   String _searchQuery = '';
@@ -167,93 +168,119 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final nick = (_profileInfo?.firstName ?? widget.authResult.firstName).trim();
+    final nick = (_profileInfo?.firstName ?? widget.authResult.firstName)
+        .trim();
     final greetingNick = nick.isEmpty ? 'w Share&Care' : nick;
 
     List<Announcement> filtered = _allOffers;
     if (_mode == HomeFeedMode.announcements) {
       filtered = filtered
-          .where((a) => AnnouncementMetadata.parseType(a.category) == 'Ogłoszenie')
+          .where(
+            (a) => AnnouncementMetadata.parseType(a.category) == 'Ogłoszenie',
+          )
           .toList();
     } else if (_mode == HomeFeedMode.reports) {
       filtered = filtered
-          .where((a) => AnnouncementMetadata.parseType(a.category) == 'Zgłoszenie')
+          .where(
+            (a) => AnnouncementMetadata.parseType(a.category) == 'Zgłoszenie',
+          )
           .toList();
     }
 
     final q = _searchQuery.trim().toLowerCase();
     if (q.isNotEmpty) {
       filtered = filtered
-          .where((a) =>
-              a.title.toLowerCase().contains(q) ||
-              a.description.toLowerCase().contains(q))
+          .where(
+            (a) =>
+                a.title.toLowerCase().contains(q) ||
+                a.description.toLowerCase().contains(q),
+          )
           .toList();
     }
 
     if (_selectedCategory != null && _selectedCategory!.isNotEmpty) {
       filtered = filtered
-          .where((a) => AnnouncementMetadata.parseCategory(a.category) == _selectedCategory)
+          .where(
+            (a) =>
+                AnnouncementMetadata.parseCategory(a.category) ==
+                _selectedCategory,
+          )
           .toList();
     }
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Column(
-          children: [
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: theme.cardColor,
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black,
-                            blurRadius: 10,
-                            spreadRadius: 1,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        'Witaj, $greetingNick',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            color: ClassicStyle.my_dark_green,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
                 ),
-                const SizedBox(width: 12),
-                _buildAuthButton(theme),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildSearchBar(context),
-            const SizedBox(height: 12),
-            _buildFeedModeButtons(context),
-            const SizedBox(height: 12),
-            Expanded(
-              child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    _buildMapCard(context),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: theme.cardColor,
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Colors.black,
+                                    blurRadius: 10,
+                                    spreadRadius: 1,
+                                    offset: Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                'Witaj, $greetingNick',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        _buildAuthButton(theme),
+                      ],
+                    ),
                     const SizedBox(height: 16),
-                    _buildOffersCard(context, filtered),
-                    const SizedBox(height: 16),
+                    _buildSearchBar(context),
+                    const SizedBox(height: 12),
+                    _buildFeedModeButtons(context),
                   ],
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              child: Column(
+                children: [
+                  _buildMapCard(context),
+                  const SizedBox(height: 16),
+                  _buildOffersCard(context, filtered),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: MainBottomNavBar(
         currentTab: BottomNavTab.home,
@@ -377,9 +404,7 @@ class _HomePageState extends State<HomePage> {
           TextButton.icon(
             onPressed: () {
               Navigator.of(context).pushReplacement(
-                createSlideFadeRoute(
-                  SearchPage(authResult: widget.authResult),
-                ),
+                createSlideFadeRoute(SearchPage(authResult: widget.authResult)),
               );
             },
             icon: const Icon(Icons.filter_list),
@@ -467,9 +492,7 @@ class _HomePageState extends State<HomePage> {
             LoginScreen(
               onLoginSuccess: (auth) {
                 Navigator.of(context).pushReplacement(
-                  createSlideFadeRoute(
-                    HomePage(authResult: auth),
-                  ),
+                  createSlideFadeRoute(HomePage(authResult: auth)),
                 );
               },
             ),
@@ -488,20 +511,22 @@ class _HomePageState extends State<HomePage> {
       return const SizedBox.shrink();
     }
 
-    final offersWithCoords = _allOffers
-        .where((a) => a.lat != null && a.lng != null)
-        .toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final offersWithCoords =
+        _allOffers.where((a) => a.lat != null && a.lng != null).toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     final markerAds = offersWithCoords.take(10).toList();
-		final tileAds = offersWithCoords.take(5).toList();
+    final tileAds = offersWithCoords.take(5).toList();
 
     // Spróbuj użyć lokalizacji z profilu użytkownika (jeśli jest w formacie "lat,lng"),
     // w przeciwnym razie środek mapy wyznaczany jest na podstawie najnowszego markera
     // lub domyślnie ustawiany na Warszawę.
-    final LatLng? userCenter = _profileCenter ?? (_profileInfo == null ? null : _parseLatLng(_profileInfo!.city));
+    final LatLng? userCenter =
+        _profileCenter ??
+        (_profileInfo == null ? null : _parseLatLng(_profileInfo!.city));
 
-    final center = userCenter ??
+    final center =
+        userCenter ??
         (markerAds.isNotEmpty
             ? LatLng(markerAds.first.lat!, markerAds.first.lng!)
             : const LatLng(52.2297, 21.0122)); // Warszawa jako domyślne centrum
@@ -526,15 +551,12 @@ class _HomePageState extends State<HomePage> {
         child: Stack(
           children: [
             FlutterMap(
-						mapController: _mapController,
-              options: MapOptions(
-                initialCenter: center,
-                initialZoom: 12,
-              ),
+              mapController: _mapController,
+              options: MapOptions(initialCenter: center, initialZoom: 12),
               children: [
                 TileLayer(
                   urlTemplate:
-                    'https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=${AppConfig.mapTilerApiKey}',
+                      'https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=${AppConfig.mapTilerApiKey}',
                   userAgentPackageName: 'share_care_frontend',
                 ),
                 MarkerLayer(
@@ -550,22 +572,24 @@ class _HomePageState extends State<HomePage> {
                           color: Colors.blueAccent,
                         ),
                       ),
-                    ...markerAds
-                        .map((ad) {
-                          final lat = ad.lat;
-                          final lng = ad.lng;
-                          if (lat == null || lng == null) return null;
-                          return Marker(
-                            point: LatLng(lat, lng),
-                            width: 40,
-                            height: 40,
-                            child: IconButton(
-                              icon: const Icon(Icons.location_on, color: Colors.redAccent, size: 30),
-                              onPressed: () => _openAdFromMap(ad),
-                            ),
-                          );
-                        })
-                        .whereType<Marker>(),
+                    ...markerAds.map((ad) {
+                      final lat = ad.lat;
+                      final lng = ad.lng;
+                      if (lat == null || lng == null) return null;
+                      return Marker(
+                        point: LatLng(lat, lng),
+                        width: 40,
+                        height: 40,
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.location_on,
+                            color: Colors.redAccent,
+                            size: 30,
+                          ),
+                          onPressed: () => _openAdFromMap(ad),
+                        ),
+                      );
+                    }).whereType<Marker>(),
                   ],
                 ),
               ],
@@ -583,7 +607,9 @@ class _HomePageState extends State<HomePage> {
                     separatorBuilder: (_, __) => const SizedBox(width: 10),
                     itemBuilder: (context, index) {
                       final ad = tileAds[index];
-                      final city = ad.location.trim().isEmpty ? '—' : ad.location.trim();
+                      final city = ad.location.trim().isEmpty
+                          ? '—'
+                          : ad.location.trim();
 
                       return GestureDetector(
                         onTap: () {
@@ -612,7 +638,8 @@ class _HomePageState extends State<HomePage> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.textTheme.bodySmall?.color?.withOpacity(0.8),
+                                  color: theme.textTheme.bodySmall?.color
+                                      ?.withOpacity(0.8),
                                 ),
                               ),
                               const SizedBox(height: 6),
@@ -643,7 +670,7 @@ class _HomePageState extends State<HomePage> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
         color: theme.cardColor,
@@ -666,15 +693,12 @@ class _HomePageState extends State<HomePage> {
               _mode == HomeFeedMode.announcements
                   ? 'Aktywne ogłoszenia'
                   : _mode == HomeFeedMode.reports
-                      ? 'Aktywne zgłoszenia'
-                      : 'Aktywne ogłoszenia / zgłoszenia',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+                  ? 'Aktywne zgłoszenia'
+                  : 'Aktywne ogłoszenia / zgłoszenia',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           if (_isLoading)
             const Center(child: CircularProgressIndicator())
           else
@@ -716,6 +740,16 @@ class _HomePageState extends State<HomePage> {
                           ),
                         );
                       },
+                      onPayment: () {
+                        Navigator.of(context).push(
+                          createSlideFadeRoute(
+                            PaymentAuthorizationPage(
+                              authResult: widget.authResult,
+                              announcement: ad,
+                            ),
+                          ),
+                        );
+                      },
                     );
                   },
                 );
@@ -732,8 +766,8 @@ class _HomePageState extends State<HomePage> {
     final lat = double.tryParse(parts[0].trim());
     final lng = double.tryParse(parts[1].trim());
     if (lat == null || lng == null) return null;
-		if (lat < -90 || lat > 90) return null;
-		if (lng < -180 || lng > 180) return null;
+    if (lat < -90 || lat > 90) return null;
+    if (lng < -180 || lng > 180) return null;
     return LatLng(lat, lng);
   }
 
@@ -766,9 +800,16 @@ class _HomePageState extends State<HomePage> {
             if (!context.mounted) return;
             Navigator.of(context).push(
               createSlideFadeRoute(
-                ChatPage(
+                ChatPage(authResult: widget.authResult, initialListing: ad),
+              ),
+            );
+          },
+          onPayment: () {
+            Navigator.of(context).push(
+              createSlideFadeRoute(
+                PaymentAuthorizationPage(
                   authResult: widget.authResult,
-                  initialListing: ad,
+                  announcement: ad,
                 ),
               ),
             );
@@ -778,4 +819,3 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
-

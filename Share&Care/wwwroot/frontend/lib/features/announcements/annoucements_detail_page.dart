@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../core/classic_style.dart';
 import 'announcement_metadata.dart';
 import '../models/annoucement.dart';
 import '../../config/app_config.dart';
@@ -12,6 +11,7 @@ class AnnouncementDetailsDialog extends StatefulWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onChat;
+  final VoidCallback? onPayment;
   final VoidCallback? onClose; // oznaczenie ogłoszenia jako nieaktywne
 
   const AnnouncementDetailsDialog({
@@ -20,6 +20,7 @@ class AnnouncementDetailsDialog extends StatefulWidget {
     this.onEdit,
     this.onDelete,
     this.onChat,
+    this.onPayment,
     this.onClose,
   });
 
@@ -28,8 +29,7 @@ class AnnouncementDetailsDialog extends StatefulWidget {
       _AnnouncementDetailsDialogState();
 }
 
-class _AnnouncementDetailsDialogState
-    extends State<AnnouncementDetailsDialog> {
+class _AnnouncementDetailsDialogState extends State<AnnouncementDetailsDialog> {
   late final PageController _pageController;
   late int _currentIndex;
   Timer? _timer;
@@ -46,13 +46,17 @@ class _AnnouncementDetailsDialogState
     return '${AppConfig.apiBaseUrl}/offer/image/$v';
   }
 
-  Widget _imagePlaceholder() => Container(
+  Widget _imagePlaceholder(ThemeData theme) => Container(
     decoration: BoxDecoration(
-      color: Colors.grey[300],
+      color: theme.colorScheme.surfaceVariant,
       borderRadius: BorderRadius.circular(8),
     ),
-    child: const Center(
-      child: Icon(Icons.image, size: 72, color: Colors.black45),
+    child: Center(
+      child: Icon(
+        Icons.image,
+        size: 72,
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
     ),
   );
 
@@ -86,9 +90,11 @@ class _AnnouncementDetailsDialogState
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final String type = AnnouncementMetadata.parseType(widget.ad.category);
-    final String category =
-        AnnouncementMetadata.parseCategory(widget.ad.category);
+    final String category = AnnouncementMetadata.parseCategory(
+      widget.ad.category,
+    );
 
     final media = MediaQuery.of(context);
 
@@ -106,7 +112,7 @@ class _AnnouncementDetailsDialogState
 
               final imageSection = Expanded(
                 flex: 3,
-                child: _buildImagesSection(),
+                child: _buildImagesSection(theme),
               );
 
               final detailsSection = Expanded(
@@ -142,7 +148,7 @@ class _AnnouncementDetailsDialogState
     );
   }
 
-  Widget _buildImagesSection() {
+  Widget _buildImagesSection(ThemeData theme) {
     return Column(
       children: [
         Expanded(
@@ -151,7 +157,7 @@ class _AnnouncementDetailsDialogState
             itemCount: _imageCount,
             onPageChanged: (index) => setState(() => _currentIndex = index),
             itemBuilder: (_, index) {
-              if (!_hasImages) return _imagePlaceholder();
+              if (!_hasImages) return _imagePlaceholder(theme);
 
               final url = _resolveImageUrl(widget.ad.imageUrls[index]);
               return ClipRRect(
@@ -159,7 +165,7 @@ class _AnnouncementDetailsDialogState
                 child: Image.network(
                   url,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _imagePlaceholder(),
+                  errorBuilder: (_, __, ___) => _imagePlaceholder(theme),
                 ),
               );
             },
@@ -189,21 +195,30 @@ class _AnnouncementDetailsDialogState
                 child: Container(
                   width: 72,
                   decoration: BoxDecoration(
-                    color: Colors.grey[200],
+                    color: theme.colorScheme.surfaceVariant,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: isSelected ? ClassicStyle.my_light_green : Colors.grey,
+                      color: isSelected
+                          ? theme.colorScheme.primary
+                          : theme.dividerColor,
                       width: isSelected ? 2 : 1,
                     ),
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: !_hasImages
-                      ? const Icon(Icons.image, size: 32, color: Colors.black38)
+                      ? Icon(
+                          Icons.image,
+                          size: 32,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        )
                       : Image.network(
                           _resolveImageUrl(widget.ad.imageUrls[index]),
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              const Icon(Icons.image, size: 32, color: Colors.black38),
+                          errorBuilder: (_, __, ___) => Icon(
+                            Icons.image,
+                            size: 32,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
                 ),
               );
@@ -219,81 +234,98 @@ class _AnnouncementDetailsDialogState
     required String category,
     required double maxWidth,
   }) {
+    final theme = Theme.of(context);
+
+    TextStyle? labelStyle(TextStyle? base) =>
+        base?.copyWith(fontWeight: FontWeight.w600);
+
+    Widget infoLine(String label, String value) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: '$label: ',
+                style: labelStyle(theme.textTheme.bodyLarge),
+              ),
+              TextSpan(text: value, style: theme.textTheme.bodyLarge),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           widget.ad.title,
-          style: const TextStyle(
-            fontSize: 20,
+          style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
+            fontSize: 22,
           ),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 4),
-        Wrap(
-          spacing: 12,
-          runSpacing: 4,
-          children: [
-            Text(
-              'Typ: $type',
-              style: const TextStyle(fontSize: 14),
-            ),
-            if (category.isNotEmpty)
-              Text(
-                'Kategoria: $category',
-                style: const TextStyle(fontSize: 14),
-              ),
-          ],
-        ),
         const SizedBox(height: 8),
-        Text(
-          'Ogłoszeniodawca: ${widget.ad.ownerName}',
-          style: const TextStyle(fontSize: 14),
-        ),
-        if ((widget.ad.contactNumber ?? '').isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text(
-            'Telefon: ${widget.ad.contactNumber}',
-            style: const TextStyle(fontSize: 14),
-          ),
-        ],
-        const SizedBox(height: 8),
+        infoLine('Typ', type),
+        if (category.isNotEmpty) infoLine('Kategoria', category),
+        infoLine('Ogłoszeniodawca', widget.ad.ownerName),
+        if ((widget.ad.contactNumber ?? '').isNotEmpty)
+          infoLine('Telefon', widget.ad.contactNumber ?? ''),
         if (widget.ad.deposit != null)
-          Text(
-            'Kaucja: ${widget.ad.deposit!.toStringAsFixed(2)} zł',
-            style: const TextStyle(fontSize: 14),
-          ),
-        const SizedBox(height: 8),
+          infoLine('Kaucja', '${widget.ad.deposit!.toStringAsFixed(2)} zł'),
+        if (widget.ad.location.trim().isNotEmpty)
+          infoLine('Lokalizacja', widget.ad.location),
+        const SizedBox(height: 10),
         Text(
-          'Lokalizacja: ${widget.ad.location}',
-          style: const TextStyle(fontSize: 14),
-        ),
-        const SizedBox(height: 16),
-        const Text(
           'Opis',
-          style: TextStyle(
-            fontSize: 16,
+          style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
+            fontSize: 18,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 8),
         Expanded(
           child: SingleChildScrollView(
             child: Text(
               widget.ad.description,
-              style: const TextStyle(fontSize: 14),
+              style: theme.textTheme.bodyMedium?.copyWith(fontSize: 15),
             ),
           ),
         ),
+        if (widget.ad.deposit != null)
+          Align(
+            alignment: Alignment.bottomRight,
+            child: Container(
+              margin: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                'Kaucja: ${widget.ad.deposit!.toStringAsFixed(2)} zł',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+                textAlign: TextAlign.right,
+              ),
+            ),
+          ),
         const SizedBox(height: 8),
-        _buildActionsRow(maxWidth),
+        _buildActionsRow(
+          maxWidth,
+          isAnnouncement: type == AnnouncementMetadata.defaultAnnouncementType,
+        ),
       ],
     );
   }
 
-  Widget _buildActionsRow(double maxWidth) {
+  Widget _buildActionsRow(double maxWidth, {required bool isAnnouncement}) {
     final bool ultraCompact = maxWidth < 420;
     final bool compact = maxWidth < 640;
 
@@ -303,7 +335,7 @@ class _AnnouncementDetailsDialogState
       required String label,
       Color? foregroundColor,
     }) {
-      final color = foregroundColor ?? ClassicStyle.my_dark_green;
+      final color = foregroundColor ?? Theme.of(context).colorScheme.primary;
 
       if (ultraCompact) {
         return IconButton(
@@ -324,10 +356,7 @@ class _AnnouncementDetailsDialogState
               children: [
                 Icon(icon, color: color),
                 const SizedBox(height: 2),
-                Text(
-                  label,
-                  style: const TextStyle(fontSize: 11),
-                ),
+                Text(label, style: const TextStyle(fontSize: 11)),
               ],
             ),
           ),
@@ -360,6 +389,19 @@ class _AnnouncementDetailsDialogState
           },
           icon: Icons.chat_bubble_outline,
           label: 'Czat',
+        ),
+      );
+    }
+
+    if (isAnnouncement && !widget.ad.isOwner && widget.onPayment != null) {
+      buttons.add(
+        buildAdaptiveButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+            widget.onPayment?.call();
+          },
+          icon: Icons.payment,
+          label: 'Płatność',
         ),
       );
     }

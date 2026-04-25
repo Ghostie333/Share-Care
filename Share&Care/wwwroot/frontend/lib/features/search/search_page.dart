@@ -55,35 +55,53 @@ class _SearchPageState extends State<SearchPage> {
       appBar: AppBar(
         title: const Text('Kategorie'),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 8),
-              _buildFeedModeButtons(context),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Szukaj ogłoszeń...',
-                  prefixIcon: const Icon(Icons.search),
-                  border: const OutlineInputBorder(),
-                  filled: true,
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.arrow_forward),
-                    onPressed: () => _openFeedWithFilters(category: _selectedCategory),
-                  ),
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            color: ClassicStyle.my_dark_green,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildFeedModeButtons(context),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Szukaj ogłoszeń...',
+                        prefixIcon: const Icon(Icons.search),
+                        border: const OutlineInputBorder(),
+                        filled: true,
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.arrow_forward),
+                          onPressed: () =>
+                              _openFeedWithFilters(category: _selectedCategory),
+                        ),
+                      ),
+                      onSubmitted: (_) =>
+                          _openFeedWithFilters(category: _selectedCategory),
+                    ),
+                  ],
                 ),
-                onSubmitted: (_) => _openFeedWithFilters(category: _selectedCategory),
               ),
-              const SizedBox(height: 8),
-              const SizedBox(height: 12),
-              _buildCategoryList(context),
-            ],
+            ),
           ),
-        ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildCategoryList(context),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: MainBottomNavBar(
         currentTab: BottomNavTab.search,

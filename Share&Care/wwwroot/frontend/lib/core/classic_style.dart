@@ -31,13 +31,13 @@ class ClassicStyle {
             secondary: my_orange,
             background: my_beige,
         ),
-        scaffoldBackgroundColor: my_emerald,
+        scaffoldBackgroundColor: my_beige,
         appBarTheme: const AppBarTheme(
-            backgroundColor: my_emerald,
+            backgroundColor: my_dark_green,
             foregroundColor: Colors.white,
         ),
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
-            backgroundColor: my_emerald,
+            backgroundColor: my_dark_green,
             foregroundColor: Colors.white,
         ),
     );

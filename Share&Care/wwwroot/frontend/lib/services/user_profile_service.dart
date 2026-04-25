@@ -11,9 +11,10 @@ class UserProfileInfo {
   final String firstName;
   final String lastName;
   final String email;
-  final String phoneNumber; 
+  final String phoneNumber;
   final String city;
-  final String raiting; 
+  final String postalCode;
+  final String raiting;
   final String type;
 
   const UserProfileInfo({
@@ -22,22 +23,25 @@ class UserProfileInfo {
     required this.phoneNumber,
     required this.email,
     required this.city,
-    required this.raiting, 
+    required this.postalCode,
+    required this.raiting,
     required this.type,
   });
 
   factory UserProfileInfo.fromJson(Map<String, dynamic> json) {
     return UserProfileInfo(
-      firstName:
-          (json['firstName'] ?? json['FirstName'] ?? json['name'] ?? '').toString(),
-      lastName: (json['lastName'] ?? json['LastName'] ?? json['surname'] ?? '').toString(),
+      firstName: (json['firstName'] ?? json['FirstName'] ?? json['name'] ?? '')
+          .toString(),
+      lastName: (json['lastName'] ?? json['LastName'] ?? json['surname'] ?? '')
+          .toString(),
       phoneNumber:
-          (json['phoneNumber'] ?? json['PhoneNumber'] ?? json['phone'] ?? '').toString(),
+          (json['phoneNumber'] ?? json['PhoneNumber'] ?? json['phone'] ?? '')
+              .toString(),
       email: (json['email'] ?? json['Email'] ?? '').toString(),
       city: (json['city'] ?? json['City'] ?? '').toString(),
+      postalCode: (json['postalCode'] ?? json['PostalCode'] ?? '').toString(),
       raiting: (json['raiting'] ?? json['Raiting'] ?? '').toString(),
       type: (json['type'] ?? json['Type'] ?? '').toString(),
-
     );
   }
 
@@ -45,11 +49,12 @@ class UserProfileInfo {
     return <String, dynamic>{
       'firstName': firstName,
       'lastName': lastName,
-      'phoneNumber': phoneNumber, 
+      'phoneNumber': phoneNumber,
       'email': email,
       'city': city,
-      'raiting': raiting, 
-      'type': type, 
+      'postalCode': postalCode,
+      'raiting': raiting,
+      'type': type,
     };
   }
 }
@@ -91,8 +96,10 @@ class UserProfileService {
       'PostalCode': postalCode,
     };
 
-    final http.Response res =
-        await ApiService.putJson('/UserProfile/update-profile', body);
+    final http.Response res = await ApiService.putJson(
+      '/UserProfile/update-profile',
+      body,
+    );
 
     if (res.statusCode != 200) {
       throw Exception('Błąd zapisu profilu: ${res.statusCode} ${res.body}');
@@ -102,8 +109,9 @@ class UserProfileService {
   /// DELETE /UserProfile/delete-profile
   /// Usuwa profil aktualnie zalogowanego użytkownika.
   static Future<void> deleteProfile() async {
-    final http.Response res =
-        await ApiService.delete('/UserProfile/delete-profile');
+    final http.Response res = await ApiService.delete(
+      '/UserProfile/delete-profile',
+    );
 
     if (res.statusCode != 200) {
       throw Exception('Błąd usuwania profilu: ${res.statusCode} ${res.body}');
@@ -121,8 +129,10 @@ class UserProfileService {
       'NewPassword': newPassword,
     };
 
-    final http.Response res =
-        await ApiService.postJson('/UserProfile/change-password', body);
+    final http.Response res = await ApiService.postJson(
+      '/UserProfile/change-password',
+      body,
+    );
 
     if (res.statusCode != 200) {
       throw Exception('Błąd zmiany hasła: ${res.statusCode} ${res.body}');
@@ -141,17 +151,16 @@ class UserProfileService {
     }
 
     request.files.add(
-      await http.MultipartFile.fromPath(
-        'file',
-        imageFile.path,
-      ),
+      await http.MultipartFile.fromPath('file', imageFile.path),
     );
 
     final streamed = await request.send();
     final res = await http.Response.fromStream(streamed);
 
     if (res.statusCode != 200) {
-      throw Exception('Błąd zapisu zdjęcia profilowego: ${res.statusCode} ${res.body}');
+      throw Exception(
+        'Błąd zapisu zdjęcia profilowego: ${res.statusCode} ${res.body}',
+      );
     }
   }
 }

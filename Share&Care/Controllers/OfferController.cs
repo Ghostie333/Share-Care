@@ -85,6 +85,7 @@ namespace Share_Care.Controllers
                     Category = form.Category!,
                     ContactNumber = form.ContactNumber ?? string.Empty,
                     Description = form.Description ?? string.Empty,
+                    Deposit = form.Deposit,
                     LocationText = string.IsNullOrWhiteSpace(form.LocationText)
                         ? null
                         : form.LocationText!.Trim(),
@@ -396,11 +397,12 @@ namespace Share_Care.Controllers
                     .Set(x => x.ContactName, form.ContactName)
                     .Set(x => x.Category, form.Category)
                     .Set(x => x.ContactNumber, form.ContactNumber)
-                    .Set(x => x.Description, form.Description);
+                    .Set(x => x.Description, form.Description)
+                    .Set(x => x.Deposit, form.Deposit);
 
                 await _collection.FindOneAndUpdateAsync(x => x.OfferId == offerId, update);
 
-                return Ok("Pomyślnie zaktualizowano profil użytkownika");
+                return Ok("Pomyślnie zaktualizowano ofertę");
             }
             catch (Exception ex)
             {

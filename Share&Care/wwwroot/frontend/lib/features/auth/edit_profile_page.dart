@@ -64,8 +64,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _pickAvatar() async {
     final ImagePicker picker = ImagePicker();
-    final XFile? picked =
-        await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    final XFile? picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
 
     if (picked != null) {
       setState(() {
@@ -86,11 +88,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text('Edycja profilu'),
-        backgroundColor: ClassicStyle.my_dark_green,
-        foregroundColor: Colors.white,
         elevation: 0,
       ),
-      backgroundColor: ClassicStyle.my_dark_green,
+      backgroundColor: ClassicStyle.my_light_green,
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Center(
@@ -100,7 +100,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.surface,
                 boxShadow: const [
                   BoxShadow(
                     color: Colors.black,
@@ -115,7 +115,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 children: [
                   const SizedBox(height: 12),
                   const Text(
-                    'Profil użytkownika',
+                    'Edycja profilu',
                     textAlign: TextAlign.center,
                     style: ClassicStyle.title,
                   ),
@@ -201,7 +201,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  const SizedBox(height: 24),
 
                   // Przyciski akcji: Zapisz i Usuń profil
                   Row(
@@ -246,12 +245,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 4),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -262,10 +256,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Row(
             children: [
               Expanded(child: Text(value.isEmpty ? '-' : value)),
-              IconButton(
-                icon: const Icon(Icons.edit),
-                onPressed: onEdit,
-              ),
+              IconButton(icon: const Icon(Icons.edit), onPressed: onEdit),
             ],
           ),
         ),
@@ -297,7 +288,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: const Text('Anuluj'),
             ),
             TextButton(
-              onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+              onPressed: () =>
+                  Navigator.of(context).pop(controller.text.trim()),
               child: const Text('Zapisz'),
             ),
           ],
@@ -313,7 +305,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _onSavePressed() async {
-    final confirmed = await showDialog<bool>(
+    final confirmed =
+        await showDialog<bool>(
           context: context,
           builder: (context) {
             return AlertDialog(
@@ -352,26 +345,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profil został zapisany.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Profil został zapisany.')));
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Błąd zapisu profilu: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Błąd zapisu profilu: $e')));
       }
     }
   }
 
   Future<void> _onDeleteProfilePressed() async {
-    final confirmed = await showDialog<bool>(
+    final confirmed =
+        await showDialog<bool>(
           context: context,
           builder: (context) {
             return AlertDialog(
               title: const Text('Usuń profil'),
-              content:
-                  const Text('Czy na pewno chcesz usunąć profil? Tej operacji nie można cofnąć.'),
+              content: const Text(
+                'Czy na pewno chcesz usunąć profil? Tej operacji nie można cofnąć.',
+              ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
@@ -401,9 +396,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Błąd usuwania profilu: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Błąd usuwania profilu: $e')));
       }
     }
   }
