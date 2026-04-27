@@ -95,6 +95,8 @@ class AuthService {
     required String birthday,
     String? city,
     String? postalCode,
+    String? street,
+    String? buildingNumber,
   }) async {
     final body = <String, dynamic>{
       'Email': email,
@@ -105,6 +107,8 @@ class AuthService {
       'Birthday': birthday,
       'City': city,
       'PostalCode': postalCode,
+      'Street': street,
+      'BuildingNumber': buildingNumber,
     };
 
     final http.Response res = await ApiService.postJson(

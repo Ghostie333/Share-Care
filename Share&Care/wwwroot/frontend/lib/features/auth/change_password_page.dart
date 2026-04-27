@@ -139,6 +139,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   TextField(
                     controller: _currentController,
                     obscureText: true,
+                    textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: 'Obecne hasło',
                       border: OutlineInputBorder(),
@@ -148,6 +149,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   TextField(
                     controller: _newController,
                     obscureText: true,
+                    textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: 'Nowe hasło',
                       border: OutlineInputBorder(),
@@ -157,6 +159,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   TextField(
                     controller: _repeatController,
                     obscureText: true,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) {
+                      if (!_isSaving) {
+                        _onSavePressed();
+                      }
+                    },
                     decoration: const InputDecoration(
                       labelText: 'Powtórz nowe hasło',
                       border: OutlineInputBorder(),

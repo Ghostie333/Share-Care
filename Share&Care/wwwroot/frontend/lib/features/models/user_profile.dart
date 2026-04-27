@@ -8,6 +8,8 @@ class UserProfile {
   String? brithday;
   String? city;
   String? postalCode;
+  String? street;
+  String? buildingNumber;
   String? type;
   int? offersAmount;
   double? raiting;
@@ -22,6 +24,8 @@ class UserProfile {
     this.brithday,
     this.city,
     this.postalCode,
+    this.street,
+    this.buildingNumber,
     this.type,
     this.offersAmount,
     this.raiting,
@@ -34,17 +38,17 @@ class UserProfile {
       password: (json['password'] ?? json['Password'])?.toString(),
       firstName: (json['firstName'] ?? json['FirstName'])?.toString(),
       lastName: (json['lastName'] ?? json['LastName'])?.toString(),
-      phoneNumber:
-          (json['phoneNumber'] ?? json['PhoneNumber'])?.toString(),
+      phoneNumber: (json['phoneNumber'] ?? json['PhoneNumber'])?.toString(),
       brithday: (json['brithday'] ?? json['Brithday'])?.toString(),
       city: (json['city'] ?? json['City'])?.toString(),
       postalCode: (json['postalCode'] ?? json['PostalCode'])?.toString(),
+      street: (json['street'] ?? json['Street'])?.toString(),
+      buildingNumber: (json['buildingNumber'] ?? json['BuildingNumber'])
+          ?.toString(),
       type: (json['type'] ?? json['Type'])?.toString(),
       offersAmount: json['offersAmount'] ?? json['OffersAmount'],
       raiting: (json['raiting'] ?? json['Raiting']) != null
-          ? double.tryParse(
-              (json['raiting'] ?? json['Raiting']).toString(),
-            )
+          ? double.tryParse((json['raiting'] ?? json['Raiting']).toString())
           : null,
     );
   }
@@ -60,6 +64,8 @@ class UserProfile {
       'Brithday': brithday,
       'City': city,
       'PostalCode': postalCode,
+      'Street': street,
+      'BuildingNumber': buildingNumber,
       'Type': type,
       'OffersAmount': offersAmount,
       'Raiting': raiting,

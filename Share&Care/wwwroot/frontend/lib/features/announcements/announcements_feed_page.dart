@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/classic_style.dart';
 import '../../services/announcement_service.dart';
 import '../../services/auth_service.dart';
 import '../auth/auth_login_page.dart';
@@ -131,27 +132,67 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: Text(
-          _mode == HomeFeedMode.announcements
-              ? 'Ogłoszenia'
-              : _mode == HomeFeedMode.reports
-              ? 'Zgłoszenia'
-              : 'Ogłoszenia i zgłoszenia',
-        ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSearchBar(context),
-            const SizedBox(height: 12),
-            _buildFeedModeButtons(context),
-            const SizedBox(height: 12),
-            Expanded(child: _buildOffersCard(context, filtered)),
-          ],
-        ),
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            color: ClassicStyle.my_dark_green,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
+                child: Column(
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.cardColor,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black,
+                              blurRadius: 10,
+                              spreadRadius: 1,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          _mode == HomeFeedMode.announcements
+                              ? 'Ogłoszenia'
+                              : _mode == HomeFeedMode.reports
+                              ? 'Zgłoszenia'
+                              : 'Ogłoszenia i zgłoszenia',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildSearchBar(context),
+                    const SizedBox(height: 12),
+                    _buildFeedModeButtons(context),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              child: _buildOffersCard(context, filtered),
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: MainBottomNavBar(
         currentTab: BottomNavTab.search,
@@ -288,7 +329,6 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
   }
 
   Widget _buildFeedModeButtons(BuildContext context) {
-    final theme = Theme.of(context);
     final bool isAnnouncements = _mode == HomeFeedMode.announcements;
     final bool isReports = _mode == HomeFeedMode.reports;
 
@@ -301,9 +341,9 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
           child: TextButton(
             style: TextButton.styleFrom(
               backgroundColor: isAnnouncements
-                  ? theme.colorScheme.primary.withOpacity(0.18)
+                  ? ClassicStyle.my_light_green.withOpacity(0.2)
                   : Colors.transparent,
-              foregroundColor: theme.colorScheme.onSurface,
+              foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(24),
               ),
@@ -321,9 +361,9 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
           child: TextButton(
             style: TextButton.styleFrom(
               backgroundColor: isReports
-                  ? theme.colorScheme.primary.withOpacity(0.18)
+                  ? ClassicStyle.my_light_green.withOpacity(0.2)
                   : Colors.transparent,
-              foregroundColor: theme.colorScheme.onSurface,
+              foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(24),
               ),

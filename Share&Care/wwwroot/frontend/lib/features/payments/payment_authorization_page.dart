@@ -122,6 +122,8 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
     if (_useProfileCity) {
       _cityController.text = profile.city;
       _postalCodeController.text = profile.postalCode;
+      _streetController.text = profile.street;
+      _buildingNumberController.text = profile.buildingNumber;
     }
   }
 
@@ -373,7 +375,8 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
                     ),
                     _buildProfileCheckbox(
                       value: _useProfileCity,
-                      text: 'Użyj miasta i kodu pocztowego z profilu',
+                      text:
+                          'Użyj danych adresowych z profilu (miasto, kod, ulica, numer)',
                       onChanged: (value) {
                         _onUseProfileChanged(
                           enabled: value ?? false,
@@ -381,6 +384,9 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
                           apply: (profile) {
                             _cityController.text = profile.city;
                             _postalCodeController.text = profile.postalCode;
+                            _streetController.text = profile.street;
+                            _buildingNumberController.text =
+                                profile.buildingNumber;
                           },
                         );
                       },
@@ -389,11 +395,13 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
                       left: _buildField(
                         controller: _streetController,
                         label: 'Ulica',
+                        readOnly: _useProfileCity,
                         validator: _requiredValidator,
                       ),
                       right: _buildField(
                         controller: _buildingNumberController,
                         label: 'Nr budynku',
+                        readOnly: _useProfileCity,
                         validator: _requiredValidator,
                       ),
                     ),
@@ -470,6 +478,7 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
     TextInputType? keyboardType,
     bool readOnly = false,
     String? Function(String?)? validator,
+    TextInputAction textInputAction = TextInputAction.done,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -478,6 +487,8 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
         keyboardType: keyboardType,
         readOnly: readOnly,
         validator: validator,
+        textInputAction: textInputAction,
+        onFieldSubmitted: (_) => _submit(),
         decoration: InputDecoration(
           labelText: label,
           border: const OutlineInputBorder(),

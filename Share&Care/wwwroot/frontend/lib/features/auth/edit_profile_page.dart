@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../services/announcement_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/user_profile_service.dart';
 import '../../core/classic_style.dart';
@@ -28,6 +29,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _phoneNumber;
   String? _birthday;
   String? _postalCode;
+  String? _street;
+  String? _buildingNumber;
+  String _initialCity = '';
 
   @override
   void initState() {
@@ -53,6 +57,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _email = info.email;
         _city = info.city;
         _phoneNumber = info.phoneNumber.isEmpty ? null : info.phoneNumber;
+        _postalCode = info.postalCode.isEmpty ? null : info.postalCode;
+        _street = info.street.isEmpty ? null : info.street;
+        _buildingNumber = info.buildingNumber.isEmpty
+            ? null
+            : info.buildingNumber;
+        _initialCity = info.city;
       });
     } catch (e) {
       if (!mounted) return;
@@ -192,6 +202,36 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   const SizedBox(height: 8),
                   _buildEditableField(
+                    'Kod pocztowy',
+                    _postalCode ?? '',
+                    () => _editField(
+                      title: 'Kod pocztowy',
+                      initialValue: _postalCode ?? '',
+                      applyValue: (v) => _postalCode = v,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildEditableField(
+                    'Ulica',
+                    _street ?? '',
+                    () => _editField(
+                      title: 'Ulica',
+                      initialValue: _street ?? '',
+                      applyValue: (v) => _street = v,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildEditableField(
+                    'Numer budynku',
+                    _buildingNumber ?? '',
+                    () => _editField(
+                      title: 'Numer budynku',
+                      initialValue: _buildingNumber ?? '',
+                      applyValue: (v) => _buildingNumber = v,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildEditableField(
                     'Telefon',
                     _phoneNumber ?? '',
                     () => _editField(
@@ -281,6 +321,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             controller: controller,
             obscureText: obscure,
             decoration: InputDecoration(hintText: title),
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => Navigator.of(context).pop(controller.text.trim()),
           ),
           actions: [
             TextButton(
@@ -338,12 +380,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         phoneNumber: _phoneNumber,
         city: _city,
         postalCode: _postalCode,
+        street: _street,
+        buildingNumber: _buildingNumber,
       );
+
+      final userId = widget.authResult.userId;
+      final cityChanged = _city.trim() != _initialCity.trim();
+      if (cityChanged && userId != null && userId.isNotEmpty) {
+        await _syncOfferLocationsWithProfileCity(userId);
+      }
 
       if (_avatarFile != null) {
         await UserProfileService.uploadAvatar(_avatarFile!);
       }
 
+      _initialCity = _city;
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -354,6 +405,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text('Błąd zapisu profilu: $e')));
       }
+    }
+  }
+
+  Future<void> _syncOfferLocationsWithProfileCity(String userId) async {
+    final city = _city.trim();
+    if (city.isEmpty) return;
+
+    final offers = await AnnouncementService.getUserOffers(userId);
+    final toUpdate = offers
+        .where((o) => o.location.trim().toLowerCase() != city.toLowerCase())
+        .toList();
+
+    for (final offer in toUpdate) {
+      offer.location = city;
+      await AnnouncementService.updateOffer(offer);
     }
   }
 

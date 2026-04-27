@@ -19,6 +19,8 @@ namespace Share_Care.models
         public string? Brithday { get; set; }
         public string? City { get; set; }
         public string? PostalCode { get; set; }
+        public string? Street { get; set; }
+        public string? BuildingNumber { get; set; }
         public string? Type { get; set; }
         public int? OffersAmount { get; set; }
         public float? Raiting { get; set; }

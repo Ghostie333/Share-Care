@@ -169,6 +169,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 20),
                         TextFormField(
                           controller: emailController,
+                          textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
                             labelText: "Email",
                             filled: true,
@@ -199,6 +200,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         TextFormField(
                           controller: passwordController,
                           obscureText: true,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) {
+                            if (!_isLoading) {
+                              _submitLogin();
+                            }
+                          },
                           decoration: const InputDecoration(
                             labelText: "Hasło",
                             filled: true,

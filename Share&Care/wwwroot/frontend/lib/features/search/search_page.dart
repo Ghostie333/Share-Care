@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../core/classic_style.dart';
 import '../../services/auth_service.dart';
 import '../../utils/animations.dart';
+import '../announcements/create_announcement_sheet.dart';
+import '../announcements/create_report_sheet.dart';
 import '../announcements/announcement_metadata.dart';
 import '../announcements/announcements_feed_page.dart';
 import '../auth/auth_login_page.dart';
@@ -52,9 +54,7 @@ class _SearchPageState extends State<SearchPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text('Kategorie'),
-      ),
+      appBar: AppBar(title: const Text('Kategorie')),
       body: Column(
         children: [
           Container(
@@ -63,7 +63,10 @@ class _SearchPageState extends State<SearchPage> {
             child: SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -95,9 +98,7 @@ class _SearchPageState extends State<SearchPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildCategoryList(context),
-                ],
+                children: [_buildCategoryList(context)],
               ),
             ),
           ),
@@ -128,8 +129,41 @@ class _SearchPageState extends State<SearchPage> {
           }
 
           if (!context.mounted) return;
-          // Tworzenie ogłoszenia – po zalogowaniu użytkownik może wrócić i spróbować ponownie.
-          // Logika tworzenia pozostaje na stronie głównej/profilu.
+          final initialCategory = _selectedCategory?.isNotEmpty == true
+              ? _selectedCategory!
+              : AnnouncementMetadata.defaultCategory;
+
+          if (_mode == HomeFeedMode.reports) {
+            showCreateReportSheet(
+              context: context,
+              authResult: widget.authResult,
+              initialCategory: initialCategory,
+              initialType: AnnouncementMetadata.defaultReportType,
+              categories: AnnouncementMetadata.categories,
+              types: AnnouncementMetadata.types,
+              onCreated: (_) async {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Dodano zgłoszenie')),
+                );
+              },
+            );
+          } else {
+            showCreateAnnouncementSheet(
+              context: context,
+              authResult: widget.authResult,
+              initialCategory: initialCategory,
+              initialType: AnnouncementMetadata.defaultAnnouncementType,
+              categories: AnnouncementMetadata.categories,
+              types: AnnouncementMetadata.types,
+              onCreated: (_) async {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Dodano ogłoszenie')),
+                );
+              },
+            );
+          }
         },
         onMessagesTap: () async {
           final loggedIn = await AuthService.isLoggedIn();
@@ -263,13 +297,13 @@ class _SearchPageState extends State<SearchPage> {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: selected
-              ? ClassicStyle.my_light_green.withOpacity(0.15)
-              : theme.cardColor,
+                ? ClassicStyle.my_light_green.withOpacity(0.15)
+                : theme.cardColor,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: selected
-                ? ClassicStyle.my_light_green
-                : theme.dividerColor.withOpacity(0.6),
+                  ? ClassicStyle.my_light_green
+                  : theme.dividerColor.withOpacity(0.6),
             ),
           ),
           child: Row(
@@ -277,8 +311,8 @@ class _SearchPageState extends State<SearchPage> {
               Icon(
                 icon,
                 color: selected
-                  ? ClassicStyle.my_light_green
-                  : theme.iconTheme.color,
+                    ? ClassicStyle.my_light_green
+                    : theme.iconTheme.color,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -292,10 +326,7 @@ class _SearchPageState extends State<SearchPage> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: theme.textTheme.bodySmall,
-                    ),
+                    Text(subtitle, style: theme.textTheme.bodySmall),
                   ],
                 ),
               ),
@@ -303,8 +334,8 @@ class _SearchPageState extends State<SearchPage> {
                 Icons.arrow_forward_ios,
                 size: 16,
                 color: selected
-                  ? ClassicStyle.my_light_green
-                  : theme.iconTheme.color?.withOpacity(0.7),
+                    ? ClassicStyle.my_light_green
+                    : theme.iconTheme.color?.withOpacity(0.7),
               ),
             ],
           ),
@@ -348,4 +379,3 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 }
-

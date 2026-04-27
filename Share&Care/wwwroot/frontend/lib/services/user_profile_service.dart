@@ -14,6 +14,8 @@ class UserProfileInfo {
   final String phoneNumber;
   final String city;
   final String postalCode;
+  final String street;
+  final String buildingNumber;
   final String raiting;
   final String type;
 
@@ -24,6 +26,8 @@ class UserProfileInfo {
     required this.email,
     required this.city,
     required this.postalCode,
+    required this.street,
+    required this.buildingNumber,
     required this.raiting,
     required this.type,
   });
@@ -40,6 +44,9 @@ class UserProfileInfo {
       email: (json['email'] ?? json['Email'] ?? '').toString(),
       city: (json['city'] ?? json['City'] ?? '').toString(),
       postalCode: (json['postalCode'] ?? json['PostalCode'] ?? '').toString(),
+      street: (json['street'] ?? json['Street'] ?? '').toString(),
+      buildingNumber:
+          (json['buildingNumber'] ?? json['BuildingNumber'] ?? '').toString(),
       raiting: (json['raiting'] ?? json['Raiting'] ?? '').toString(),
       type: (json['type'] ?? json['Type'] ?? '').toString(),
     );
@@ -53,6 +60,8 @@ class UserProfileInfo {
       'email': email,
       'city': city,
       'postalCode': postalCode,
+      'street': street,
+      'buildingNumber': buildingNumber,
       'raiting': raiting,
       'type': type,
     };
@@ -85,6 +94,8 @@ class UserProfileService {
     String? phoneNumber,
     String? city,
     String? postalCode,
+    String? street,
+    String? buildingNumber,
   }) async {
     final body = <String, dynamic>{
       'FirstName': firstName,
@@ -94,6 +105,8 @@ class UserProfileService {
       'PhoneNumber': phoneNumber,
       'City': city,
       'PostalCode': postalCode,
+      'Street': street,
+      'BuildingNumber': buildingNumber,
     };
 
     final http.Response res = await ApiService.putJson(

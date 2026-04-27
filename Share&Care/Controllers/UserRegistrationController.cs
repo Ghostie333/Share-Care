@@ -21,7 +21,7 @@ namespace Share_Care.Controllers
         [HttpPost("user-registry")]
         public async Task<IActionResult> UserRegistration([FromBody] RegistrationRequest userRegistration)
         {
-            _logger.LogInformation("Rozpoczêto rejestracjê u¿ytkownika, email: {Email}", userRegistration.Email);
+            _logger.LogInformation("Rozpoczï¿½to rejestracjï¿½ uï¿½ytkownika, email: {Email}", userRegistration.Email);
 
             try
             {
@@ -31,7 +31,7 @@ namespace Share_Care.Controllers
 
                 if (existingUser != null)
                 {
-                    _logger.LogWarning("Próba rejestracji z istniej¹cym emailem: {Email}", userRegistration.Email);
+                    _logger.LogWarning("Prï¿½ba rejestracji z istniejï¿½cym emailem: {Email}", userRegistration.Email);
                     return Conflict(new { error = "User with this email already exists" });
                 }
 
@@ -44,38 +44,40 @@ namespace Share_Care.Controllers
                     PhoneNumber = userRegistration.PhoneNumber,
                     Brithday = userRegistration.Birthday,
                     City = userRegistration.City,
-                    PostalCode = userRegistration.PostalCode
+                    PostalCode = userRegistration.PostalCode,
+                    Street = userRegistration.Street,
+                    BuildingNumber = userRegistration.BuildingNumber
                 };
 
                 await _users.InsertOneAsync(user);
-                _logger.LogInformation("Pomyœlnie utworzono u¿ytkownika {UserId}, email: {Email}", 
+                _logger.LogInformation("Pomyï¿½lnie utworzono uï¿½ytkownika {UserId}, email: {Email}", 
                     user.UserId, user.Email);
 
                 var userForWallet = await _users.Find(u => u.Email == userRegistration.Email).FirstOrDefaultAsync();
 
                 if (string.IsNullOrWhiteSpace(userForWallet.UserId))
-                    return Problem("Nie uda³o siê utworzyæ portfela dla u¿ytkownika");
+                    return Problem("Nie udaï¿½o siï¿½ utworzyï¿½ portfela dla uï¿½ytkownika");
                 
                 var wallet = _walletService.CreateUsersWallet(userForWallet.UserId);
 
                 if(wallet == null)
-                    return Problem("Nie uda³o siê utworzyæ portfela dla u¿ytkownika");
+                    return Problem("Nie udaï¿½o siï¿½ utworzyï¿½ portfela dla uï¿½ytkownika");
 
                 try
                 {
                     var token = _loginService.GenerateJwtToken(user, out var expiresUtc);
-                    _logger.LogInformation("Wygenerowano JWT token dla u¿ytkownika {UserId}", user.UserId);
+                    _logger.LogInformation("Wygenerowano JWT token dla uï¿½ytkownika {UserId}", user.UserId);
                     return Ok(new { access_token = token, token_type = "Bearer", expires_in = expiresUtc });
                 }
                 catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "Brak konfiguracji JWT dla u¿ytkownika {UserId}", user.UserId);
+                    _logger.LogError(ex, "Brak konfiguracji JWT dla uï¿½ytkownika {UserId}", user.UserId);
                     return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Brak konfiguracji JWT" });
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "B³¹d podczas rejestracji u¿ytkownika, email: {Email}", userRegistration.Email);
+                _logger.LogError(ex, "Bï¿½ï¿½d podczas rejestracji uï¿½ytkownika, email: {Email}", userRegistration.Email);
                 return Problem("Couldn't connect to MongoDB", statusCode: StatusCodes.Status500InternalServerError);
             }
         }

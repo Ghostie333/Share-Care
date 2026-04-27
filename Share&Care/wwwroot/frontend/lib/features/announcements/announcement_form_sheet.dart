@@ -27,7 +27,8 @@ class AnnouncementFormSheet extends StatefulWidget {
     String category,
     String type,
     String contactNumber,
-  ) onSubmit;
+  )
+  onSubmit;
 
   const AnnouncementFormSheet({
     super.key,
@@ -69,8 +70,9 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
     final existing = widget.existingAd;
 
     _titleController = TextEditingController(text: existing?.title ?? '');
-    _descriptionController =
-        TextEditingController(text: existing?.description ?? '');
+    _descriptionController = TextEditingController(
+      text: existing?.description ?? '',
+    );
     _locationController = TextEditingController(
       text: existing?.location ?? (widget.initialCity ?? ''),
     );
@@ -131,6 +133,7 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _titleController,
+                textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
                   labelText: 'Tytuł ogłoszenia',
                   border: OutlineInputBorder(),
@@ -169,10 +172,7 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                       ),
                       items: widget.categories
                           .map(
-                            (c) => DropdownMenuItem(
-                              value: c,
-                              child: Text(c),
-                            ),
+                            (c) => DropdownMenuItem(value: c, child: Text(c)),
                           )
                           .toList(),
                       onChanged: (v) {
@@ -191,10 +191,7 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                       ),
                       items: widget.types
                           .map(
-                            (t) => DropdownMenuItem(
-                              value: t,
-                              child: Text(t),
-                            ),
+                            (t) => DropdownMenuItem(value: t, child: Text(t)),
                           )
                           .toList(),
                       onChanged: (v) {
@@ -209,6 +206,7 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
               TextFormField(
                 controller: _locationController,
                 readOnly: _useProfileCity,
+                textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
                   labelText: 'Lokalizacja',
                   border: OutlineInputBorder(),
@@ -241,6 +239,7 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                 controller: _contactNumberController,
                 readOnly: _useProfilePhone,
                 keyboardType: TextInputType.phone,
+                textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
                   labelText: 'Numer telefonu do kontaktu',
                   border: OutlineInputBorder(),
@@ -269,6 +268,8 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
               TextFormField(
                 controller: _depositController,
                 keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.done,
+                onFieldSubmitted: (_) => _onSavePressed(),
                 decoration: const InputDecoration(
                   labelText: 'Kaucja (opcjonalnie)',
                   border: OutlineInputBorder(),
@@ -352,7 +353,10 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                                   color: Colors.black12,
                                 ),
                                 child: Center(
-                                  child: Icon(Icons.image, color: Colors.black38),
+                                  child: Icon(
+                                    Icons.image,
+                                    color: Colors.black38,
+                                  ),
                                 ),
                               ),
                       ),
@@ -397,9 +401,7 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
     if (remaining <= 0) return;
 
     final ImagePicker picker = ImagePicker();
-    final List<XFile> picked = await picker.pickMultiImage(
-      imageQuality: 80,
-    );
+    final List<XFile> picked = await picker.pickMultiImage(imageQuality: 80);
 
     if (picked.isEmpty) return;
 

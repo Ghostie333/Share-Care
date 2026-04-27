@@ -171,6 +171,9 @@ namespace Share_Care.Controllers
                     lastName = user.LastName,
                     email = user.Email,
                     city = user.City,
+                    postalCode = user.PostalCode,
+                    street = user.Street,
+                    buildingNumber = user.BuildingNumber,
                     phoneNumber = user.PhoneNumber,
                     raiting = user.Raiting,
                     type = user.Type
@@ -200,6 +203,8 @@ namespace Share_Care.Controllers
                     .Set(x => x.Brithday, form.Birthday)
                     .Set(x => x.City, form.City)
                     .Set(x => x.PostalCode, form.PostalCode)
+                    .Set(x => x.Street, form.Street)
+                    .Set(x => x.BuildingNumber, form.BuildingNumber)
                     .Set(x => x.FirstName, form.FirstName)
                     .Set(x => x.LastName, form.LastName)
                     .Set(x => x.Email, form.Email)

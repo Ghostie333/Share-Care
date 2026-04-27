@@ -511,12 +511,25 @@ class _HomePageState extends State<HomePage> {
       return const SizedBox.shrink();
     }
 
-    final offersWithCoords =
-        _allOffers.where((a) => a.lat != null && a.lng != null).toList()
-          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final allSorted = List<Announcement>.from(_allOffers)
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    final markerAds = offersWithCoords.take(10).toList();
-    final tileAds = offersWithCoords.take(5).toList();
+    final userCityRaw = (_profileInfo?.city ?? '').trim();
+    final userCity = userCityRaw.toLowerCase();
+
+    final cityScopedOffers = userCity.isEmpty
+        ? const <Announcement>[]
+        : allSorted
+              .where((a) => a.location.trim().toLowerCase().contains(userCity))
+              .toList();
+
+    final tileAds = (cityScopedOffers.isNotEmpty ? cityScopedOffers : allSorted)
+        .take(6)
+        .toList();
+
+    final markerAds = tileAds
+        .where((a) => a.lat != null && a.lng != null)
+        .toList();
 
     // Spróbuj użyć lokalizacji z profilu użytkownika (jeśli jest w formacie "lat,lng"),
     // w przeciwnym razie środek mapy wyznaczany jest na podstawie najnowszego markera
@@ -559,6 +572,18 @@ class _HomePageState extends State<HomePage> {
                       'https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=${AppConfig.mapTilerApiKey}',
                   userAgentPackageName: 'share_care_frontend',
                 ),
+                if (userCenter != null && markerAds.isNotEmpty)
+                  PolylineLayer(
+                    polylines: markerAds
+                        .map(
+                          (ad) => Polyline(
+                            points: [userCenter, LatLng(ad.lat!, ad.lng!)],
+                            strokeWidth: 2,
+                            color: Colors.blueAccent.withOpacity(0.55),
+                          ),
+                        )
+                        .toList(),
+                  ),
                 MarkerLayer(
                   markers: [
                     if (userCenter != null)
@@ -594,74 +619,105 @@ class _HomePageState extends State<HomePage> {
                 ),
               ],
             ),
-            if (tileAds.isNotEmpty)
+            if (tileAds.isNotEmpty) ...[
               Positioned(
-                left: 12,
-                right: 12,
-                bottom: 12,
-                child: SizedBox(
-                  height: 88,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: tileAds.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 10),
-                    itemBuilder: (context, index) {
-                      final ad = tileAds[index];
-                      final city = ad.location.trim().isEmpty
-                          ? '—'
-                          : ad.location.trim();
-
-                      return GestureDetector(
-                        onTap: () {
-                          final lat = ad.lat;
-                          final lng = ad.lng;
-                          if (lat != null && lng != null) {
-                            _mapController.move(LatLng(lat, lng), 13);
-                          }
-                          _openAdFromMap(ad);
-                        },
-                        child: Container(
-                          width: 250,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: theme.cardColor,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: theme.dividerColor.withOpacity(0.7),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                city,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.textTheme.bodySmall?.color
-                                      ?.withOpacity(0.8),
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                ad.title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+                top: 10,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.cardColor.withOpacity(0.92),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: theme.dividerColor.withOpacity(0.7),
+                      ),
+                    ),
+                    child: Text(
+                      'Najnowsze ogłoszenia',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
               ),
+              Positioned(
+                left: 10,
+                top: 48,
+                bottom: 10,
+                child: _buildMapTileColumn(
+                  ads: tileAds.take((tileAds.length / 2).ceil()).toList(),
+                ),
+              ),
+              Positioned(
+                right: 10,
+                top: 48,
+                bottom: 10,
+                child: _buildMapTileColumn(
+                  ads: tileAds.skip((tileAds.length / 2).ceil()).toList(),
+                ),
+              ),
+            ],
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildMapTileColumn({required List<Announcement> ads}) {
+    final theme = Theme.of(context);
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: ads.map((ad) {
+        final city = ad.location.trim().isEmpty ? '—' : ad.location.trim();
+        return GestureDetector(
+          onTap: () {
+            final lat = ad.lat;
+            final lng = ad.lng;
+            if (lat != null && lng != null) {
+              _mapController.move(LatLng(lat, lng), 13);
+            }
+            _openAdFromMap(ad);
+          },
+          child: Container(
+            width: 130,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: theme.cardColor.withOpacity(0.95),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: theme.dividerColor.withOpacity(0.7)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  city,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.textTheme.bodySmall?.color?.withOpacity(0.8),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  ad.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 

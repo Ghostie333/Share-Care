@@ -24,6 +24,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final phoneNumberController = TextEditingController();
   final dateBirthController = TextEditingController();
   final addressNameController = TextEditingController();
+  final streetController = TextEditingController();
+  final buildingNumberController = TextEditingController();
   final postCodeController = TextEditingController();
   final emailController = TextEditingController();
   final emailConfirmController = TextEditingController();
@@ -60,6 +62,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     phoneNumberController.dispose();
     dateBirthController.dispose();
     addressNameController.dispose();
+    streetController.dispose();
+    buildingNumberController.dispose();
     postCodeController.dispose();
     emailController.dispose();
     emailConfirmController.dispose();
@@ -112,6 +116,12 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         postalCode: postCodeController.text.trim().isEmpty
             ? null
             : postCodeController.text.trim(),
+        street: streetController.text.trim().isEmpty
+            ? null
+            : streetController.text.trim(),
+        buildingNumber: buildingNumberController.text.trim().isEmpty
+            ? null
+            : buildingNumberController.text.trim(),
       );
 
       // Auto-logowanie po pomyślnej rejestracji — używamy tego samego
@@ -327,6 +337,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: emailController,
+                          textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
                             labelText: "Email",
                             filled: true,
@@ -356,6 +367,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                   child: TextFormField(
                                     key: const ValueKey("emailConfirm"),
                                     controller: emailConfirmController,
+                                    textInputAction: TextInputAction.next,
                                     decoration: const InputDecoration(
                                       labelText: "Potwierdź email",
                                       filled: true,
@@ -380,6 +392,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: phoneNumberController,
+                          textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
                             labelText: "Numer Telefonu",
                             filled: true,
@@ -404,6 +417,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: dateBirthController,
+                          textInputAction: TextInputAction.next,
                           keyboardType: TextInputType.datetime,
                           decoration: InputDecoration(
                             labelText: "Data urodzenia (DD.MM.RRRR)",
@@ -429,6 +443,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: addressNameController,
+                          textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
                             labelText: "Adres zamieszkania (miasto)",
                             filled: true,
@@ -444,7 +459,42 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
                         const SizedBox(height: 12),
                         TextFormField(
+                          controller: streetController,
+                          textInputAction: TextInputAction.next,
+                          decoration: const InputDecoration(
+                            labelText: "Ulica",
+                            filled: true,
+                            fillColor: Colors.transparent,
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return "Podaj ulicę";
+                            }
+                            return null;
+                          },
+                        ),
+
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: buildingNumberController,
+                          textInputAction: TextInputAction.next,
+                          decoration: const InputDecoration(
+                            labelText: "Numer budynku",
+                            filled: true,
+                            fillColor: Colors.transparent,
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return "Podaj numer budynku";
+                            }
+                            return null;
+                          },
+                        ),
+
+                        const SizedBox(height: 12),
+                        TextFormField(
                           controller: postCodeController,
+                          textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
                             labelText: "Kod pocztowy (NN-NNN)",
                             filled: true,
@@ -467,6 +517,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         TextFormField(
                           controller: passwordController,
                           obscureText: true,
+                          textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
                             labelText: "Hasło",
                             filled: true,
@@ -493,6 +544,12 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                     key: const ValueKey("passConfirm"),
                                     controller: passwordConfirmController,
                                     obscureText: true,
+                                    textInputAction: TextInputAction.done,
+                                    onFieldSubmitted: (_) {
+                                      if (!_isLoading) {
+                                        _submitRegistration();
+                                      }
+                                    },
                                     decoration: const InputDecoration(
                                       labelText: "Potwierdź hasło",
                                       filled: true,
