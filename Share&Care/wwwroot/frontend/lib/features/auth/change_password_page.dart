@@ -97,6 +97,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scaffoldBg = theme.brightness == Brightness.dark
+        ? ClassicStyle.my_dark_theme
+        : ClassicStyle.my_light_green;
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -106,7 +111,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         title: const Text('Zmiana hasła'),
         elevation: 0,
       ),
-      backgroundColor: ClassicStyle.my_light_green,
+      backgroundColor: scaffoldBg,
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Center(
@@ -130,10 +135,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'Zmiana hasła',
                     textAlign: TextAlign.center,
-                    style: ClassicStyle.title,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   TextField(

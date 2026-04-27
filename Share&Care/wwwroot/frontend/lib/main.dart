@@ -4,7 +4,9 @@ import 'core/app_theme.dart';
 import 'features/home/home_page.dart';
 import 'services/auth_service.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await AppTheme.loadSavedSettings();
   runApp(const MyApp());
 }
 
@@ -13,15 +15,32 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<ThemeMode>(
-      valueListenable: AppTheme.themeMode,
-      builder: (context, mode, _) {
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        AppTheme.themeMode,
+        AppTheme.textScale,
+        AppTheme.reduceMotion,
+        AppTheme.highContrast,
+      ]),
+      builder: (context, _) {
+        final mode = AppTheme.themeMode.value;
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'Share&Care',
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: mode,
+          builder: (context, child) {
+            final media = MediaQuery.of(context);
+            return MediaQuery(
+              data: media.copyWith(
+                textScaler: TextScaler.linear(AppTheme.textScale.value),
+                disableAnimations:
+                    AppTheme.reduceMotion.value || media.disableAnimations,
+              ),
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
           home: const _StartupScreen(),
         );
       },
@@ -65,12 +84,11 @@ class _StartupScreenState extends State<_StartupScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final auth = _authResult ??
+    final auth =
+        _authResult ??
         AuthResult(
           userId: null,
           email: '',

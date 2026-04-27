@@ -42,7 +42,7 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
 
   String _searchQuery = '';
   String? _selectedCategory;
-  HomeFeedMode _mode = HomeFeedMode.all;
+  String? _announcementTypeFilter;
 
   // Dodatkowe filtry z ekranu "Filtry".
   SortOption? _sortOption;
@@ -56,7 +56,11 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
     super.initState();
     _searchQuery = widget.initialSearchQuery ?? '';
     _selectedCategory = widget.initialCategory;
-    _mode = widget.initialMode;
+    _announcementTypeFilter = switch (widget.initialMode) {
+      HomeFeedMode.announcements => 'Ogłoszenie',
+      HomeFeedMode.reports => 'Zgłoszenie',
+      HomeFeedMode.all => null,
+    };
     _loadOffers();
   }
 
@@ -81,21 +85,9 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final activeFilters = _buildActiveFiltersSummary();
 
     List<Announcement> filtered = _allOffers;
-    if (_mode == HomeFeedMode.announcements) {
-      filtered = filtered
-          .where(
-            (a) => AnnouncementMetadata.parseType(a.category) == 'Ogłoszenie',
-          )
-          .toList();
-    } else if (_mode == HomeFeedMode.reports) {
-      filtered = filtered
-          .where(
-            (a) => AnnouncementMetadata.parseType(a.category) == 'Zgłoszenie',
-          )
-          .toList();
-    }
 
     final q = _searchQuery.trim().toLowerCase();
     if (q.isNotEmpty) {
@@ -121,6 +113,7 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
     // Zastosowanie dodatkowych filtrów (cena, lokalizacja, sortowanie).
     final filters = SearchFilters(
       sortOption: _sortOption,
+      announcementType: _announcementTypeFilter,
       category: _selectedCategory,
       minDeposit: _minDeposit,
       maxDeposit: _maxDeposit,
@@ -166,11 +159,9 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
                           ],
                         ),
                         child: Text(
-                          _mode == HomeFeedMode.announcements
-                              ? 'Ogłoszenia'
-                              : _mode == HomeFeedMode.reports
-                              ? 'Zgłoszenia'
-                              : 'Ogłoszenia i zgłoszenia',
+                          _announcementTypeFilter == null
+                              ? 'Ogłoszenia i zgłoszenia'
+                              : _announcementTypeFilter!,
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -180,7 +171,7 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
                     const SizedBox(height: 16),
                     _buildSearchBar(context),
                     const SizedBox(height: 12),
-                    _buildFeedModeButtons(context),
+                    activeFilters,
                   ],
                 ),
               ),
@@ -277,6 +268,9 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
   }
 
   Widget _buildSearchBar(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -295,9 +289,16 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
         ),
         const SizedBox(width: 12),
         TextButton.icon(
+          style: TextButton.styleFrom(
+            backgroundColor: isDark
+                ? Colors.transparent
+                : ClassicStyle.my_dark_green,
+            foregroundColor: isDark ? null : Colors.white,
+          ),
           onPressed: () async {
             final initialFilters = SearchFilters(
               sortOption: _sortOption,
+              announcementType: _announcementTypeFilter,
               category: _selectedCategory,
               minDeposit: _minDeposit,
               maxDeposit: _maxDeposit,
@@ -313,7 +314,8 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
             if (result != null && mounted) {
               setState(() {
                 _sortOption = result.sortOption;
-                _selectedCategory = result.category ?? _selectedCategory;
+                _announcementTypeFilter = result.announcementType;
+                _selectedCategory = result.category;
                 _minDeposit = result.minDeposit;
                 _maxDeposit = result.maxDeposit;
                 _locationFilter = result.location;
@@ -328,56 +330,78 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
     );
   }
 
-  Widget _buildFeedModeButtons(BuildContext context) {
-    final bool isAnnouncements = _mode == HomeFeedMode.announcements;
-    final bool isReports = _mode == HomeFeedMode.reports;
+  Widget _buildActiveFiltersSummary() {
+    final labels = <String>[];
 
-    final width = MediaQuery.of(context).size.width;
-    final bool compact = width < 420;
+    if (_announcementTypeFilter != null &&
+        _announcementTypeFilter!.isNotEmpty) {
+      labels.add('Typ: ${_announcementTypeFilter!}');
+    }
+    if (_selectedCategory != null && _selectedCategory!.isNotEmpty) {
+      labels.add('Kategoria: ${_selectedCategory!}');
+    }
+    if (_minDeposit != null || _maxDeposit != null) {
+      final minText = _minDeposit != null
+          ? _minDeposit!.toStringAsFixed(0)
+          : '0';
+      final maxText = _maxDeposit != null
+          ? _maxDeposit!.toStringAsFixed(0)
+          : 'bez limitu';
+      labels.add('Kaucja: $minText - $maxText');
+    }
+    if (_locationFilter != null && _locationFilter!.isNotEmpty) {
+      labels.add('Lokalizacja: ${_locationFilter!}');
+    }
+    if (_sortOption != null) {
+      labels.add('Sortowanie: ${_sortOptionLabel(_sortOption!)}');
+    }
 
-    return Row(
-      children: [
-        Expanded(
-          child: TextButton(
-            style: TextButton.styleFrom(
-              backgroundColor: isAnnouncements
-                  ? ClassicStyle.my_light_green.withOpacity(0.2)
-                  : Colors.transparent,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
+    final theme = Theme.of(context);
+
+    if (labels.isEmpty) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Text('Aktywne filtry: brak', style: theme.textTheme.bodyMedium),
+      );
+    }
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: labels
+            .map(
+              (label) => Chip(
+                label: Text(label),
+                backgroundColor: theme.colorScheme.primaryContainer,
+                labelStyle: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.onPrimaryContainer,
+                  fontWeight: FontWeight.w600,
+                ),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+                side: BorderSide(
+                  color: theme.colorScheme.primary.withOpacity(0.35),
+                ),
               ),
-            ),
-            onPressed: () {
-              setState(() => _mode = HomeFeedMode.announcements);
-            },
-            child: compact
-                ? const Icon(Icons.campaign_outlined)
-                : const Text('Ogłoszenia'),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: TextButton(
-            style: TextButton.styleFrom(
-              backgroundColor: isReports
-                  ? ClassicStyle.my_light_green.withOpacity(0.2)
-                  : Colors.transparent,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
-            ),
-            onPressed: () {
-              setState(() => _mode = HomeFeedMode.reports);
-            },
-            child: compact
-                ? const Icon(Icons.report_gmailerrorred_outlined)
-                : const Text('Zgłoszenia'),
-          ),
-        ),
-      ],
+            )
+            .toList(),
+      ),
     );
+  }
+
+  String _sortOptionLabel(SortOption option) {
+    switch (option) {
+      case SortOption.nameAsc:
+        return 'Nazwa A-Z';
+      case SortOption.nameDesc:
+        return 'Nazwa Z-A';
+      case SortOption.depositAsc:
+        return 'Kaucja rosnąco';
+      case SortOption.depositDesc:
+        return 'Kaucja malejąco';
+    }
   }
 
   Widget _buildOffersCard(BuildContext context, List<Announcement> filtered) {
@@ -406,11 +430,11 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
               alignment: Alignment.centerLeft,
               fit: BoxFit.scaleDown,
               child: Text(
-                _mode == HomeFeedMode.announcements
+                _announcementTypeFilter == null
+                    ? 'Aktywne ogłoszenia / zgłoszenia'
+                    : _announcementTypeFilter == 'Ogłoszenie'
                     ? 'Aktywne ogłoszenia'
-                    : _mode == HomeFeedMode.reports
-                    ? 'Aktywne zgłoszenia'
-                    : 'Aktywne ogłoszenia / zgłoszenia',
+                    : 'Aktywne zgłoszenia',
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,

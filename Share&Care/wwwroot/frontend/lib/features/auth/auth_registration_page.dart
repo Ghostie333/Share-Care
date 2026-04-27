@@ -234,8 +234,16 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final width = MediaQuery.of(context).size.width;
+    final isNarrow = width < 520;
+    final horizontalPadding = width < 600 ? 16.0 : 24.0;
+    final scaffoldBg = theme.brightness == Brightness.dark
+        ? ClassicStyle.my_dark_theme
+        : ClassicStyle.my_light_green;
+
     return Scaffold(
-      backgroundColor: ClassicStyle.my_light_green,
+      backgroundColor: scaffoldBg,
       appBar: AppBar(
         elevation: 0,
         title: const Text('Rejestracja'),
@@ -260,7 +268,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         ),
       ),
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
         child: Center(
           child: SingleChildScrollView(
             child: Form(
@@ -268,7 +276,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               child: Column(
                 children: <Widget>[
                   Container(
-                    width: MediaQuery.of(context).size.width * 0.5,
+                    width: double.infinity,
+                    constraints: const BoxConstraints(maxWidth: 620),
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(10),
@@ -285,54 +294,88 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Text(
-                          "Rejestracja",
+                        Text(
+                          'Rejestracja',
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 28,
+                          style: theme.textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 20),
 
                         // Row: Imię i Nazwisko
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: firstNameController,
-                                decoration: const InputDecoration(
-                                  labelText: "Imię",
-                                  filled: true,
-                                  fillColor: Colors.transparent,
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return "Podaj imię";
-                                  }
-                                  return null;
-                                },
+                        isNarrow
+                            ? Column(
+                                children: [
+                                  TextFormField(
+                                    controller: firstNameController,
+                                    decoration: const InputDecoration(
+                                      labelText: "Imię",
+                                      filled: true,
+                                      fillColor: Colors.transparent,
+                                    ),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return "Podaj imię";
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 12),
+                                  TextFormField(
+                                    controller: lastNameController,
+                                    decoration: const InputDecoration(
+                                      labelText: "Nazwisko",
+                                      filled: true,
+                                      fillColor: Colors.transparent,
+                                    ),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return "Podaj nazwisko";
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ],
+                              )
+                            : Row(
+                                children: [
+                                  Expanded(
+                                    child: TextFormField(
+                                      controller: firstNameController,
+                                      decoration: const InputDecoration(
+                                        labelText: "Imię",
+                                        filled: true,
+                                        fillColor: Colors.transparent,
+                                      ),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return "Podaj imię";
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: TextFormField(
+                                      controller: lastNameController,
+                                      decoration: const InputDecoration(
+                                        labelText: "Nazwisko",
+                                        filled: true,
+                                        fillColor: Colors.transparent,
+                                      ),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return "Podaj nazwisko";
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: TextFormField(
-                                controller: lastNameController,
-                                decoration: const InputDecoration(
-                                  labelText: "Nazwisko",
-                                  filled: true,
-                                  fillColor: Colors.transparent,
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return "Podaj nazwisko";
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
 
                         const SizedBox(height: 12),
                         TextFormField(

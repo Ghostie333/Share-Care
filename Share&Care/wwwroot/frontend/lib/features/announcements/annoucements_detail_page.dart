@@ -97,12 +97,14 @@ class _AnnouncementDetailsDialogState extends State<AnnouncementDetailsDialog> {
     );
 
     final media = MediaQuery.of(context);
+    final bool verySmallPhone = media.size.width < 380;
+    final bool shortHeight = media.size.height < 700;
 
     return Dialog(
-      insetPadding: const EdgeInsets.all(16),
+      insetPadding: EdgeInsets.all(verySmallPhone ? 8 : 16),
       child: SizedBox(
-        width: media.size.width * 0.9,
-        height: media.size.height * 0.7,
+        width: media.size.width * (verySmallPhone ? 0.97 : 0.9),
+        height: media.size.height * (shortHeight ? 0.86 : 0.72),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: LayoutBuilder(
@@ -235,6 +237,7 @@ class _AnnouncementDetailsDialogState extends State<AnnouncementDetailsDialog> {
     required double maxWidth,
   }) {
     final theme = Theme.of(context);
+    final bool compact = maxWidth < 420;
 
     TextStyle? labelStyle(TextStyle? base) =>
         base?.copyWith(fontWeight: FontWeight.w600);
@@ -256,72 +259,74 @@ class _AnnouncementDetailsDialogState extends State<AnnouncementDetailsDialog> {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          widget.ad.title,
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            fontSize: 22,
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.ad.title,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+              fontSize: compact ? 19 : 22,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        const SizedBox(height: 4),
-        const SizedBox(height: 8),
-        infoLine('Typ', type),
-        if (category.isNotEmpty) infoLine('Kategoria', category),
-        infoLine('Ogłoszeniodawca', widget.ad.ownerName),
-        if ((widget.ad.contactNumber ?? '').isNotEmpty)
-          infoLine('Telefon', widget.ad.contactNumber ?? ''),
-        if (widget.ad.deposit != null)
-          infoLine('Kaucja', '${widget.ad.deposit!.toStringAsFixed(2)} zł'),
-        if (widget.ad.location.trim().isNotEmpty)
-          infoLine('Lokalizacja', widget.ad.location),
-        const SizedBox(height: 10),
-        Text(
-          'Opis',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Expanded(
-          child: SingleChildScrollView(
-            child: Text(
-              widget.ad.description,
-              style: theme.textTheme.bodyMedium?.copyWith(fontSize: 15),
+          const SizedBox(height: 4),
+          const SizedBox(height: 8),
+          infoLine('Typ', type),
+          if (category.isNotEmpty) infoLine('Kategoria', category),
+          infoLine('Ogłoszeniodawca', widget.ad.ownerName),
+          if ((widget.ad.contactNumber ?? '').isNotEmpty)
+            infoLine('Telefon', widget.ad.contactNumber ?? ''),
+          if (widget.ad.deposit != null)
+            infoLine('Kaucja', '${widget.ad.deposit!.toStringAsFixed(2)} zł'),
+          if (widget.ad.location.trim().isNotEmpty)
+            infoLine('Lokalizacja', widget.ad.location),
+          const SizedBox(height: 10),
+          Text(
+            'Opis',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
             ),
           ),
-        ),
-        if (widget.ad.deposit != null)
-          Align(
-            alignment: Alignment.bottomRight,
-            child: Container(
-              margin: const EdgeInsets.only(top: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                'Kaucja: ${widget.ad.deposit!.toStringAsFixed(2)} zł',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: theme.colorScheme.onPrimaryContainer,
+          const SizedBox(height: 8),
+          Text(
+            widget.ad.description,
+            style: theme.textTheme.bodyMedium?.copyWith(fontSize: 15),
+          ),
+          if (widget.ad.deposit != null)
+            Align(
+              alignment: Alignment.bottomRight,
+              child: Container(
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
                 ),
-                textAlign: TextAlign.right,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Kaucja: ${widget.ad.deposit!.toStringAsFixed(2)} zł',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                  textAlign: TextAlign.right,
+                ),
               ),
             ),
+          const SizedBox(height: 8),
+          _buildActionsRow(
+            maxWidth,
+            isAnnouncement:
+                type == AnnouncementMetadata.defaultAnnouncementType,
           ),
-        const SizedBox(height: 8),
-        _buildActionsRow(
-          maxWidth,
-          isAnnouncement: type == AnnouncementMetadata.defaultAnnouncementType,
-        ),
-      ],
+        ],
+      ),
     );
   }
 

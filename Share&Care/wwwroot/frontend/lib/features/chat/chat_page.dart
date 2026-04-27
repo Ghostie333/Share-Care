@@ -583,33 +583,26 @@ class _ChatPageState extends State<ChatPage> {
       return const SizedBox.expand();
     }
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: GridView.builder(
-        itemCount: visibleThreads.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 0.95,
-        ),
-        itemBuilder: (context, index) {
-          final t = visibleThreads[index];
+    return ListView.separated(
+      padding: const EdgeInsets.all(12),
+      itemCount: visibleThreads.length,
+      itemBuilder: (context, index) {
+        final t = visibleThreads[index];
 
-          return _ChatTile(
-            title: t.listingTitle,
-            subtitle: t.lastMessage ?? '',
-            imageId: t.listingFirstImageId,
-            listingStatus: t.listingStatus,
-            onTap: () async {
-              setState(() {
-                _selectedChatId = t.chatId;
-              });
-              await _loadMessagesForSelected();
-            },
-          );
-        },
-      ),
+        return _ChatTile(
+          title: t.listingTitle,
+          subtitle: t.lastMessage ?? '',
+          imageId: t.listingFirstImageId,
+          listingStatus: t.listingStatus,
+          onTap: () async {
+            setState(() {
+              _selectedChatId = t.chatId;
+            });
+            await _loadMessagesForSelected();
+          },
+        );
+      },
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
     );
   }
 
@@ -726,9 +719,9 @@ class _ChatPageState extends State<ChatPage> {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Czat tylko do odczytu (ogłoszenie nieaktywne lub usunięte).',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodySmall?.copyWith(color: Colors.black54),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   )
                 : Row(
@@ -830,8 +823,10 @@ class _ChatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Card(
-      color: ClassicStyle.my_beige,
+      color: theme.cardColor,
       child: InkWell(
         onTap: onTap,
         child: Padding(
@@ -846,18 +841,21 @@ class _ChatTile extends StatelessWidget {
                   width: double.infinity,
                   child: imageId == null
                       ? Container(
-                          color: Colors.grey[200],
-                          child: const Icon(Icons.image, color: Colors.black38),
+                          color: theme.colorScheme.surfaceVariant,
+                          child: Icon(
+                            Icons.image,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         )
                       : Image.network(
                           '${AppConfig.apiBaseUrl}/offer/image/$imageId',
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) {
                             return Container(
-                              color: Colors.grey[200],
-                              child: const Icon(
+                              color: theme.colorScheme.surfaceVariant,
+                              child: Icon(
                                 Icons.image,
-                                color: Colors.black38,
+                                color: theme.colorScheme.onSurfaceVariant,
                               ),
                             );
                           },
@@ -869,9 +867,9 @@ class _ChatTile extends StatelessWidget {
                 title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
               if (subtitle.isNotEmpty) ...[
@@ -880,11 +878,14 @@ class _ChatTile extends StatelessWidget {
                   subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
               const SizedBox(height: 8),
-              Row(children: [_buildStatusChip(listingStatus)]),
+              Row(children: [_buildStatusChip(context, listingStatus)]),
             ],
           ),
         ),
@@ -892,7 +893,8 @@ class _ChatTile extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusChip(String status) {
+  Widget _buildStatusChip(BuildContext context, String status) {
+    final labelColor = Theme.of(context).colorScheme.onSurface;
     final lower = status.toLowerCase();
     Color color;
     String label;
@@ -919,10 +921,7 @@ class _ChatTile extends StatelessWidget {
         children: [
           Icon(Icons.circle, size: 10, color: color),
           const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 11, color: Colors.black87),
-          ),
+          Text(label, style: TextStyle(fontSize: 11, color: labelColor)),
         ],
       ),
     );

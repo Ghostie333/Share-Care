@@ -203,9 +203,15 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
     final depositText = deposit != null
         ? '${deposit.toStringAsFixed(2)} zł'
         : 'Brak kaucji';
+    final theme = Theme.of(context);
+    final width = MediaQuery.of(context).size.width;
+    final horizontalPadding = width < 600 ? 16.0 : 24.0;
+    final scaffoldBg = theme.brightness == Brightness.dark
+        ? ClassicStyle.my_dark_theme
+        : ClassicStyle.my_light_green;
 
     return Scaffold(
-      backgroundColor: ClassicStyle.my_light_green,
+      backgroundColor: scaffoldBg,
       appBar: AppBar(
         title: const Text('Autoryzacja płatności'),
         backgroundColor: ClassicStyle.my_dark_green,
@@ -213,13 +219,13 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
         elevation: 0,
       ),
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
         child: Center(
           child: SingleChildScrollView(
             child: Form(
               key: _formKey,
               child: Container(
-                width: MediaQuery.of(context).size.width * 0.62,
+                width: double.infinity,
                 constraints: const BoxConstraints(maxWidth: 980),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -237,10 +243,13 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
+                    Text(
                       'Płatność za ogłoszenie',
                       textAlign: TextAlign.center,
-                      style: ClassicStyle.title,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
+                      ),
                     ),
                     const SizedBox(height: 14),
                     Text(
@@ -286,11 +295,11 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
                         padding: EdgeInsets.only(bottom: 10),
                         child: LinearProgressIndicator(),
                       ),
-                    const Text(
+                    Text(
                       'Dane do faktury',
-                      style: TextStyle(
-                        fontSize: 22,
+                      style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -463,12 +472,20 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
   }
 
   Widget _buildTwoColumns({required Widget left, required Widget right}) {
-    return Row(
-      children: [
-        Expanded(child: left),
-        const SizedBox(width: 12),
-        Expanded(child: right),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 560) {
+          return Column(children: [left, right]);
+        }
+
+        return Row(
+          children: [
+            Expanded(child: left),
+            const SizedBox(width: 12),
+            Expanded(child: right),
+          ],
+        );
+      },
     );
   }
 

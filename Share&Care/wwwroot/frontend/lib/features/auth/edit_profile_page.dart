@@ -91,6 +91,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final width = MediaQuery.of(context).size.width;
+    final horizontalPadding = width < 600 ? 16.0 : 24.0;
+    final scaffoldBg = theme.brightness == Brightness.dark
+        ? ClassicStyle.my_dark_theme
+        : ClassicStyle.my_light_green;
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -100,13 +107,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         title: const Text('Edycja profilu'),
         elevation: 0,
       ),
-      backgroundColor: ClassicStyle.my_light_green,
+      backgroundColor: scaffoldBg,
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
         child: Center(
           child: SingleChildScrollView(
             child: Container(
-              width: MediaQuery.of(context).size.width * 0.5,
+              width: double.infinity,
+              constraints: const BoxConstraints(maxWidth: 620),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
@@ -124,10 +132,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'Edycja profilu',
                     textAlign: TextAlign.center,
-                    style: ClassicStyle.title,
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 20),
 
@@ -243,8 +251,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   const SizedBox(height: 24),
 
                   // Przyciski akcji: Zapisz i Usuń profil
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                  Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: 12,
+                    runSpacing: 8,
                     children: [
                       ElevatedButton(
                         onPressed: _onSavePressed,
@@ -262,7 +272,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ),
                         child: const Text('Zapisz'),
                       ),
-                      const SizedBox(width: 12),
                       OutlinedButton(
                         onPressed: _onDeleteProfilePressed,
                         style: OutlinedButton.styleFrom(
@@ -322,7 +331,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             obscureText: obscure,
             decoration: InputDecoration(hintText: title),
             textInputAction: TextInputAction.done,
-            onSubmitted: (_) => Navigator.of(context).pop(controller.text.trim()),
+            onSubmitted: (_) =>
+                Navigator.of(context).pop(controller.text.trim()),
           ),
           actions: [
             TextButton(

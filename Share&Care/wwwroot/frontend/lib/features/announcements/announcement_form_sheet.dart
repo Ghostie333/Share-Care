@@ -105,6 +105,8 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
   @override
   Widget build(BuildContext context) {
     final existing = widget.existingAd;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isNarrow = screenWidth < 520;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -161,47 +163,93 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                 },
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: _selectedCategory,
-                      decoration: const InputDecoration(
-                        labelText: 'Kategoria',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: widget.categories
-                          .map(
-                            (c) => DropdownMenuItem(value: c, child: Text(c)),
-                          )
-                          .toList(),
-                      onChanged: (v) {
-                        if (v == null) return;
-                        setState(() => _selectedCategory = v);
-                      },
+              isNarrow
+                  ? Column(
+                      children: [
+                        DropdownButtonFormField<String>(
+                          value: _selectedCategory,
+                          decoration: const InputDecoration(
+                            labelText: 'Kategoria',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: widget.categories
+                              .map(
+                                (c) =>
+                                    DropdownMenuItem(value: c, child: Text(c)),
+                              )
+                              .toList(),
+                          onChanged: (v) {
+                            if (v == null) return;
+                            setState(() => _selectedCategory = v);
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: _selectedType,
+                          decoration: const InputDecoration(
+                            labelText: 'Typ',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: widget.types
+                              .map(
+                                (t) =>
+                                    DropdownMenuItem(value: t, child: Text(t)),
+                              )
+                              .toList(),
+                          onChanged: (v) {
+                            if (v == null) return;
+                            setState(() => _selectedType = v);
+                          },
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: _selectedCategory,
+                            decoration: const InputDecoration(
+                              labelText: 'Kategoria',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: widget.categories
+                                .map(
+                                  (c) => DropdownMenuItem(
+                                    value: c,
+                                    child: Text(c),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (v) {
+                              if (v == null) return;
+                              setState(() => _selectedCategory = v);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: _selectedType,
+                            decoration: const InputDecoration(
+                              labelText: 'Typ',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: widget.types
+                                .map(
+                                  (t) => DropdownMenuItem(
+                                    value: t,
+                                    child: Text(t),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (v) {
+                              if (v == null) return;
+                              setState(() => _selectedType = v);
+                            },
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: _selectedType,
-                      decoration: const InputDecoration(
-                        labelText: 'Typ',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: widget.types
-                          .map(
-                            (t) => DropdownMenuItem(value: t, child: Text(t)),
-                          )
-                          .toList(),
-                      onChanged: (v) {
-                        if (v == null) return;
-                        setState(() => _selectedType = v);
-                      },
-                    ),
-                  ),
-                ],
-              ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _locationController,
@@ -278,9 +326,12 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
               const SizedBox(height: 16),
               Align(
                 alignment: Alignment.centerRight,
-                child: ElevatedButton(
-                  onPressed: _onSavePressed,
-                  child: const Text('Zapisz ogłoszenie'),
+                child: SizedBox(
+                  width: isNarrow ? double.infinity : null,
+                  child: ElevatedButton(
+                    onPressed: _onSavePressed,
+                    child: const Text('Zapisz ogłoszenie'),
+                  ),
                 ),
               ),
             ],
@@ -291,6 +342,8 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
   }
 
   Widget _buildImagesPicker() {
+    final isNarrow = MediaQuery.of(context).size.width < 520;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -327,12 +380,12 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
         if (_selectedImages.isNotEmpty) ...[
           const SizedBox(height: 12),
           SizedBox(
-            height: 170,
+            height: isNarrow ? 200 : 170,
             child: GridView.builder(
               itemCount: _selectedImages.length,
               shrinkWrap: true,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: isNarrow ? 3 : 4,
                 crossAxisSpacing: 8,
                 mainAxisSpacing: 8,
               ),

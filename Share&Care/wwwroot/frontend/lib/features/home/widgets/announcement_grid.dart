@@ -26,7 +26,16 @@ class AnnouncementGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final crossAxisCount = width < 520 ? 2 : 3;
+        final crossAxisCount = width < 380
+            ? 1
+            : width < 640
+            ? 2
+            : 3;
+        final childAspectRatio = width < 380
+            ? 1.85
+            : width < 520
+            ? 0.84
+            : 0.9;
 
         return GridView.builder(
           itemCount: announcements.length,
@@ -36,7 +45,7 @@ class AnnouncementGrid extends StatelessWidget {
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            childAspectRatio: width < 520 ? 0.82 : 0.9,
+            childAspectRatio: childAspectRatio,
           ),
           itemBuilder: (context, index) {
             final ad = announcements[index];
@@ -57,8 +66,8 @@ class _AnnouncementCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final hasImages = ad.imageUrls.isNotEmpty;
-    final firstImageId = hasImages ? ad.imageUrls.first : null;
+    final isPhone = MediaQuery.of(context).size.width < 400;
+    final firstImageId = ad.imageUrls.isNotEmpty ? ad.imageUrls.first : null;
     final imageUrl = firstImageId == null
         ? null
         : '${AppConfig.apiBaseUrl}/offer/image/$firstImageId';
@@ -68,6 +77,7 @@ class _AnnouncementCard extends StatelessWidget {
     );
     final depositStyle = theme.textTheme.labelMedium?.copyWith(
       fontWeight: FontWeight.bold,
+      fontSize: isPhone ? 11 : null,
     );
 
     return Card(
@@ -114,10 +124,11 @@ class _AnnouncementCard extends StatelessWidget {
                 style: titleStyle,
               ),
               const SizedBox(height: 8),
-              Expanded(
-                child: Stack(
-                  children: [
-                    Align(
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Align(
                       alignment: Alignment.bottomLeft,
                       child: Chip(
                         label: Text(ad.isActive ? 'Aktywne' : 'Zakończone'),
@@ -131,17 +142,21 @@ class _AnnouncementCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (ad.deposit != null)
-                      Align(
-                        alignment: Alignment.bottomRight,
+                  ),
+                  if (ad.deposit != null)
+                    Flexible(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 8, bottom: 2),
                         child: Text(
                           'Kaucja: ${ad.deposit!.toStringAsFixed(2)} zł',
                           style: depositStyle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.right,
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
             ],
           ),

@@ -15,6 +15,7 @@ class FiltersPage extends StatefulWidget {
 
 class _FiltersPageState extends State<FiltersPage> {
   late SortOption? _sortOption;
+  late String? _announcementType;
   late String? _category;
   final _minPriceController = TextEditingController();
   final _maxPriceController = TextEditingController();
@@ -25,6 +26,7 @@ class _FiltersPageState extends State<FiltersPage> {
   void initState() {
     super.initState();
     _sortOption = widget.initial.sortOption;
+    _announcementType = widget.initial.announcementType;
     _category = widget.initial.category;
     if (widget.initial.minDeposit != null) {
       _minPriceController.text = widget.initial.minDeposit!.toStringAsFixed(0);
@@ -50,12 +52,17 @@ class _FiltersPageState extends State<FiltersPage> {
   }
 
   void _apply() {
-    final minPrice = double.tryParse(_minPriceController.text.replaceAll(',', '.'));
-    final maxPrice = double.tryParse(_maxPriceController.text.replaceAll(',', '.'));
+    final minPrice = double.tryParse(
+      _minPriceController.text.replaceAll(',', '.'),
+    );
+    final maxPrice = double.tryParse(
+      _maxPriceController.text.replaceAll(',', '.'),
+    );
     final radius = double.tryParse(_radiusController.text.replaceAll(',', '.'));
 
     final filters = SearchFilters(
       sortOption: _sortOption,
+      announcementType: _announcementType,
       category: _category,
       minDeposit: minPrice,
       maxDeposit: maxPrice,
@@ -71,6 +78,7 @@ class _FiltersPageState extends State<FiltersPage> {
   void _clear() {
     setState(() {
       _sortOption = null;
+      _announcementType = null;
       _category = null;
       _minPriceController.clear();
       _maxPriceController.clear();
@@ -148,6 +156,40 @@ class _FiltersPageState extends State<FiltersPage> {
 
               const SizedBox(height: 24),
               Text(
+                'Typ',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String?>(
+                value: _announcementType,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  filled: true,
+                ),
+                hint: const Text('Wszystkie typy'),
+                items: const [
+                  DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('Wszystkie typy'),
+                  ),
+                  DropdownMenuItem<String?>(
+                    value: 'Ogłoszenie',
+                    child: Text('Ogłoszenie'),
+                  ),
+                  DropdownMenuItem<String?>(
+                    value: 'Zgłoszenie',
+                    child: Text('Zgłoszenie'),
+                  ),
+                ],
+                onChanged: (value) {
+                  setState(() => _announcementType = value);
+                },
+              ),
+
+              const SizedBox(height: 24),
+              Text(
                 'Kategoria',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
@@ -167,10 +209,7 @@ class _FiltersPageState extends State<FiltersPage> {
                     child: Text('Wszystkie kategorie'),
                   ),
                   ...AnnouncementMetadata.categories.map(
-                    (c) => DropdownMenuItem<String?>(
-                      value: c,
-                      child: Text(c),
-                    ),
+                    (c) => DropdownMenuItem<String?>(value: c, child: Text(c)),
                   ),
                 ],
                 onChanged: (value) {

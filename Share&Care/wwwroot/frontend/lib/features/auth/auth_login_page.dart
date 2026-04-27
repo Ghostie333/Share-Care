@@ -112,8 +112,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final width = MediaQuery.of(context).size.width;
+    final horizontalPadding = width < 600 ? 16.0 : 24.0;
+    final scaffoldBg = theme.brightness == Brightness.dark
+        ? ClassicStyle.my_dark_theme
+        : ClassicStyle.my_light_green;
+
     return Scaffold(
-      backgroundColor: ClassicStyle.my_light_green,
+      backgroundColor: scaffoldBg,
       appBar: AppBar(
         elevation: 0,
         title: const Text('Logowanie'),
@@ -138,7 +145,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
         child: Center(
           child: SingleChildScrollView(
             child: Form(
@@ -146,7 +153,8 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 children: <Widget>[
                   Container(
-                    width: MediaQuery.of(context).size.width * 0.5,
+                    width: double.infinity,
+                    constraints: const BoxConstraints(maxWidth: 520),
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(10),
@@ -164,7 +172,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const SizedBox(height: 20),
-                        const Text("Logowanie", style: ClassicStyle.title),
+                        Text(
+                          'Logowanie',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
 
                         const SizedBox(height: 20),
                         TextFormField(
