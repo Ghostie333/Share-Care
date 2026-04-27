@@ -1,49 +1,100 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
-using MongoDB.Driver;
+﻿using MongoDB.Driver;
 using Share_Care.models;
-using System.Linq;
 
 namespace Share_Care.Services
 {
     public class TransactionService(ILogger<TransactionService> logger, IMongoDatabase db) : ITransactionService
     {
         private readonly ILogger<TransactionService> _logger = logger;
-        private readonly IMongoCollection<Transaction> _collection = db.GetCollection<Transaction>("transactions");
+        private readonly IMongoCollection<Transaction> _collection =
+            db.GetCollection<Transaction>("transactions");
 
-        public Task<Transaction> CreateTransactionAsync()
+        public async Task<Transaction> CreateTransactionAsync(Transaction transaction)
         {
-            throw new NotImplementedException();
+            transaction.CreatedAt = DateTime.UtcNow;
+
+            if (string.IsNullOrWhiteSpace(transaction.Status))
+                transaction.Status = "Pending";
+
+            await _collection.InsertOneAsync(transaction);
+
+            _logger.LogInformation("Transaction created: {Id}", transaction.Id);
+
+            return transaction;
         }
 
-        public Task<Transaction> GetTransactionByExternalIdAsync()
+        public async Task<Transaction?> GetTransactionByExternalIdAsync(string externalId)
         {
-            throw new NotImplementedException();
+            if (string.IsNullOrWhiteSpace(externalId))
+                return null;
+
+            return await _collection
+                .Find(x => x.ExternalId == externalId)
+                .FirstOrDefaultAsync();
         }
 
-        public Task<Transaction> GetTransactionByIdAsync()
+        public async Task<Transaction?> GetTransactionByIdAsync(string id)
         {
-            throw new NotImplementedException();
+            if (string.IsNullOrWhiteSpace(id))
+                return null;
+
+            return await _collection
+                .Find(x => x.Id == id)
+                .FirstOrDefaultAsync();
         }
 
-        public Task<List<Transaction>> GetUserTransactionsAsync()
+        public async Task<List<Transaction>> GetUserTransactionsAsync(string userId)
         {
-            throw new NotImplementedException();
+            if (string.IsNullOrWhiteSpace(userId))
+                return new List<Transaction>();
+
+            return await _collection
+                .Find(x => x.UserId == userId)
+                .SortByDescending(x => x.CreatedAt)
+                .ToListAsync();
         }
 
-        public Task<Transaction> MarkAsCompletedAsync()
+        public async Task<Transaction?> MarkAsCompletedAsync(string id)
         {
-            throw new NotImplementedException();
+            return await UpdateStatusInternal(id, "Completed");
         }
 
-        public Task<Transaction> MarkAsFailedAsync()
+        public async Task<Transaction?> MarkAsFailedAsync(string id)
         {
-            throw new NotImplementedException();
+            return await UpdateStatusInternal(id, "Failed");
         }
 
-        public Task<Transaction> UpdateTransactionStatusAsync()
+        public async Task<Transaction?> UpdateTransactionStatusAsync(string id, string status)
         {
-            throw new NotImplementedException();
+            return await UpdateStatusInternal(id, status);
+        }
+
+        private async Task<Transaction?> UpdateStatusInternal(string id, string status)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+                return null;
+
+            var update = Builders<Transaction>.Update
+                .Set(x => x.Status, status);
+
+            var result = await _collection.FindOneAndUpdateAsync(
+                x => x.Id == id,
+                update,
+                new FindOneAndUpdateOptions<Transaction>
+                {
+                    ReturnDocument = ReturnDocument.After
+                });
+
+            if (result == null)
+            {
+                _logger.LogWarning("Transaction not found: {Id}", id);
+            }
+            else
+            {
+                _logger.LogInformation("Transaction {Id} updated to {Status}", id, status);
+            }
+
+            return result;
         }
     }
 }
