@@ -7,18 +7,49 @@ using System.Linq;
 
 namespace Share_Care.Services
 {
-    public class PaymentService(ILogger<PaymentService> logger, IMongoDatabase db) : IPaymentService
+    public class PaymentService(ILogger<PaymentService> logger, 
+        IMongoDatabase db,
+        ITransactionService transactionService,
+        IWalletService walletService,
+        HttpClient httpClient) : IPaymentService
     {
         private readonly ILogger<PaymentService> _logger = logger;
+        private readonly IMongoDatabase _db = db;
+        private readonly ITransactionService _transactionService = transactionService;
+        private readonly IWalletService _walletService = walletService;
+        private readonly HttpClient _httpClient = httpClient;
 
-        public PayUOrderRequest BuildOrderRequest()
+        public PayUOrderRequest BuildOrderRequest(Transaction tx)
         {
             throw new NotImplementedException();
         }
 
-        public Task<string> CreatePayUOrderAsync()
+        public async Task<string> CreatePayUOrderAsync(Transaction transaction)
         {
-            throw new NotImplementedException();
+            // 1. Pobierz token
+            var token = await GetAccessTokenAsync();
+
+            // 2. Budowa zadania
+            var request = BuildOrderRequest(transaction);
+
+            // 3. Wyslanie do PayU
+            var httpRequest = new HttpRequestMessage(HttpMethod.Post,
+                "https://secure.snd.payu.com/api/v2_1/orders");
+
+            httpRequest.Headers.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            httpRequest.Content = JsonContent.Create(request);
+
+            var response = await _httpClient.SendAsync(httpRequest);
+            var json = await response.Content.ReadFromJsonAsync<dynamic>();
+
+            string orderId = json.orderId;
+
+            // 4. Zapisz ExtrenalId
+            await _transactionService.SetExternalIdAsync(transaction.Id, orderId);
+
+            return json.redirectUrl;
         }
 
         public Task<string> GetAccessTokenAsync()
