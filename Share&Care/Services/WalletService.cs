@@ -84,5 +84,27 @@ namespace Share_Care.Services
 
             return wallet;
         }
+
+        public async Task<bool> TransferLockedFundsAsync(string fromUserId, string toUserId, decimal amount)
+        {
+            // 1. Zmniejszenie zablokowanych funduszy sendera
+            var deduct = await _collection.UpdateOneAsync(
+                x => x.UserId == fromUserId && x.LockedBalance >= amount,
+                Builders<Wallet>.Update
+                    .Inc(w => w.LockedBalance, -amount)
+            );
+
+            if (deduct.ModifiedCount == 0)
+                return false;
+
+            // 2. Zwieksz balans receivera
+            await _collection.UpdateOneAsync(
+                x => x.UserId == toUserId,
+                Builders<Wallet>.Update
+                    .Inc(w => w.Balance, amount)
+            );
+
+            return true;
+        }
     }
 }

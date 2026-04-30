@@ -13,5 +13,6 @@ namespace Share_Care.Services
         Task<decimal> AddFundsAsync(string userId, decimal amount);
         Task<bool> LockFundsAsync(string userId, decimal amount);
         Task<Wallet?> UnlockFundsAsync(string userId, decimal amount);
+        Task<bool> TransferLockedFundsAsync(string fromUserId, string toUserId, decimal amount);
     }
 }
