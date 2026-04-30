@@ -12,7 +12,7 @@ namespace Share_Care.Services
         PayUOrderRequest BuildOrderRequest();
         Task HandleWebhookNotification();
         bool ValidateWebhookSignature();
-        Task<decimal> ProcessSuccessfulPaymetn();
+        Task<decimal> ProcessSuccessfulPayment();
         Task ProcessFailedPayment();
     }
 }

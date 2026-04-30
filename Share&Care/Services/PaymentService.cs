@@ -36,7 +36,7 @@ namespace Share_Care.Services
             throw new NotImplementedException();
         }
 
-        public Task<decimal> ProcessSuccessfulPaymetn()
+        public Task<decimal> ProcessSuccessfulPayment()
         {
             throw new NotImplementedException();
         }
