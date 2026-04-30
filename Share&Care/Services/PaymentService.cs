@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using Share_Care.models;
+using Share_Care.models.requests;
 using Share_Care.Models.Requests;
 using System.Linq;
 
@@ -21,7 +22,28 @@ namespace Share_Care.Services
 
         public PayUOrderRequest BuildOrderRequest(Transaction tx)
         {
-            throw new NotImplementedException();
+            var amount = ((int)(tx.Amount * 100)).ToString();
+
+            return new PayUOrderRequest
+            {
+                NotifyUrl = "https://your-api.com/payments/webhook", // To musi byc publiczne inaczej nie zadziala
+                CustomerIp = "127.0.0.1",
+                MerchantPosId = "bnGiZevr",
+                Description = $"Deposit {tx.Id}",
+                CurrencyCode = "PLN",
+                TotalAmount = amount,
+                ExtOrderId = tx.Id,
+
+                Products = new List<Product>
+                {
+                    new Product
+                    {
+                        Name = "Wallet top-up",
+                        UnitPrice = amount,
+                        Quantity = "1"
+                    }
+                }
+            };
         }
 
         public async Task<string> CreatePayUOrderAsync(Transaction transaction)
@@ -42,14 +64,14 @@ namespace Share_Care.Services
             httpRequest.Content = JsonContent.Create(request);
 
             var response = await _httpClient.SendAsync(httpRequest);
-            var json = await response.Content.ReadFromJsonAsync<dynamic>();
+            var json = await response.Content.ReadFromJsonAsync<PayUOrderResponse>();
 
-            string orderId = json.orderId;
+            string orderId = json.OrderId;
 
             // 4. Zapisz ExtrenalId
             await _transactionService.SetExternalIdAsync(transaction.Id, orderId);
 
-            return json.redirectUrl;
+            return json.RedirectUrl;
         }
 
         public Task<string> GetAccessTokenAsync()
