@@ -96,5 +96,13 @@ namespace Share_Care.Services
 
             return result;
         }
+
+        public async Task SetExternalIdAsync(string id, string externalId)
+        {
+            var update = Builders<Transaction>.Update.
+                Set(x => x.ExternalId, externalId);
+
+            await _collection.UpdateOneAsync(x => x.Id == id, update);
+        }
     }
 }

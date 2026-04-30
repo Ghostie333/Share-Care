@@ -13,5 +13,6 @@ namespace Share_Care.Services
         Task<Transaction?> MarkAsCompletedAsync(string id);
         Task<Transaction?> MarkAsFailedAsync(string id);
         Task<Transaction?> UpdateTransactionStatusAsync(string id, string status);
+        Task SetExternalIdAsync(string id, string externalId);
     }
 }
