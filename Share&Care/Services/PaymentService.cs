@@ -12,13 +12,15 @@ namespace Share_Care.Services
         IMongoDatabase db,
         ITransactionService transactionService,
         IWalletService walletService,
-        HttpClient httpClient) : IPaymentService
+        HttpClient httpClient,
+        IConfiguration config) : IPaymentService
     {
         private readonly ILogger<PaymentService> _logger = logger;
         private readonly IMongoDatabase _db = db;
         private readonly ITransactionService _transactionService = transactionService;
         private readonly IWalletService _walletService = walletService;
         private readonly HttpClient _httpClient = httpClient;
+        private readonly IConfiguration _config = config;
 
         public PayUOrderRequest BuildOrderRequest(Transaction tx)
         {
@@ -74,9 +76,22 @@ namespace Share_Care.Services
             return json.RedirectUrl;
         }
 
-        public Task<string> GetAccessTokenAsync()
+        public async Task<string> GetAccessTokenAsync()
         {
-            throw new NotImplementedException();
+            var content = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("grant_type", "client_credentials"),
+                new KeyValuePair<string, string>("client_id", _config["PayU:ClientId"]),
+                new KeyValuePair<string, string>("client_secret", _config["PayU:ClientSecret"])
+            });
+
+            var response = await _httpClient.PostAsync(
+                "https://secure.snd.payu.com/pl/standard/user/oauth/authorize",
+                content);
+
+            var json = await response.Content.ReadFromJsonAsync<dynamic>();
+
+            return json.access_token;
         }
 
         public Task HandleWebhookNotification()
