@@ -55,25 +55,14 @@ namespace Share_Care.Services
 
         public async Task<bool> LockFundsAsync(string userId, decimal amount)
         {
-            if (string.IsNullOrWhiteSpace(userId))
-                return false;
-
-            var wallet = await GetWalletByUserIdAsync(userId);
-
-            if(wallet == null)
-                return false;
-
-            if (!wallet.HasSufficientFunds(amount))
-                return false;
-
-            await _collection.UpdateOneAsync(
-                x => x.UserId == userId,
+            var result = await _collection.UpdateOneAsync(
+                x => x.UserId == userId && x.Balance >= amount,
                 Builders<Wallet>.Update
-                    .Inc(w => w.Balance, -amount)
-                    .Inc(w => w.LockedBalance, +amount)
-             );
+                .Inc(w => w.Balance, -amount)
+                .Inc(w => w.LockedBalance, amount)
+            );
 
-            return true;
+            return result.ModifiedCount > 0;
         }
 
         public async Task<Wallet?> UnlockFundsAsync(string userId, decimal amount)
