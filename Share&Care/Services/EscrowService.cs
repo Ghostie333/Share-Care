@@ -67,22 +67,19 @@ namespace Share_Care.Services
 
         public async Task<bool> ReleaseEscrowAsync(string offerId)
         {
-            try
-            {
-                var escrow = await GetEscrowByOfferIdAsync(offerId);
+            var escrow = await GetEscrowByOfferIdAsync(offerId);
 
-                if (escrow == null)
-                    return false;
-
-                await _walletService.UnlockFundsAsync(escrow.BorrowerId, escrow.Amount);
-                await _collection.DeleteOneAsync(e => e.Id == escrow.Id);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Nie udało się zwolnić depozytu");
+            if (escrow == null || escrow.Status != "Locked")
                 return false;
-            }
+
+            await _walletService.UnlockFundsAsync(escrow.BorrowerId, escrow.Amount);
+
+            await _collection.UpdateOneAsync(
+                e => e.Id == escrow.Id,
+                Builders<Escrow>.Update.Set(e => e.Status, "Released")
+            );
+
+            return true;
         }
 
         public async Task<bool> ClaimEscrowAsync(string offerId)
