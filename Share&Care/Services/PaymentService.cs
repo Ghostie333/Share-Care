@@ -89,9 +89,16 @@ namespace Share_Care.Services
             throw new NotImplementedException();
         }
 
-        public Task<decimal> ProcessSuccessfulPayment()
+        public async Task ProcessSuccessfulPayment(Transaction transaction)
         {
-            throw new NotImplementedException();
+            if (transaction.Status == "Completed")
+                return;
+
+            await _transactionService.MarkAsCompletedAsync(transaction.Id);
+
+            await _walletService.AddFundsAsync(transaction.UserId, transaction.Amount);
+
+            _logger.LogInformation($"Payment success: {transaction.Id}");
         }
 
         public Task<PayUOrderRequest> SendOrderRequest()
