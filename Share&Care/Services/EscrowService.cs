@@ -84,26 +84,26 @@ namespace Share_Care.Services
 
         public async Task<bool> ClaimEscrowAsync(string offerId)
         {
-            try
-            {
-                var escrow = await GetEscrowByOfferIdAsync(offerId);
+            var escrow = await GetEscrowByOfferIdAsync(offerId);
 
-                if (escrow == null)
-                    return false;
-
-                // ZŁA FUNKCJA
-                // ZROBIĆ ŻEBY TA OPERACJA BYŁA TRANSAKCJA A NIE UNLOCKIEM U LENDERA
-                // TU I W REALEASEESCROW NIE USUWAC ESCROWA TYLKO ZMIENIAC MU STATUS
-
-                await _walletService.UnlockFundsAsync(escrow.LenderId, escrow.Amount);
-                await _collection.DeleteOneAsync(e => e.Id == escrow.Id);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Nie udało się przyjąć depozytu");
+            if (escrow == null || escrow.Status != "Locked")
                 return false;
-            }
+
+            var success = await _walletService.TransferLockedFundsAsync(
+                escrow.BorrowerId,
+                escrow.LenderId,
+                escrow.Amount
+            );
+
+            if (!success)
+                return false;
+
+            await _collection.UpdateOneAsync(
+                e => e.Id == escrow.Id,
+                Builders<Escrow>.Update.Set(e => e.Status, "Claimed")
+            );
+
+            return true;
         }
     }
 }
