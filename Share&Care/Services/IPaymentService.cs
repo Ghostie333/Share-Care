@@ -13,6 +13,6 @@ namespace Share_Care.Services
         Task HandleWebhookNotification();
         bool ValidateWebhookSignature();
         Task ProcessSuccessfulPayment(Transaction transaction);
-        Task ProcessFailedPayment();
+        Task ProcessFailedPayment(Transaction transaction);
     }
 }

@@ -84,9 +84,14 @@ namespace Share_Care.Services
             throw new NotImplementedException();
         }
 
-        public Task ProcessFailedPayment()
+        public async Task ProcessFailedPayment(Transaction transaction)
         {
-            throw new NotImplementedException();
+            if (transaction.Status == "Failed")
+                return;
+
+            await _transactionService.MarkAsFailedAsync(transaction.Id);
+
+            _logger.LogWarning($"Payment failed: {transaction.Id}");
         }
 
         public async Task ProcessSuccessfulPayment(Transaction transaction)
