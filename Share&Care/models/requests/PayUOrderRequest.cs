@@ -19,15 +19,9 @@ namespace Share_Care.Models.Requests
 
     public class Product
     {
-        public string Name { get; set; }
-        public string UnitPrice { get; set; }
-        public string Quantity { get; set; }
-    }
-
-    public class PayUOrder
-    {
-        public string OrderId { get; set; } = String.Empty;
-        public string Status { get; set; } = String.Empty;
+        public string Name { get; set; } = String.Empty;
+        public string UnitPrice { get; set; } = String.Empty;
+        public string Quantity { get; set; } = String.Empty;
     }
 
     public class PayUOrderResponse
