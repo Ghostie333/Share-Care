@@ -17,25 +17,21 @@ namespace Share_Care.Services
         public async Task<Escrow> CreateEscrowAsync(string borrowerId, string lenderId, 
             string offerId, decimal amount)
         {
+            var locked = await _walletService.LockFundsAsync(borrowerId, amount);
+
+            if (!locked)
+                return null;
+
             var escrow = new Escrow
             {
                 BorrowerId = borrowerId,
                 LenderId = lenderId,
                 OfferId = offerId,
                 Amount = amount,
-                Status = "locked"
+                Status = "Locked"
             };
 
-            try
-            {
-                await _walletService.LockFundsAsync(borrowerId, amount);
-                await _collection.InsertOneAsync(escrow);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Nie udało się utworzyć depozytu");
-                return null;
-            }
+            await _collection.InsertOneAsync(escrow);
 
             return escrow;
         }
