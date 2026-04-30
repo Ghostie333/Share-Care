@@ -3,3 +3,4 @@
 /Share&Care/bin
 **/bin/
 **/obj/
+appsettings.Development.json
