@@ -5,16 +5,20 @@ using Share_Care.Services;
 using Share_Care.models.requests;
 using Share_Care.models;
 using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
 
 namespace Share_Care.Controllers
 {
     [ApiController]
     [Route("payments")]
     public class PaymentController(IPaymentService paymentService,
-        ITransactionService transactionService) : ControllerBase
+        ITransactionService transactionService,
+        IConfiguration config) : ControllerBase
     {
         private readonly IPaymentService _paymentService = paymentService;
         private readonly ITransactionService _transactionService = transactionService;
+        private readonly IConfiguration _config = config;
 
         [HttpPost("depostit")]
         public async Task<IActionResult> MakeDeposit(decimal amount)
@@ -37,12 +41,21 @@ namespace Share_Care.Controllers
         [HttpPost("webhook")]
         public async Task<IActionResult> HandleWebhook([FromBody] PayUWebhookPayload payload)
         {
-            var isValid = _paymentService.ValidateWebhookSignature();
+            // Czytanie surowego body
+            Request.EnableBuffering();
+            using var reader = new StreamReader(Request.Body, Encoding.UTF8, leaveOpen: true);
+            var rawBody = await reader.ReadToEndAsync();
+            Request.Body.Position = 0;
+
+            var signatureHeader = Request.Headers["OpenPayU-Signature"].ToString();
+            var secondKey = _config["PayU:SecondKey"];
+
+            var isValid = _paymentService.ValidateWebhookSignature(signatureHeader, rawBody, secondKey);
 
             if (!isValid)
                 return Unauthorized();
 
-            var externalId = payload?.Order?.OrderId;
+            var externalId = JsonSerializer.Deserialize<PayUWebhookPayload>(rawBody)?.Order?.OrderId;
 
             if (string.IsNullOrWhiteSpace(externalId))
                 return BadRequest("Missing externalId");
@@ -55,7 +68,7 @@ namespace Share_Care.Controllers
             if (transaction.Status == "Completed")
                 return Ok();
 
-            var status = payload!.Order!.Status;
+            var status = JsonSerializer.Deserialize<PayUWebhookPayload>(rawBody)!.Order!.Status;
 
             if(status == "Completed")
             {

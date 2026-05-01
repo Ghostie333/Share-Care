@@ -11,7 +11,7 @@ namespace Share_Care.Services
         Task<PayUOrderRequest> SendOrderRequest();
         PayUOrderRequest BuildOrderRequest(Transaction tx);
         Task HandleWebhookNotification();
-        bool ValidateWebhookSignature();
+        bool ValidateWebhookSignature(string signatureHeader, string requestBody, string secondKey);
         Task ProcessSuccessfulPayment(Transaction transaction);
         Task ProcessFailedPayment(Transaction transaction);
     }

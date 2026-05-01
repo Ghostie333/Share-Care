@@ -5,6 +5,8 @@ using Share_Care.models;
 using Share_Care.models.requests;
 using Share_Care.Models.Requests;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Share_Care.Services
 {
@@ -126,9 +128,20 @@ namespace Share_Care.Services
             throw new NotImplementedException();
         }
 
-        public bool ValidateWebhookSignature()
+        // Walidacja poprawnosci webhooka
+        public bool ValidateWebhookSignature(string signatureHeader,
+            string requestBody, string secondKey)
         {
-            return true;
+            var parts = signatureHeader.Split(';')
+                .Select(p => p.Split('=', 2))
+                .Where(p => p.Length == 2)
+                .ToDictionary(p => p[0], p => p[1]);
+
+            var receivedHash = parts["signature"];
+            var bytes = MD5.HashData(Encoding.UTF8.GetBytes(requestBody + secondKey));
+            var computed = Convert.ToHexString(bytes).ToLowerInvariant();
+
+            return computed == receivedHash;
         }
     }
 }
