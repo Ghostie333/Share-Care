@@ -89,9 +89,9 @@ namespace Share_Care.Services
                 "https://secure.snd.payu.com/pl/standard/user/oauth/authorize",
                 content);
 
-            var json = await response.Content.ReadFromJsonAsync<dynamic>();
+            var json = await response.Content.ReadFromJsonAsync<PayUTokenResponse>();
 
-            return json.access_token;
+            return json!.AccessToken;
         }
 
         public Task HandleWebhookNotification()
