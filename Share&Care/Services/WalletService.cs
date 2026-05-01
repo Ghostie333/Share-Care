@@ -13,7 +13,7 @@ namespace Share_Care.Services
 
         public async Task<Wallet?> CreateUsersWallet(string userId)
         {
-            var exisitingWallet = await _collection.FindAsync(w => w.UserId == userId);
+            var exisitingWallet = await _collection.Find(w => w.UserId == userId).FirstOrDefaultAsync();
 
             if (exisitingWallet != null)
                 return null;
