@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Share_Care.Models.Requests
 {
@@ -28,5 +29,11 @@ namespace Share_Care.Models.Requests
     {
         public string OrderId { get; set; } = String.Empty;
         public string RedirectUrl { get; set; } = String.Empty;
+    }
+
+    public class PayUTokenResponse
+    {
+        [JsonPropertyName("access_token")]
+        public string AccessToken { get; set; } = null!;
     }
 }
