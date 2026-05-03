@@ -23,7 +23,7 @@ namespace Share_Care.Controllers
         private readonly ILogger<PaymentController> _logger = logger;
 
         [Authorize]
-        [HttpPost("depostit")]
+        [HttpPost("deposit")]
         public async Task<IActionResult> MakeDeposit(decimal amount)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
