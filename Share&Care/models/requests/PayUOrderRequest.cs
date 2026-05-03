@@ -27,8 +27,11 @@ namespace Share_Care.Models.Requests
 
     public class PayUOrderResponse
     {
-        public string OrderId { get; set; } = String.Empty;
-        public string RedirectUrl { get; set; } = String.Empty;
+        [JsonPropertyName("orderId")]
+        public string OrderId { get; set; } = null!;
+
+        [JsonPropertyName("redirectUri")]  
+        public string RedirectUrl { get; set; } = null!;
     }
 
     public class PayUTokenResponse
