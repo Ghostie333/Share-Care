@@ -1,0 +1,33 @@
+1. W uzupelnic appsettings kluczami z konta PayU Sandbox
+2 W PaymentService w to miejsce 
+
+        public PayUOrderRequest BuildOrderRequest(Transaction tx)
+        {
+            var amount = ((int)(tx.Amount * 100)).ToString();
+
+            return new PayUOrderRequest
+            {
+                NotifyUrl = "", // To musi byc publiczne inaczej nie zadziala <-------
+                CustomerIp = "127.0.0.1",
+                MerchantPosId = _config["PayU:PosId"], // pos_id z PayU Sandbox
+                Description = $"Deposit {tx.Id}",
+                CurrencyCode = "PLN",
+                TotalAmount = amount,
+                ExtOrderId = tx.Id,
+
+                Products = new List<Product>
+                {
+                    new Product
+                    {
+                        Name = "Wallet top-up",
+                        UnitPrice = amount,
+                        Quantity = "1"
+                    }
+                }
+            };
+        }
+
+musi by publiczny adres url, zeby PayU wiedzialo gdzie wrocic. Ja uzylem takiego program ngrok co na szybko wystawia stronke publicznie
+
+3. Zeby dokonac jakiejs wplaty nalezy wyslac request do /payments/deposit?amount=
+W body odpowiedzi bedzie redirectUrl, ktory odprowadza na strone z PayU
