@@ -14,18 +14,21 @@ namespace Share_Care.Controllers
     [Route("payments")]
     public class PaymentController(IPaymentService paymentService,
         ITransactionService transactionService,
-        IConfiguration config) : ControllerBase
+        IConfiguration config,
+        ILogger<PaymentController> logger) : ControllerBase
     {
         private readonly IPaymentService _paymentService = paymentService;
         private readonly ITransactionService _transactionService = transactionService;
         private readonly IConfiguration _config = config;
+        private readonly ILogger<PaymentController> _logger = logger;
 
+        [Authorize]
         [HttpPost("depostit")]
         public async Task<IActionResult> MakeDeposit(decimal amount)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            var transaction = await _transactionService.CreateTransactionAsync(new models.Transaction
+            var transaction = await _transactionService.CreateTransactionAsync(new Transaction
             {
                 UserId = userId,
                 Amount = amount,
@@ -38,8 +41,9 @@ namespace Share_Care.Controllers
             return Ok(new { redirectUrl });
         }
 
+        [AllowAnonymous]
         [HttpPost("webhook")]
-        public async Task<IActionResult> HandleWebhook([FromBody] PayUWebhookPayload payload)
+        public async Task<IActionResult> HandleWebhook()
         {
             // Czytanie surowego body
             Request.EnableBuffering();
@@ -49,6 +53,9 @@ namespace Share_Care.Controllers
 
             var signatureHeader = Request.Headers["OpenPayU-Signature"].ToString();
             var secondKey = _config["PayU:SecondKey"];
+
+            _logger.LogInformation("Webhook raw body: {Body}", rawBody);
+            _logger.LogInformation("Signature: {Sig}", signatureHeader);
 
             var isValid = _paymentService.ValidateWebhookSignature(signatureHeader, rawBody, secondKey);
 
@@ -70,11 +77,11 @@ namespace Share_Care.Controllers
 
             var status = JsonSerializer.Deserialize<PayUWebhookPayload>(rawBody)!.Order!.Status;
 
-            if(status == "Completed")
+            if(status == "COMPLETED")
             {
                 await _paymentService.ProcessSuccessfulPayment(transaction);
             }
-            else if (status == "Failed")
+            else if (status == "CANCELED")
             {
                 await _paymentService.ProcessFailedPayment(transaction);
             }

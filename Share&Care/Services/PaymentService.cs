@@ -30,9 +30,9 @@ namespace Share_Care.Services
 
             return new PayUOrderRequest
             {
-                NotifyUrl = "https://your-api.com/payments/webhook", // To musi byc publiczne inaczej nie zadziala
+                NotifyUrl = "", // To musi byc publiczne inaczej nie zadziala
                 CustomerIp = "127.0.0.1",
-                MerchantPosId = "bnGiZevr",
+                MerchantPosId = _config["PayU:PosId"], // pos_id z PayU Sandbox
                 Description = $"Deposit {tx.Id}",
                 CurrencyCode = "PLN",
                 TotalAmount = amount,
@@ -68,12 +68,22 @@ namespace Share_Care.Services
             httpRequest.Content = JsonContent.Create(request);
 
             var response = await _httpClient.SendAsync(httpRequest);
-            var json = await response.Content.ReadFromJsonAsync<PayUOrderResponse>();
 
-            string orderId = json.OrderId;
+            var body = await response.Content.ReadAsStringAsync();
+            _logger.LogInformation("PayU order response {Status}: {Body}", response.StatusCode, body);
 
-            // 4. Zapisz ExtrenalId
-            await _transactionService.SetExternalIdAsync(transaction.Id, orderId);
+            if (response.StatusCode != System.Net.HttpStatusCode.Found &&
+                response.StatusCode != System.Net.HttpStatusCode.OK)
+            {
+                throw new Exception($"PayU order failed [{response.StatusCode}]: {body}");
+            }
+
+            var json = System.Text.Json.JsonSerializer.Deserialize<PayUOrderResponse>(body);
+
+            if (json?.OrderId == null)
+                throw new Exception($"PayU response missing orderId: {body}");
+
+            await _transactionService.SetExternalIdAsync(transaction.Id, json.OrderId);
 
             return json.RedirectUrl;
         }
@@ -91,8 +101,13 @@ namespace Share_Care.Services
                 "https://secure.snd.payu.com/pl/standard/user/oauth/authorize",
                 content);
 
-            var json = await response.Content.ReadFromJsonAsync<PayUTokenResponse>();
+            var body = await response.Content.ReadAsStringAsync();
+            _logger.LogInformation("PayU token response {Status}: {Body}", response.StatusCode, body);
 
+            if (!response.IsSuccessStatusCode)
+                throw new Exception($"PayU auth failed: {body}");
+
+            var json = await response.Content.ReadFromJsonAsync<PayUTokenResponse>();
             return json!.AccessToken;
         }
 
