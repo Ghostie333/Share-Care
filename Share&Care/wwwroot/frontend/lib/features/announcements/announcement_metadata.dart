@@ -16,10 +16,19 @@ class AnnouncementMetadata {
     'Zgłoszenie',
   ];
 
+  static const List<String> offerKinds = <String>[
+    'Borrow',
+    'Give',
+  ];
+
   static String get defaultCategory => categories.first;
 
   static const String defaultAnnouncementType = 'Ogłoszenie';
   static const String defaultReportType = 'Zgłoszenie';
+
+  static String offerKindLabel(String kind) {
+    return kind == 'Give' ? 'Oddanie' : 'Wypożyczenie';
+  }
 
   /// Koduje typ i kategorię do jednego pola Category ("Typ|Kategoria").
   static String encode(String type, String category) {

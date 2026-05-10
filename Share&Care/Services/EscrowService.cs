@@ -14,8 +14,8 @@ namespace Share_Care.Services
         private readonly IWalletService _walletService = walletSerivce;
         private readonly IMongoCollection<Escrow> _collection = db.GetCollection<Escrow>("escrows");
 
-        public async Task<Escrow> CreateEscrowAsync(string borrowerId, string lenderId, 
-            string offerId, decimal amount)
+        public async Task<Escrow?> CreateEscrowAsync(string borrowerId, string lenderId,
+            string offerId, decimal amount, DateTime? deadlineAt)
         {
             var locked = await _walletService.LockFundsAsync(borrowerId, amount);
 
@@ -28,7 +28,9 @@ namespace Share_Care.Services
                 LenderId = lenderId,
                 OfferId = offerId,
                 Amount = amount,
-                Status = "Locked"
+                Status = "PendingApproval",
+                CreatedAt = DateTime.UtcNow,
+                DeadlineAt = deadlineAt
             };
 
             await _collection.InsertOneAsync(escrow);
@@ -65,42 +67,235 @@ namespace Share_Care.Services
             }
         }
 
-        public async Task<bool> ReleaseEscrowAsync(string offerId)
+        public async Task<bool> ApproveEscrowAsync(string offerId)
         {
             var escrow = await GetEscrowByOfferIdAsync(offerId);
 
-            if (escrow == null || escrow.Status != "Locked")
+            if (escrow == null || escrow.Status != "PendingApproval")
+                return false;
+
+            await _collection.UpdateOneAsync(
+                e => e.Id == escrow.Id,
+                Builders<Escrow>.Update.Set(e => e.Status, "Locked")
+            );
+
+            return true;
+        }
+
+        public async Task<bool> CancelEscrowAsync(string offerId)
+        {
+            var escrow = await GetEscrowByOfferIdAsync(offerId);
+
+            if (escrow == null || (escrow.Status != "PendingApproval" && escrow.Status != "Locked"))
                 return false;
 
             await _walletService.UnlockFundsAsync(escrow.BorrowerId, escrow.Amount);
 
             await _collection.UpdateOneAsync(
                 e => e.Id == escrow.Id,
-                Builders<Escrow>.Update.Set(e => e.Status, "Released")
+                Builders<Escrow>.Update.Set(e => e.Status, "Canceled")
             );
 
             return true;
         }
 
-        public async Task<bool> ClaimEscrowAsync(string offerId)
+        public async Task<bool> RecordTakerReturnAsync(string offerId, List<string> imageIds)
         {
             var escrow = await GetEscrowByOfferIdAsync(offerId);
 
             if (escrow == null || escrow.Status != "Locked")
                 return false;
 
-            var success = await _walletService.TransferLockedFundsAsync(
+            var update = Builders<Escrow>.Update
+                .Set(e => e.ReturnStatus, "TakerReturned")
+                .Set(e => e.TakerReturnedAt, DateTime.UtcNow)
+                .Set(e => e.TakerReturnImageIds, imageIds);
+
+            await _collection.UpdateOneAsync(e => e.Id == escrow.Id, update);
+
+            return true;
+        }
+
+        public async Task<bool> FinalizeEscrowAsync(
+            string offerId,
+            string condition,
+            string platformUserId,
+            decimal platformFeeRate,
+            decimal giverBonusRate)
+        {
+            var escrow = await GetEscrowByOfferIdAsync(offerId);
+
+            if (escrow == null || escrow.Status != "Locked")
+                return false;
+
+            var (giverPercent, _) = ResolveConditionSplit(condition);
+
+            var total = escrow.Amount;
+            var platformFee = RoundMoney(total * platformFeeRate);
+            var remaining = total - platformFee;
+            if (remaining < 0) remaining = 0;
+
+            var giverAmount = RoundMoney(remaining * giverPercent);
+            var takerAmount = remaining - giverAmount;
+
+            var giverBonus = RoundMoney(total * giverBonusRate);
+            var bonusApplied = giverBonus > takerAmount ? takerAmount : giverBonus;
+            takerAmount -= bonusApplied;
+            giverAmount += bonusApplied;
+
+            var success = await ApplyTransfersAsync(
                 escrow.BorrowerId,
                 escrow.LenderId,
-                escrow.Amount
-            );
+                platformUserId,
+                platformFee,
+                giverAmount,
+                takerAmount);
 
             if (!success)
                 return false;
 
+            var update = Builders<Escrow>.Update
+                .Set(e => e.Status, "Released")
+                .Set(e => e.ReturnStatus, "GiverReviewed")
+                .Set(e => e.Condition, condition)
+                .Set(e => e.GiverReviewedAt, DateTime.UtcNow)
+                .Set(e => e.PlatformFee, platformFee)
+                .Set(e => e.GiverBonus, bonusApplied)
+                .Set(e => e.GiverAmount, giverAmount)
+                .Set(e => e.TakerAmount, takerAmount);
+
+            await _collection.UpdateOneAsync(e => e.Id == escrow.Id, update);
+
+            return true;
+        }
+
+        public async Task<bool> ClaimEscrowAsync(
+            string offerId,
+            string platformUserId,
+            decimal platformFeeRate,
+            decimal giverBonusRate)
+        {
+            return await FinalizeEscrowAsync(
+                offerId,
+                "NotReturned",
+                platformUserId,
+                platformFeeRate,
+                giverBonusRate);
+        }
+
+        private async Task<bool> ApplyTransfersAsync(
+            string borrowerId,
+            string lenderId,
+            string platformUserId,
+            decimal platformFee,
+            decimal giverAmount,
+            decimal takerAmount)
+        {
+            if (platformFee > 0)
+            {
+                var ok = await _walletService.TransferLockedFundsAsync(
+                    borrowerId,
+                    platformUserId,
+                    platformFee);
+                if (!ok) return false;
+            }
+
+            if (giverAmount > 0)
+            {
+                var ok = await _walletService.TransferLockedFundsAsync(
+                    borrowerId,
+                    lenderId,
+                    giverAmount);
+                if (!ok) return false;
+            }
+
+            if (takerAmount > 0)
+            {
+                var wallet = await _walletService.UnlockFundsAsync(
+                    borrowerId,
+                    takerAmount);
+                if (wallet == null) return false;
+            }
+
+            return true;
+        }
+
+        private static decimal RoundMoney(decimal value)
+        {
+            return Math.Round(value, 2, MidpointRounding.AwayFromZero);
+        }
+
+        private static (decimal giverPercent, decimal takerPercent) ResolveConditionSplit(string condition)
+        {
+            var normalized = (condition ?? string.Empty).Trim().ToLowerInvariant();
+            return normalized switch
+            {
+                "ideal" => (0m, 1m),
+                "lightlyused" => (0.25m, 0.75m),
+                "heavilyused" => (0.75m, 0.25m),
+                "destroyed" => (1m, 0m),
+                "notreturned" => (1m, 0m),
+                "expiredinspection" => (0m, 1m), // 100% Takerowi, jeśli Giver nie sprawdził w terminie
+                _ => (0m, 1m)
+            };
+        }
+
+        public async Task<bool> RecordGiverInspectionAsync(string offerId, string condition, List<string> imageIds)
+        {
+            var escrow = await GetEscrowByOfferIdAsync(offerId);
+
+            if (escrow == null || escrow.ReturnStatus != "TakerReturned")
+                return false;
+
+            var update = Builders<Escrow>.Update
+                .Set(e => e.Condition, condition)
+                .Set(e => e.GiverInspectionImageIds, imageIds)
+                .Set(e => e.GiverReviewedAt, DateTime.UtcNow)
+                .Set(e => e.ReturnStatus, "GiverReviewed");
+
+            await _collection.UpdateOneAsync(e => e.Id == escrow.Id, update);
+
+            return true;
+        }
+
+        public async Task<List<Escrow>> GetExpiredInspectionsAsync()
+        {
+            var expired = await _collection.Find(e =>
+                e.Status == "Locked" &&
+                e.ReturnStatus == "TakerReturned" &&
+                e.InspectionDeadlineAt != null &&
+                e.InspectionDeadlineAt < DateTime.UtcNow
+            ).ToListAsync();
+
+            return expired;
+        }
+
+        public async Task<bool> ClaimExpiredEscrowAsync(
+            string offerId,
+            string platformUserId,
+            decimal platformFeeRate)
+        {
+            var escrow = await GetEscrowByOfferIdAsync(offerId);
+
+            if (escrow == null || escrow.Status != "Locked" || escrow.ReturnStatus != "TakerReturned")
+                return false;
+
+            // Jeśli Giver nie sprawdzi w terminie - 95% do Takera, 5% platformy
+            return await FinalizeEscrowAsync(offerId, "ExpiredInspection", platformUserId, platformFeeRate, 0m);
+        }
+
+        public async Task<bool> SetInspectionDeadlineAsync(string offerId, int daysUntilDeadline = 14)
+        {
+            var escrow = await GetEscrowByOfferIdAsync(offerId);
+
+            if (escrow == null || escrow.ReturnStatus != "TakerReturned")
+                return false;
+
+            var deadline = DateTime.UtcNow.AddDays(daysUntilDeadline);
+
             await _collection.UpdateOneAsync(
                 e => e.Id == escrow.Id,
-                Builders<Escrow>.Update.Set(e => e.Status, "Claimed")
+                Builders<Escrow>.Update.Set(e => e.InspectionDeadlineAt, deadline)
             );
 
             return true;

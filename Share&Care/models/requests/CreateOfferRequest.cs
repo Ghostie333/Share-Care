@@ -14,6 +14,9 @@ public sealed class CreateOfferRequest
     [Required]
     public string? Category { get; set; }
 
+    [Required]
+    public string? OfferKind { get; set; } // Borrow or Give
+
     public string ContactNumber { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
 

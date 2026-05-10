@@ -1,12 +1,13 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/classic_style.dart';
 import '../../services/auth_service.dart';
 import '../../services/payment_service.dart';
 import '../../services/user_profile_service.dart';
+import '../../services/rental_service.dart';
 import '../models/annoucement.dart';
+import 'payment_survey_page.dart';
 
 class PaymentAuthorizationPage extends StatefulWidget {
   final AuthResult authResult;
@@ -37,10 +38,17 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
   late final TextEditingController _apartmentNumberController;
   late final TextEditingController _companyNameController;
   late final TextEditingController _taxIdController;
+  late final TextEditingController _rentalDaysController;
 
   UserProfileInfo? _profile;
   bool _isLoadingProfile = false;
   bool _isSubmitting = false;
+
+  String? _pendingTransactionId;
+  PaymentDraft? _pendingDraft;
+  DateTime? _pendingDeadlineAt;
+  bool _isCheckingPayment = false;
+  String? _lastPaymentStatus;
 
   bool _useProfileName = true;
   bool _useProfileEmail = true;
@@ -65,6 +73,7 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
     _apartmentNumberController = TextEditingController();
     _companyNameController = TextEditingController();
     _taxIdController = TextEditingController();
+    _rentalDaysController = TextEditingController(text: '7');
 
     _loadProfile();
   }
@@ -82,6 +91,7 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
     _apartmentNumberController.dispose();
     _companyNameController.dispose();
     _taxIdController.dispose();
+    _rentalDaysController.dispose();
     super.dispose();
   }
 
@@ -141,6 +151,13 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
   }
 
   Future<void> _submit() async {
+    if (_pendingTransactionId != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Masz już oczekującą płatność. Sprawdź jej status.')),
+      );
+      return;
+    }
+
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
@@ -166,35 +183,197 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
         invoiceData: invoiceData,
       );
 
+      final deadlineAt = _resolveDeadlineAt();
+      final offerKind = widget.announcement.offerKind;
+
+      if (offerKind == 'Borrow') {
+        if (draft.amount <= 0) {
+          throw Exception('Kaucja musi być większa od 0');
+        }
+
+        final deposit = await PaymentService.createDeposit(amount: draft.amount);
+
+        setState(() {
+          _pendingTransactionId = deposit.transactionId;
+          _pendingDraft = draft;
+          _pendingDeadlineAt = deadlineAt;
+          _lastPaymentStatus = PaymentService.pendingStatus;
+        });
+
+        final launched = await launchUrl(
+          Uri.parse(deposit.redirectUrl),
+          mode: LaunchMode.externalApplication,
+        );
+
+        if (!launched) {
+          throw Exception('Nie udało się otworzyć strony płatności');
+        }
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('PayU otwarte. Po płatności wróć i kliknij "Sprawdź płatność".'),
+          ),
+        );
+
+        return; // czekamy na potwierdzenie płatności
+      }
+
+      await RentalService.startRental(
+        offerId: widget.announcement.id,
+        deadlineAt: deadlineAt,
+      );
+
       if (!mounted) return;
+      final infoText = offerKind == 'Borrow'
+          ? 'Otworzyliśmy stronę PayU.\n\n'
+              'Po zakończeniu płatności wróć tutaj i przejdź do ankiety.'
+          : 'Przekazaliśmy prośbę do ogłoszeniodawcy.';
       await showDialog<void>(
         context: context,
         builder: (context) {
           return AlertDialog(
-            title: const Text('Autoryzacja przygotowana'),
+            title: const Text('Przekierowanie do płatności'),
             content: SingleChildScrollView(
               child: Text(
-                'Kod autoryzacji: ${draft.authorizationCode}\n\n'
-                'Kwota: ${draft.amount.toStringAsFixed(2)} zł\n\n'
-                'Dane płatności (JSON):\n${const JsonEncoder.withIndent('  ').convert(draft.toJson())}',
+                '$infoText\n\n'
+                'Kod autoryzacji: ${draft.authorizationCode}\n'
+                'Kwota: ${draft.amount.toStringAsFixed(2)} zł',
               ),
             ),
             actions: [
               TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _openSurvey();
+                },
+                child: const Text('Przejdź do ankiety'),
+              ),
+              TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Zamknij'),
+                child: const Text('Później'),
               ),
             ],
           );
         },
       );
-
+    } catch (e) {
       if (!mounted) return;
-      Navigator.of(context).pop(draft);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nie udało się rozpocząć płatności: $e')),
+      );
     } finally {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
     }
+  }
+
+  void _openSurvey() {
+    final targetUserId = widget.announcement.userId;
+    if (targetUserId == null || targetUserId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Brak danych autora ogłoszenia.')),
+      );
+      return;
+    }
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PaymentSurveyPage(
+          targetUserId: targetUserId,
+          announcementTitle: widget.announcement.title,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _checkPaymentAndContinue() async {
+    final txId = _pendingTransactionId;
+    if (txId == null || txId.isEmpty) return;
+    if (_isCheckingPayment) return;
+
+    setState(() => _isCheckingPayment = true);
+    try {
+      final tx = await PaymentService.fetchTransactionStatus(txId);
+      if (!mounted) return;
+      setState(() => _lastPaymentStatus = tx.status);
+
+      if (PaymentService.isCompleted(tx.status)) {
+        await RentalService.startRental(
+          offerId: widget.announcement.id,
+          deadlineAt: _pendingDeadlineAt,
+        );
+
+        if (!mounted) return;
+        setState(() {
+          _pendingTransactionId = null;
+          _pendingDeadlineAt = null;
+        });
+
+        await showDialog<void>(
+          context: context,
+          builder: (context) {
+            final draft = _pendingDraft;
+            final amountText = draft == null
+                ? '-'
+                : '${draft.amount.toStringAsFixed(2)} zł';
+            final codeText = draft?.authorizationCode ?? '-';
+
+            return AlertDialog(
+              title: const Text('Płatność potwierdzona'),
+              content: SingleChildScrollView(
+                child: Text(
+                  'Płatność została zakończona.\n\n'
+                  'Kod autoryzacji: $codeText\n'
+                  'Kwota: $amountText',
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _openSurvey();
+                  },
+                  child: const Text('Przejdź do ankiety'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Później'),
+                ),
+              ],
+            );
+          },
+        );
+
+        return;
+      }
+
+      if (PaymentService.isFailed(tx.status)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Płatność anulowana lub nieudana.')),
+        );
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Status płatności: ${tx.status}')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nie udało się sprawdzić płatności: $e')),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() => _isCheckingPayment = false);
+    }
+  }
+
+  DateTime? _resolveDeadlineAt() {
+    final raw = _rentalDaysController.text.trim();
+    final days = int.tryParse(raw);
+    if (days == null || days <= 0) return null;
+    return DateTime.now().add(Duration(days: days));
   }
 
   @override
@@ -290,6 +469,50 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
                       ),
                     ),
                     const SizedBox(height: 12),
+                    if (_pendingTransactionId != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            color: theme.colorScheme.surface,
+                            border: Border.all(
+                              color: ClassicStyle.my_dark_green.withOpacity(0.35),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.payments_outlined),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'Oczekująca płatność: ${_lastPaymentStatus ?? PaymentService.pendingStatus}',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              OutlinedButton.icon(
+                                onPressed: _isCheckingPayment ? null : _checkPaymentAndContinue,
+                                icon: const Icon(Icons.refresh),
+                                label: Text(
+                                  _isCheckingPayment
+                                      ? 'Sprawdzanie...'
+                                      : 'Sprawdź płatność',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     if (_isLoadingProfile)
                       const Padding(
                         padding: EdgeInsets.only(bottom: 10),
@@ -427,6 +650,20 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
                       label: 'NIP (opcjonalnie)',
                       keyboardType: TextInputType.number,
                     ),
+                    _buildField(
+                      controller: _rentalDaysController,
+                      label: 'Liczba dni wypożyczenia',
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (widget.announcement.offerKind == 'Borrow') {
+                          final days = int.tryParse(value?.trim() ?? '');
+                          if (days == null || days <= 0) {
+                            return 'Podaj liczbę dni wypożyczenia';
+                          }
+                        }
+                        return null;
+                      },
+                    ),
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
                       onPressed: _isSubmitting ? null : _submit,
@@ -443,7 +680,7 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
                       label: Text(
                         _isSubmitting
                             ? 'Przygotowywanie...'
-                            : 'Autoryzuj płatność (wizualnie)',
+                            : 'Autoryzuj płatność',
                       ),
                     ),
                   ],

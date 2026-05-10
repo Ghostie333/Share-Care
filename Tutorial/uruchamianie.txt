@@ -3,4 +3,5 @@ docker compose --env-file shareCare.env -f docker-compose.dev.yml up --build
 
 cd Share&Care/wwwroot/frontend
 flutter pub get
-flutter run -d web-server --dart-define=API_BASE_URL=adres:7070
+flutter run -d web-server --dart-define=API_BASE_URL=adres:7070 --dart-define=MAPTILER_API_K
+EY=request_code

@@ -15,13 +15,16 @@ namespace Share_Care.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class UserProfileController(IMongoDatabase database, ILogger<UserProfileController> logger, SecurityService securityService) : ControllerBase
+    public class UserProfileController(IMongoDatabase database, ILogger<UserProfileController> logger, SecurityService securityService, IWalletService walletService) : ControllerBase
     {
         private readonly IMongoDatabase _database = database;
         private readonly GridFSBucket _bucket = new(database);
         private readonly IMongoCollection<UserData> _users = database.GetCollection<UserData>("users");
+        private readonly IMongoCollection<Offer> _offers = database.GetCollection<Offer>("offers");
+        private readonly IMongoCollection<Escrow> _escrows = database.GetCollection<Escrow>("escrows");
         private readonly ILogger<UserProfileController> _logger = logger;
         private readonly SecurityService _security = securityService;
+        private readonly IWalletService _walletService = walletService;
 
         // Prosty 1x1 przezroczysty PNG (unikamy 404, gdy brak zdjęcia)
         private static readonly byte[] _emptyPng = Convert.FromBase64String(
@@ -165,8 +168,28 @@ namespace Share_Care.Controllers
 
             try
             {
+                var userOffers = await _offers
+                    .Find(o => o.UserId == user.UserId)
+                    .ToListAsync();
+                var activeOffers = userOffers
+                    .Where(o => string.Equals(o.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                var completedOffers = userOffers
+                    .Where(o => string.Equals(o.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                var differentCitiesCount = userOffers
+                    .Select(o => string.IsNullOrWhiteSpace(o.LocationText) ? string.Empty : o.LocationText.Trim().ToLowerInvariant())
+                    .Where(city => !string.IsNullOrWhiteSpace(city))
+                    .Distinct()
+                    .Count();
+                var giveOffersCount = userOffers.Count(o => string.Equals(o.OfferKind, "Give", StringComparison.OrdinalIgnoreCase));
+                var negotiationsCount = await _escrows.CountDocumentsAsync(
+                    e => e.BorrowerId == user.UserId || e.LenderId == user.UserId);
+                var firstDayPurchasesCount = await CountFirstDayPurchasesAsync(user.UserId ?? string.Empty);
+                var wallet = await _walletService.GetWalletByUserIdAsync(user.UserId ?? string.Empty);
                 return Ok(new
                 {
+                    brithday = user.Brithday,
                     firstName = user.FirstName,
                     lastName = user.LastName,
                     email = user.Email,
@@ -176,6 +199,23 @@ namespace Share_Care.Controllers
                     buildingNumber = user.BuildingNumber,
                     phoneNumber = user.PhoneNumber,
                     raiting = user.Raiting,
+                    ratingCount = user.RatingCount,
+                    credits = user.Credits,
+                    showFirstName = user.ShowFirstName,
+                    showLastName = user.ShowLastName,
+                    showCity = user.ShowCity,
+                    showPhoneNumber = user.ShowPhoneNumber,
+                    showProfileImage = user.ShowProfileImage,
+                    offersCount = userOffers.Count,
+                    activeOffersCount = activeOffers.Count,
+                    completedCount = completedOffers.Count,
+                    negotiationsCount,
+                    giveOffersCount,
+                    firstDayPurchasesCount,
+                    differentCitiesCount,
+                    loweredPriceChangesCount = user.LoweredPriceChangesCount,
+                    walletBalance = wallet?.Balance ?? 0m,
+                    walletLocked = wallet?.LockedBalance ?? 0m,
                     type = user.Type
                 });
             }
@@ -184,6 +224,129 @@ namespace Share_Care.Controllers
                 _logger.LogError(ex, "Nie udało się pobrać informacji o użytkowniku");
                 return StatusCode(500);
             }
+        }
+
+        [HttpGet("public/{userId}")]
+        public async Task<IActionResult> GetPublicProfile(string userId)
+        {
+            if (!ObjectId.TryParse(userId, out var objectId))
+                return BadRequest("Invalid id");
+
+            var filter = Builders<UserData>.Filter.Eq("_id", objectId);
+            var user = await _users.Find(filter).FirstOrDefaultAsync();
+            if (user == null) return NotFound("User not found");
+
+            var userOffers = await _offers
+                .Find(o => o.UserId == user.UserId)
+                .ToListAsync();
+            var activeOffers = userOffers
+                .Where(o => string.Equals(o.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            var completedOffersAll = userOffers
+                .Where(o => string.Equals(o.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            var completedOffers = completedOffersAll
+                .OrderByDescending(o => o.CompletedAt)
+                .Take(10)
+                .ToList();
+            var differentCitiesCount = userOffers
+                .Select(o => string.IsNullOrWhiteSpace(o.LocationText) ? string.Empty : o.LocationText.Trim().ToLowerInvariant())
+                .Where(city => !string.IsNullOrWhiteSpace(city))
+                .Distinct()
+                .Count();
+            var giveOffersCount = userOffers.Count(o => string.Equals(o.OfferKind, "Give", StringComparison.OrdinalIgnoreCase));
+            var negotiationsCount = await _escrows.CountDocumentsAsync(
+                e => e.BorrowerId == user.UserId || e.LenderId == user.UserId);
+            var firstDayPurchasesCount = await CountFirstDayPurchasesAsync(user.UserId ?? string.Empty);
+
+            var rank = ResolveRank(user.Credits, user.Raiting);
+
+            var firstName = user.ShowFirstName ? user.FirstName : string.Empty;
+            var lastName = user.ShowLastName ? user.LastName : string.Empty;
+            var city = user.ShowCity ? user.City : string.Empty;
+            var phoneNumber = user.ShowPhoneNumber ? user.PhoneNumber : string.Empty;
+
+            return Ok(new
+            {
+                userId = user.UserId,
+                firstName,
+                lastName,
+                city,
+                phoneNumber,
+                raiting = user.Raiting,
+                ratingCount = user.RatingCount,
+                showFirstName = user.ShowFirstName,
+                showLastName = user.ShowLastName,
+                showCity = user.ShowCity,
+                showPhoneNumber = user.ShowPhoneNumber,
+                showProfileImage = user.ShowProfileImage,
+                offersCount = userOffers.Count,
+                activeOffersCount = activeOffers.Count,
+                    completedCount = completedOffersAll.Count,
+                negotiationsCount,
+                giveOffersCount,
+                firstDayPurchasesCount,
+                differentCitiesCount,
+                loweredPriceChangesCount = user.LoweredPriceChangesCount,
+                rank,
+                activeOffers = activeOffers.Select(o => new
+                {
+                    offerId = o.OfferId,
+                    title = o.Title,
+                    category = o.Category,
+                    deposit = o.Deposit,
+                    offerKind = o.OfferKind,
+                    locationText = o.LocationText,
+                    imageIds = o.ImageIds,
+                }),
+                offers = activeOffers.Select(o => new
+                {
+                    offerId = o.OfferId,
+                    title = o.Title,
+                    category = o.Category,
+                    deposit = o.Deposit,
+                    offerKind = o.OfferKind,
+                    locationText = o.LocationText,
+                    imageIds = o.ImageIds,
+                }),
+                completedHistory = completedOffers.Select(o => new
+                {
+                    offerId = o.OfferId,
+                    title = o.Title,
+                    category = o.Category,
+                    completedAt = o.CompletedAt,
+                    offerKind = o.OfferKind
+                })
+            });
+        }
+
+        [Authorize]
+        [HttpPost("rate/{userId}")]
+        public async Task<IActionResult> RateUser(string userId, [FromBody] RateUserRequest request)
+        {
+            if (request.Score < 0 || request.Score > 5)
+                return BadRequest("Score must be between 0 and 5");
+
+            if (!ObjectId.TryParse(userId, out var objectId))
+                return BadRequest("Invalid id");
+
+            var filter = Builders<UserData>.Filter.Eq("_id", objectId);
+            var user = await _users.Find(filter).FirstOrDefaultAsync();
+            if (user == null)
+                return NotFound("User not found");
+
+            var currentRating = user.Raiting ?? 0f;
+            var currentCount = user.RatingCount;
+            var newCount = currentCount + 1;
+            var newRating = ((currentRating * currentCount) + request.Score) / newCount;
+
+            var update = Builders<UserData>.Update
+                .Set(u => u.Raiting, newRating)
+                .Set(u => u.RatingCount, newCount);
+
+            await _users.UpdateOneAsync(filter, update);
+
+            return Ok(new { raiting = newRating, ratingCount = newCount });
         }
 
         // Aktualizacja profilu użytkownika
@@ -199,18 +362,31 @@ namespace Share_Care.Controllers
                     return Unauthorized();
                 }
 
-                var update = Builders<UserData>.Update
-                    .Set(x => x.Brithday, form.Birthday)
-                    .Set(x => x.City, form.City)
-                    .Set(x => x.PostalCode, form.PostalCode)
-                    .Set(x => x.Street, form.Street)
-                    .Set(x => x.BuildingNumber, form.BuildingNumber)
-                    .Set(x => x.FirstName, form.FirstName)
-                    .Set(x => x.LastName, form.LastName)
-                    .Set(x => x.Email, form.Email)
-                    .Set(x => x.PhoneNumber, form.PhoneNumber);
+                var updates = new List<UpdateDefinition<UserData>>
+                {
+                    Builders<UserData>.Update.Set(x => x.Brithday, form.Birthday),
+                    Builders<UserData>.Update.Set(x => x.City, form.City),
+                    Builders<UserData>.Update.Set(x => x.PostalCode, form.PostalCode),
+                    Builders<UserData>.Update.Set(x => x.Street, form.Street),
+                    Builders<UserData>.Update.Set(x => x.BuildingNumber, form.BuildingNumber),
+                    Builders<UserData>.Update.Set(x => x.FirstName, form.FirstName),
+                    Builders<UserData>.Update.Set(x => x.LastName, form.LastName),
+                    Builders<UserData>.Update.Set(x => x.Email, form.Email),
+                    Builders<UserData>.Update.Set(x => x.PhoneNumber, form.PhoneNumber)
+                };
 
-                await _users.FindOneAndUpdateAsync(x => x.UserId == currentUserId, update);
+                if (form.ShowFirstName.HasValue)
+                    updates.Add(Builders<UserData>.Update.Set(x => x.ShowFirstName, form.ShowFirstName.Value));
+                if (form.ShowLastName.HasValue)
+                    updates.Add(Builders<UserData>.Update.Set(x => x.ShowLastName, form.ShowLastName.Value));
+                if (form.ShowCity.HasValue)
+                    updates.Add(Builders<UserData>.Update.Set(x => x.ShowCity, form.ShowCity.Value));
+                if (form.ShowPhoneNumber.HasValue)
+                    updates.Add(Builders<UserData>.Update.Set(x => x.ShowPhoneNumber, form.ShowPhoneNumber.Value));
+                if (form.ShowProfileImage.HasValue)
+                    updates.Add(Builders<UserData>.Update.Set(x => x.ShowProfileImage, form.ShowProfileImage.Value));
+
+                await _users.FindOneAndUpdateAsync(x => x.UserId == currentUserId, Builders<UserData>.Update.Combine(updates));
 
                 return Ok("Pomyślnie zaktualizowano profil użytkownika");
             }
@@ -290,6 +466,49 @@ namespace Share_Care.Controllers
                 _logger.LogError(ex, "Nie udało się usunąć profilu użytkownika");
                 return StatusCode(500);
             }
+        }
+
+        private static string ResolveRank(int credits, float? rating)
+        {
+            if (credits >= 5000 && (rating ?? 0) >= 4.5f) return "Mistrz";
+            if (credits >= 2000) return "Ekspert";
+            if (credits >= 500) return "Zaawansowany";
+            return "Początkujący";
+        }
+
+        private async Task<int> CountFirstDayPurchasesAsync(string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return 0;
+            }
+
+            var escrows = await _escrows.Find(e => e.BorrowerId == userId).ToListAsync();
+            if (escrows.Count == 0)
+            {
+                return 0;
+            }
+
+            var offerIds = escrows.Select(e => e.OfferId).Distinct().ToList();
+            var offers = await _offers.Find(o => offerIds.Contains(o.OfferId)).ToListAsync();
+            var offersById = offers.ToDictionary(o => o.OfferId, o => o);
+
+            var count = 0;
+            foreach (var escrow in escrows)
+            {
+                if (!offersById.TryGetValue(escrow.OfferId, out var offer))
+                {
+                    continue;
+                }
+
+                var firstDayLimit = offer.CreatedAt.AddDays(1);
+                if (escrow.CreatedAt >= offer.CreatedAt && escrow.CreatedAt <= firstDayLimit)
+                {
+                    count++;
+                }
+            }
+
+            return count;
         }
     }
 }

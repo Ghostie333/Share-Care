@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 
 import '../announcements/annoucements_detail_page.dart';
 import '../announcements/announcement_metadata.dart';
-import '../home/widgets/announcement_grid.dart';
+import '../announcements/announcement_grid.dart';
 import '../models/annoucement.dart';
 import '../../core/classic_style.dart';
 import '../../config/app_config.dart';
@@ -19,7 +19,7 @@ import '../auth/auth_login_page.dart';
 import '../chat/chat_page.dart';
 import '../navigation/app_bar.dart';
 import '../search/search_page.dart';
-import 'widgets/profile_page.dart';
+import '../profile/profile_page.dart';
 import '../announcements/create_report_sheet.dart';
 import '../payments/payment_authorization_page.dart';
 
@@ -327,8 +327,10 @@ class _HomePageState extends State<HomePage> {
                   ? _selectedCategory!
                   : AnnouncementMetadata.defaultCategory,
               initialType: AnnouncementMetadata.defaultAnnouncementType,
+              initialOfferKind: AnnouncementMetadata.offerKinds.first,
               categories: AnnouncementMetadata.categories,
               types: AnnouncementMetadata.types,
+              offerKinds: AnnouncementMetadata.offerKinds,
               onCreated: (_) async => _loadOffers(),
             );
           }

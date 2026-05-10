@@ -10,7 +10,7 @@ import '../announcements/announcements_feed_page.dart';
 import '../auth/auth_login_page.dart';
 import '../chat/chat_page.dart';
 import '../home/home_page.dart';
-import '../home/widgets/profile_page.dart';
+import '../profile/profile_page.dart';
 import '../navigation/app_bar.dart';
 
 class SearchPage extends StatefulWidget {
@@ -154,8 +154,10 @@ class _SearchPageState extends State<SearchPage> {
               authResult: widget.authResult,
               initialCategory: initialCategory,
               initialType: AnnouncementMetadata.defaultAnnouncementType,
+              initialOfferKind: AnnouncementMetadata.offerKinds.first,
               categories: AnnouncementMetadata.categories,
               types: AnnouncementMetadata.types,
+              offerKinds: AnnouncementMetadata.offerKinds,
               onCreated: (_) async {
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(

@@ -22,8 +22,16 @@ namespace Share_Care.models
         public string? Street { get; set; }
         public string? BuildingNumber { get; set; }
         public string? Type { get; set; }
+        public bool ShowFirstName { get; set; } = true;
+        public bool ShowLastName { get; set; } = true;
+        public bool ShowCity { get; set; } = true;
+        public bool ShowPhoneNumber { get; set; } = false;
+        public bool ShowProfileImage { get; set; } = true;
         public int? OffersAmount { get; set; }
         public float? Raiting { get; set; }
+        public int Credits { get; set; } = 0;
+        public int RatingCount { get; set; } = 0;
+        public int LoweredPriceChangesCount { get; set; } = 0;
 
         // Id pliku w GridFS (BSON ObjectId przechowywany jako string)
         [BsonRepresentation(BsonType.ObjectId)]

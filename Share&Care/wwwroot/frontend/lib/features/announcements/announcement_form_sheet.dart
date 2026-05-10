@@ -12,9 +12,11 @@ class AnnouncementFormSheet extends StatefulWidget {
 
   final List<String> categories;
   final List<String> types;
+  final List<String> offerKinds;
 
   final String? initialCategory;
   final String? initialType;
+  final String? initialOfferKind;
   final String? initialCity;
   final String? initialPhoneNumber;
 
@@ -26,6 +28,7 @@ class AnnouncementFormSheet extends StatefulWidget {
     List<XFile> images,
     String category,
     String type,
+    String offerKind,
     String contactNumber,
   )
   onSubmit;
@@ -36,8 +39,10 @@ class AnnouncementFormSheet extends StatefulWidget {
     required this.ownerName,
     required this.categories,
     required this.types,
+    required this.offerKinds,
     this.initialCategory,
     this.initialType,
+    this.initialOfferKind,
     this.initialCity,
     this.initialPhoneNumber,
     required this.onSubmit,
@@ -61,6 +66,7 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
 
   late String _selectedCategory;
   late String _selectedType;
+  late String _selectedOfferKind;
   bool _useProfileCity = false;
   bool _useProfilePhone = false;
 
@@ -87,6 +93,8 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
         widget.initialCategory ?? AnnouncementMetadata.defaultCategory;
     _selectedType =
         widget.initialType ?? AnnouncementMetadata.defaultAnnouncementType;
+    _selectedOfferKind =
+      widget.initialOfferKind ?? AnnouncementMetadata.offerKinds.first;
 
     _useProfileCity = (widget.initialCity ?? '').isNotEmpty;
     _useProfilePhone = (widget.initialPhoneNumber ?? '').isNotEmpty;
@@ -168,14 +176,21 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                       children: [
                         DropdownButtonFormField<String>(
                           value: _selectedCategory,
+                          isExpanded: true,
                           decoration: const InputDecoration(
                             labelText: 'Kategoria',
                             border: OutlineInputBorder(),
                           ),
                           items: widget.categories
                               .map(
-                                (c) =>
-                                    DropdownMenuItem(value: c, child: Text(c)),
+                                (c) => DropdownMenuItem(
+                                  value: c,
+                                  child: Text(
+                                    c,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
                               )
                               .toList(),
                           onChanged: (v) {
@@ -201,6 +216,28 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                             setState(() => _selectedType = v);
                           },
                         ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: _selectedOfferKind,
+                          decoration: const InputDecoration(
+                            labelText: 'Rodzaj',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: widget.offerKinds
+                              .map(
+                                (k) => DropdownMenuItem(
+                                  value: k,
+                                  child: Text(
+                                    AnnouncementMetadata.offerKindLabel(k),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) {
+                            if (v == null) return;
+                            setState(() => _selectedOfferKind = v);
+                          },
+                        ),
                       ],
                     )
                   : Row(
@@ -208,6 +245,7 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             value: _selectedCategory,
+                            isExpanded: true,
                             decoration: const InputDecoration(
                               labelText: 'Kategoria',
                               border: OutlineInputBorder(),
@@ -216,7 +254,11 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                                 .map(
                                   (c) => DropdownMenuItem(
                                     value: c,
-                                    child: Text(c),
+                                    child: Text(
+                                      c,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
                                 )
                                 .toList(),
@@ -245,6 +287,30 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                             onChanged: (v) {
                               if (v == null) return;
                               setState(() => _selectedType = v);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: _selectedOfferKind,
+                            decoration: const InputDecoration(
+                              labelText: 'Rodzaj',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: widget.offerKinds
+                                .map(
+                                  (k) => DropdownMenuItem(
+                                    value: k,
+                                    child: Text(
+                                      AnnouncementMetadata.offerKindLabel(k),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (v) {
+                              if (v == null) return;
+                              setState(() => _selectedOfferKind = v);
                             },
                           ),
                         ),
@@ -322,6 +388,15 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                   labelText: 'Kaucja (opcjonalnie)',
                   border: OutlineInputBorder(),
                 ),
+                validator: (value) {
+                  if (_selectedOfferKind == 'Borrow') {
+                    final parsed = double.tryParse(value?.trim() ?? '');
+                    if (parsed == null || parsed <= 0) {
+                      return 'Wymagana kaucja dla wypożyczenia';
+                    }
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               Align(
@@ -492,6 +567,7 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
       _selectedImages,
       _selectedCategory,
       _selectedType,
+      _selectedOfferKind,
       _contactNumberController.text.trim(),
     );
 

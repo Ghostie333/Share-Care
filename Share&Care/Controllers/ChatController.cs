@@ -126,7 +126,12 @@ namespace Share_Care.Controllers
             if (string.IsNullOrWhiteSpace(senderId))
                 return Unauthorized();
 
-            var message = await _chatService.SaveMessageAsync(chatId, senderId, request.Content!);
+            var message = await _chatService.SaveMessageAsync(
+                chatId,
+                senderId,
+                request.Content!,
+                request.Kind,
+                request.DataJson);
 
             if (message is null)
             {

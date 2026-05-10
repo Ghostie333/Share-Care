@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'announcement_metadata.dart';
 import '../models/annoucement.dart';
 import '../../config/app_config.dart';
+import '../../services/auth_service.dart';
+import '../profile/public_profile_page.dart';
+import '../profile/profile_page.dart';
 
 class AnnouncementDetailsDialog extends StatefulWidget {
   final Announcement ad;
@@ -276,7 +279,40 @@ class _AnnouncementDetailsDialogState extends State<AnnouncementDetailsDialog> {
           const SizedBox(height: 8),
           infoLine('Typ', type),
           if (category.isNotEmpty) infoLine('Kategoria', category),
-          infoLine('Ogłoszeniodawca', widget.ad.ownerName),
+          if (widget.ad.userId != null && widget.ad.userId!.isNotEmpty)
+            InkWell(
+              onTap: () async {
+                Navigator.of(context).pop();
+
+                final auth = await AuthService.getStoredAuthResult();
+                final currentUserId = (auth?.userId ?? '').trim();
+                final ownerId = widget.ad.userId!.trim();
+
+                if (currentUserId.isNotEmpty && currentUserId == ownerId) {
+                  if (!context.mounted) return;
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => ProfileScreen(authResult: auth!),
+                    ),
+                  );
+                  return;
+                }
+
+                if (!context.mounted) return;
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => PublicProfilePage(userId: ownerId),
+                  ),
+                );
+              },
+              child: infoLine('Ogłoszeniodawca', widget.ad.ownerName),
+            )
+          else
+            infoLine('Ogłoszeniodawca', widget.ad.ownerName),
+          infoLine(
+            'Rodzaj',
+            widget.ad.offerKind == 'Give' ? 'Oddanie' : 'Wypożyczenie',
+          ),
           if ((widget.ad.contactNumber ?? '').isNotEmpty)
             infoLine('Telefon', widget.ad.contactNumber ?? ''),
           if (widget.ad.deposit != null)
@@ -406,7 +442,9 @@ class _AnnouncementDetailsDialogState extends State<AnnouncementDetailsDialog> {
             widget.onPayment?.call();
           },
           icon: Icons.payment,
-          label: 'Płatność',
+          label: widget.ad.offerKind == 'Give'
+              ? 'Poproś o oddanie'
+              : 'Wypożycz',
         ),
       );
     }

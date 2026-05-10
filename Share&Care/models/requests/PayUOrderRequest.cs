@@ -8,6 +8,8 @@ namespace Share_Care.Models.Requests
     public class PayUOrderRequest
     {
         public string NotifyUrl { get; set; } = String.Empty;
+        [JsonPropertyName("continueUrl")]
+        public string ContinueUrl { get; set; } = String.Empty;
         public string CustomerIp { get; set; } = String.Empty;
         public string MerchantPosId { get; set; } = String.Empty;
         public string Description { get; set; } = String.Empty;

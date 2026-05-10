@@ -27,10 +27,13 @@ namespace Share_Care.Services
         public PayUOrderRequest BuildOrderRequest(Transaction tx)
         {
             var amount = ((int)(tx.Amount * 100)).ToString();
+            var notifyUrl = _config["PayU:NotifyUrl"] ?? string.Empty;
+            var continueUrl = _config["PayU:ContinueUrl"] ?? string.Empty;
 
             return new PayUOrderRequest
             {
-                NotifyUrl = "", // To musi byc publiczne inaczej nie zadziala
+                NotifyUrl = notifyUrl,
+                ContinueUrl = continueUrl,
                 CustomerIp = "127.0.0.1",
                 MerchantPosId = _config["PayU:PosId"], // pos_id z PayU Sandbox
                 Description = $"Deposit {tx.Id}",
@@ -134,6 +137,18 @@ namespace Share_Care.Services
             await _transactionService.MarkAsCompletedAsync(transaction.Id);
 
             await _walletService.AddFundsAsync(transaction.UserId, transaction.Amount);
+
+            var creditsPerPlnRaw = _config["Credits:PerPln"];
+            var creditsPerPln = int.TryParse(creditsPerPlnRaw, out var parsed) ? parsed : 1;
+            var creditsToAdd = (int)Math.Round(transaction.Amount * creditsPerPln, MidpointRounding.AwayFromZero);
+            if (creditsToAdd > 0)
+            {
+                var users = _db.GetCollection<UserData>("users");
+                await users.UpdateOneAsync(
+                    u => u.UserId == transaction.UserId,
+                    Builders<UserData>.Update.Inc(u => u.Credits, creditsToAdd)
+                );
+            }
 
             _logger.LogInformation($"Payment success: {transaction.Id}");
         }

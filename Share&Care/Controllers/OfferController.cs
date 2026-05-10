@@ -18,6 +18,7 @@ namespace Share_Care.Controllers
     {
         private readonly ILogger<OfferController> _logger = logger;
         private readonly IMongoCollection<Offer> _collection = db.GetCollection<Offer>("offers");
+        private readonly IMongoCollection<UserData> _users = db.GetCollection<UserData>("users");
         private readonly GridFSBucket? _gridFS = gridFs;
 
         // POST /offer/create-offer
@@ -83,6 +84,7 @@ namespace Share_Care.Controllers
                     Title = form.Title!,
                     ContactName = form.ContactName!,
                     Category = form.Category!,
+                    OfferKind = string.IsNullOrWhiteSpace(form.OfferKind) ? "Borrow" : form.OfferKind!,
                     ContactNumber = form.ContactNumber ?? string.Empty,
                     Description = form.Description ?? string.Empty,
                     Deposit = form.Deposit,
@@ -396,11 +398,23 @@ namespace Share_Care.Controllers
                 var update = Builders<Offer>.Update.Set(x => x.Title, form.Title)
                     .Set(x => x.ContactName, form.ContactName)
                     .Set(x => x.Category, form.Category)
+                    .Set(x => x.OfferKind, string.IsNullOrWhiteSpace(form.OfferKind) ? "Borrow" : form.OfferKind)
                     .Set(x => x.ContactNumber, form.ContactNumber)
                     .Set(x => x.Description, form.Description)
                     .Set(x => x.Deposit, form.Deposit);
 
                 await _collection.FindOneAndUpdateAsync(x => x.OfferId == offerId, update);
+
+                var loweredPrice = offer.Deposit.HasValue
+                    && form.Deposit.HasValue
+                    && form.Deposit.Value < offer.Deposit.Value;
+
+                if (loweredPrice)
+                {
+                    await _users.UpdateOneAsync(
+                        u => u.UserId == currentUserId,
+                        Builders<UserData>.Update.Inc(u => u.LoweredPriceChangesCount, 1));
+                }
 
                 return Ok("Pomyślnie zaktualizowano ofertę");
             }

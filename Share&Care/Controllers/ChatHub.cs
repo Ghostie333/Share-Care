@@ -35,7 +35,7 @@ namespace Share_Care.Hubs
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, chatId);
         }
 
-        public async Task SendMessage(string chatId, string content)
+        public async Task SendMessage(string chatId, string content, string? kind = null, string? dataJson = null)
         {
             var senderId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrWhiteSpace(senderId) ||
@@ -47,7 +47,7 @@ namespace Share_Care.Hubs
             if (!belongs)
                 return;
 
-            var message = await chatService.SaveMessageAsync(chatId, senderId, content);
+            var message = await chatService.SaveMessageAsync(chatId, senderId, content, kind, dataJson);
             if (message is null)
                 return;
 

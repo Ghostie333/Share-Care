@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/address_validation_service.dart';
-import '../home/widgets/profile_page.dart';
+import '../profile/profile_page.dart';
 import '../home/home_page.dart';
 
 class RegistrationScreen extends StatefulWidget {

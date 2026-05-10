@@ -35,6 +35,11 @@ namespace Share_Care.Services
             return wallet;
         }
 
+        public async Task<Wallet?> GetWalletAsync(string userId)
+        {
+            return await GetWalletByUserIdAsync(userId);
+        }
+
         public async Task<decimal> AddFundsAsync(string userId, decimal amount)
         {
             if (string.IsNullOrWhiteSpace(userId))
@@ -105,6 +110,39 @@ namespace Share_Care.Services
             );
 
             return true;
+        }
+
+        public async Task<decimal?> WithdrawFundsAsync(string userId, decimal amount)
+        {
+            if (string.IsNullOrWhiteSpace(userId) || amount <= 0)
+                return null;
+
+            var wallet = await GetWalletByUserIdAsync(userId);
+            if (wallet == null)
+                return null;
+
+            var updateResult = await _collection.UpdateOneAsync(
+                x => x.UserId == userId && x.Balance >= amount,
+                Builders<Wallet>.Update.Inc(w => w.Balance, -amount)
+            );
+
+            if (updateResult.ModifiedCount == 0)
+                return null;
+
+            return wallet.Balance - amount;
+        }
+
+        public async Task<bool> DeductAsync(string userId, decimal amount)
+        {
+            if (string.IsNullOrWhiteSpace(userId) || amount <= 0)
+                return false;
+
+            var result = await _collection.UpdateOneAsync(
+                x => x.UserId == userId && x.Balance >= amount,
+                Builders<Wallet>.Update.Inc(w => w.Balance, -amount)
+            );
+
+            return result.ModifiedCount > 0;
         }
     }
 }

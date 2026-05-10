@@ -18,6 +18,7 @@ class Announcement {
 	DateTime createdAt;
 	List<String> imageUrls;
 	bool isOwner;
+	String offerKind;
 
 	/// Dodatkowe pola odpowiadające modelowi Offer w .NET.
 	String? category;
@@ -38,6 +39,7 @@ class Announcement {
     required this.createdAt,
     List<String>? imageUrls,
     this.isOwner = true,
+	this.offerKind = 'Borrow',
     this.category,
     this.contactName,
     this.contactNumber,
@@ -123,6 +125,8 @@ class Announcement {
 				(json['ownerName'] ?? json['OwnerName'] ?? json['contactName'] ?? json['ContactName'] ?? '')
 						.toString(),
 			isActive: computedIsActive,
+			offerKind:
+				(json['offerKind'] ?? json['OfferKind'] ?? 'Borrow').toString(),
 			createdAt: DateTime.tryParse(
 					(json['createdAt'] ?? json['CreatedAt'] ?? '').toString(),
 				) ??
@@ -170,6 +174,7 @@ class Announcement {
 			// fallback dla starszych backendów / danych
 			'deposit': deposit,
 			'ownerName': ownerName,
+			'OfferKind': offerKind,
 			'IsActive': isActive,
 			'CreatedAt': createdAt.toIso8601String(),
 			'ImageIds': imageUrls,

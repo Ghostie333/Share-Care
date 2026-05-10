@@ -15,8 +15,10 @@ Future<void> showCreateAnnouncementSheet({
   required AuthResult authResult,
   required String initialCategory,
   required String initialType,
+  required String initialOfferKind,
   required List<String> categories,
   required List<String> types,
+  required List<String> offerKinds,
   required Future<void> Function(Announcement created) onCreated,
 }) async {
   final userId = authResult.userId;
@@ -65,11 +67,13 @@ Future<void> showCreateAnnouncementSheet({
         ownerName: ownerName,
         categories: categories,
         types: types,
+        offerKinds: offerKinds,
         initialCategory: initialCategory,
         initialType: initialType,
+        initialOfferKind: initialOfferKind,
         initialCity: city,
         initialPhoneNumber: phoneNumber,
-        onSubmit: (title, description, location, deposit, images, category, type, contactNumber) async {
+        onSubmit: (title, description, location, deposit, images, category, type, offerKind, contactNumber) async {
           try {
             final encodedCategory = AnnouncementMetadata.encode(type, category);
 
@@ -85,6 +89,7 @@ Future<void> showCreateAnnouncementSheet({
               createdAt: DateTime.now(),
               imageUrls: const [],
               isOwner: true,
+              offerKind: offerKind,
               category: encodedCategory,
               contactName: ownerName,
               contactNumber: contactNumber,

@@ -76,7 +76,12 @@ namespace Share_Care.Services
             return messages;
         }
 
-        public async Task<Message?> SaveMessageAsync(string chatId, string? senderId, string content)
+        public async Task<Message?> SaveMessageAsync(
+            string chatId,
+            string? senderId,
+            string content,
+            string? kind,
+            string? dataJson)
         {
             if (string.IsNullOrWhiteSpace(chatId) ||
                 string.IsNullOrWhiteSpace(senderId) ||
@@ -91,6 +96,8 @@ namespace Share_Care.Services
                 ChatId = chatId,
                 SenderId = senderId,
                 Content = content,
+                Kind = string.IsNullOrWhiteSpace(kind) ? "text" : kind,
+                DataJson = string.IsNullOrWhiteSpace(dataJson) ? null : dataJson,
                 SentAt = DateTime.UtcNow,
                 IsRead = false
             };

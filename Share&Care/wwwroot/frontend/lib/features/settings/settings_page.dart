@@ -5,6 +5,7 @@ import '../../core/app_theme.dart';
 import '../../utils/animations.dart';
 import '../announcements/announcement_metadata.dart';
 import '../announcements/create_announcement_sheet.dart';
+import '../profile/profile_privacy_settings_page.dart';
 import '../chat/chat_page.dart';
 import '../home/home_page.dart';
 import '../navigation/app_bar.dart';
@@ -94,6 +95,19 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const Divider(),
           ListTile(
+            title: const Text('Prywatność profilu'),
+            subtitle: const Text('Wybierz, które dane są publiczne'),
+            leading: const Icon(Icons.privacy_tip_outlined),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              Navigator.of(context).push(
+                createSlideFadeRoute(
+                  ProfilePrivacySettingsPage(authResult: widget.authResult),
+                ),
+              );
+            },
+          ),
+          ListTile(
             title: const Text('Komfort'),
             subtitle: const Text(
               'Zmniejsz ruch i rozpraszające efekty wizualne',
@@ -140,8 +154,10 @@ class _SettingsPageState extends State<SettingsPage> {
             authResult: widget.authResult,
             initialCategory: AnnouncementMetadata.defaultCategory,
             initialType: AnnouncementMetadata.defaultAnnouncementType,
+            initialOfferKind: AnnouncementMetadata.offerKinds.first,
             categories: AnnouncementMetadata.categories,
             types: AnnouncementMetadata.types,
+            offerKinds: AnnouncementMetadata.offerKinds,
             onCreated: (_) async {
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(

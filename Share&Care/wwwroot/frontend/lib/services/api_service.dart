@@ -7,6 +7,7 @@ import 'auth_service.dart';
 
 class ApiService {
 	static String get _baseUrl => AppConfig.apiBaseUrl;
+	static String get apiBaseUrl => _baseUrl;
 
 	static Uri _uri(String path) => Uri.parse('$_baseUrl$path');
 
@@ -14,7 +15,7 @@ class ApiService {
 		String path, {
 		bool includeAuth = true,
 	}) async {
-		final headers = await _buildHeaders(includeAuth: includeAuth);
+		final headers = await buildHeaders(includeAuth: includeAuth);
 		return http.get(_uri(path), headers: headers);
 	}
 
@@ -22,7 +23,7 @@ class ApiService {
 		String path, {
 		bool includeAuth = true,
 	}) async {
-		final headers = await _buildHeaders(includeAuth: includeAuth);
+		final headers = await buildHeaders(includeAuth: includeAuth);
 		return http.delete(_uri(path), headers: headers);
 	}
 
@@ -31,7 +32,7 @@ class ApiService {
 		Map<String, dynamic> body, {
 		bool includeAuth = true,
 	}) async {
-		final headers = await _buildHeaders(
+		final headers = await buildHeaders(
 			includeAuth: includeAuth,
 		);
 		headers.putIfAbsent('Content-Type', () => 'application/json');
@@ -47,7 +48,7 @@ class ApiService {
 		Map<String, dynamic> body, {
 		bool includeAuth = true,
 	}) async {
-		final headers = await _buildHeaders(
+		final headers = await buildHeaders(
 			includeAuth: includeAuth,
 		);
 		headers.putIfAbsent('Content-Type', () => 'application/json');
@@ -58,7 +59,7 @@ class ApiService {
 		);
 	}
 
-	static Future<Map<String, String>> _buildHeaders({
+	static Future<Map<String, String>> buildHeaders({
 		required bool includeAuth,
 	}) async {
 		final headers = <String, String>{};

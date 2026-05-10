@@ -52,6 +52,8 @@ class ChatMessage {
   final String chatId;
   final String senderId;
   final String content;
+  final String kind;
+  final Map<String, dynamic>? data;
   final DateTime sentAt;
   final bool isRead;
 
@@ -60,16 +62,30 @@ class ChatMessage {
     required this.chatId,
     required this.senderId,
     required this.content,
+    required this.kind,
+    required this.data,
     required this.sentAt,
     required this.isRead,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
+    Map<String, dynamic>? dataJson;
+    final rawData = json['dataJson'] ?? json['DataJson'];
+    if (rawData is String && rawData.isNotEmpty) {
+      try {
+        dataJson = jsonDecode(rawData) as Map<String, dynamic>;
+      } catch (_) {
+        dataJson = null;
+      }
+    }
+
     return ChatMessage(
       id: (json['id'] ?? json['Id'] ?? '').toString(),
       chatId: (json['chatId'] ?? json['ChatId'] ?? '').toString(),
       senderId: (json['senderId'] ?? json['SenderId'] ?? '').toString(),
       content: (json['content'] ?? json['Content'] ?? '').toString(),
+      kind: (json['kind'] ?? json['Kind'] ?? 'text').toString(),
+      data: dataJson,
       sentAt: DateTime.tryParse(
               (json['sentAt'] ?? json['SentAt'] ?? '').toString()) ??
           DateTime.now(),
@@ -145,9 +161,13 @@ class ChatService {
   static Future<ChatMessage> sendMessage({
     required String chatId,
     required String content,
+    String kind = 'text',
+    Map<String, dynamic>? data,
   }) async {
     final body = <String, dynamic>{
       'Content': content,
+      'Kind': kind,
+      'DataJson': data == null ? null : jsonEncode(data),
     };
 
     final http.Response res = await ApiService.postJson(

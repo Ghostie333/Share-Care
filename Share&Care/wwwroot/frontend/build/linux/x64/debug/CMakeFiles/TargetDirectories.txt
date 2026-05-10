@@ -32,3 +32,10 @@
 /home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/plugins/flutter_secure_storage_linux/CMakeFiles/install.dir
 /home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/plugins/flutter_secure_storage_linux/CMakeFiles/install/local.dir
 /home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/plugins/flutter_secure_storage_linux/CMakeFiles/install/strip.dir
+/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/plugins/url_launcher_linux/CMakeFiles/url_launcher_linux_plugin.dir
+/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/plugins/url_launcher_linux/CMakeFiles/edit_cache.dir
+/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/plugins/url_launcher_linux/CMakeFiles/rebuild_cache.dir
+/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/plugins/url_launcher_linux/CMakeFiles/list_install_components.dir
+/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/plugins/url_launcher_linux/CMakeFiles/install.dir
+/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/plugins/url_launcher_linux/CMakeFiles/install/local.dir
+/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/plugins/url_launcher_linux/CMakeFiles/install/strip.dir

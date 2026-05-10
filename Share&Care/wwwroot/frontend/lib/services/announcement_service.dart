@@ -157,6 +157,7 @@ class AnnouncementService {
       'Title': announcement.title,
       'ContactName': announcement.contactName ?? announcement.ownerName,
       'Category': announcement.category ?? 'Inne',
+      'OfferKind': announcement.offerKind,
       'ContactNumber': announcement.contactNumber ?? '',
       'Description': announcement.description,
       'LocationText': announcement.location,

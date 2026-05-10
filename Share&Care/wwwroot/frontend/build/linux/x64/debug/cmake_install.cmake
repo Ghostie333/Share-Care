@@ -39,7 +39,7 @@ endif()
 
 # Set default install directory permissions.
 if(NOT DEFINED CMAKE_OBJDUMP)
-  set(CMAKE_OBJDUMP "/usr/bin/objdump")
+  set(CMAKE_OBJDUMP "/usr/bin/llvm-objdump")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Runtime" OR NOT CMAKE_INSTALL_COMPONENT)
@@ -68,10 +68,10 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Runtime" OR NOT CMAKE_INSTALL_COMPONENT)
      NOT IS_SYMLINK "$ENV{DESTDIR}/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/bundle/frontend")
     file(RPATH_CHANGE
          FILE "$ENV{DESTDIR}/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/bundle/frontend"
-         OLD_RPATH "/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/plugins/file_selector_linux:/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/plugins/flutter_secure_storage_linux:/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/linux/flutter/ephemeral:"
+         OLD_RPATH "/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/plugins/file_selector_linux:/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/plugins/flutter_secure_storage_linux:/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/plugins/url_launcher_linux:/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/linux/flutter/ephemeral:"
          NEW_RPATH "$ORIGIN/lib")
     if(CMAKE_INSTALL_DO_STRIP)
-      execute_process(COMMAND "/usr/bin/strip" "$ENV{DESTDIR}/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/bundle/frontend")
+      execute_process(COMMAND "/usr/bin/llvm-strip" "$ENV{DESTDIR}/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/bundle/frontend")
     endif()
   endif()
 endif()
@@ -126,6 +126,18 @@ endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Runtime" OR NOT CMAKE_INSTALL_COMPONENT)
   list(APPEND CMAKE_ABSOLUTE_DESTINATION_FILES
+   "/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/bundle/lib/liburl_launcher_linux_plugin.so")
+  if(CMAKE_WARN_ON_ABSOLUTE_INSTALL_DESTINATION)
+    message(WARNING "ABSOLUTE path INSTALL DESTINATION : ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
+  endif()
+  if(CMAKE_ERROR_ON_ABSOLUTE_INSTALL_DESTINATION)
+    message(FATAL_ERROR "ABSOLUTE path INSTALL DESTINATION forbidden (by caller): ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
+  endif()
+  file(INSTALL DESTINATION "/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/bundle/lib" TYPE FILE FILES "/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/plugins/url_launcher_linux/liburl_launcher_linux_plugin.so")
+endif()
+
+if(CMAKE_INSTALL_COMPONENT STREQUAL "Runtime" OR NOT CMAKE_INSTALL_COMPONENT)
+  list(APPEND CMAKE_ABSOLUTE_DESTINATION_FILES
    "/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/bundle/lib/")
   if(CMAKE_WARN_ON_ABSOLUTE_INSTALL_DESTINATION)
     message(WARNING "ABSOLUTE path INSTALL DESTINATION : ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
@@ -160,6 +172,7 @@ if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   include("/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/runner/cmake_install.cmake")
   include("/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/plugins/file_selector_linux/cmake_install.cmake")
   include("/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/plugins/flutter_secure_storage_linux/cmake_install.cmake")
+  include("/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/plugins/url_launcher_linux/cmake_install.cmake")
 
 endif()
 

@@ -24,9 +24,15 @@ namespace Share_Care.Controllers
 
         [Authorize]
         [HttpPost("deposit")]
-        public async Task<IActionResult> MakeDeposit(decimal amount)
+        public async Task<IActionResult> MakeDeposit([FromQuery] decimal amount)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrWhiteSpace(userId))
+                return Unauthorized();
+
+            if (amount <= 0)
+                return BadRequest("Amount must be greater than 0");
 
             var transaction = await _transactionService.CreateTransactionAsync(new Transaction
             {
@@ -38,7 +44,36 @@ namespace Share_Care.Controllers
 
             var redirectUrl = await _paymentService.CreatePayUOrderAsync(transaction);
 
-            return Ok(new { redirectUrl });
+            return Ok(new { redirectUrl, transactionId = transaction.Id });
+        }
+
+        [Authorize]
+        [HttpGet("transaction/{id}")]
+        public async Task<IActionResult> GetTransaction([FromRoute] string id)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrWhiteSpace(userId))
+                return Unauthorized();
+
+            if (string.IsNullOrWhiteSpace(id))
+                return BadRequest("Missing transaction id");
+
+            var transaction = await _transactionService.GetTransactionByIdAsync(id);
+            if (transaction == null)
+                return NotFound();
+
+            if (!string.Equals(transaction.UserId, userId, StringComparison.Ordinal))
+                return Forbid();
+
+            return Ok(new
+            {
+                id = transaction.Id,
+                status = transaction.Status,
+                amount = transaction.Amount,
+                type = transaction.Type,
+                createdAt = transaction.CreatedAt
+            });
         }
 
         [AllowAnonymous]

@@ -9,13 +9,14 @@ import '../../features/models/annoucement.dart';
 import '../../services/auth_service.dart';
 import '../../services/chat_service.dart';
 import '../../services/announcement_service.dart';
+import '../../services/rental_service.dart';
 import '../../utils/animations.dart';
 import '../announcements/announcement_metadata.dart';
 import '../announcements/create_announcement_sheet.dart';
 import '../auth/auth_login_page.dart';
 // import '../auth/auth_registration_page.dart';
 import '../home/home_page.dart';
-import '../home/widgets/profile_page.dart';
+import '../profile/profile_page.dart';
 import '../navigation/app_bar.dart';
 import '../search/search_page.dart';
 import '../announcements/annoucements_detail_page.dart';
@@ -315,6 +316,119 @@ class _ChatPageState extends State<ChatPage> {
     return '$h:$m';
   }
 
+  String? _resolveGiverId() {
+    for (final m in _messages) {
+      final giverId = m.data?['giverId']?.toString();
+      if (giverId != null && giverId.isNotEmpty) return giverId;
+    }
+    return null;
+  }
+
+  String? _resolveTakerId() {
+    for (final m in _messages) {
+      final takerId = m.data?['takerId']?.toString();
+      if (takerId != null && takerId.isNotEmpty) return takerId;
+    }
+    return null;
+  }
+
+  Future<void> _showReturnDialog(String offerId) async {
+    final picker = ImagePicker();
+    final images = await picker.pickMultiImage(imageQuality: 80);
+    if (images.isEmpty) return;
+
+    try {
+      await RentalService.takerReturn(offerId: offerId, images: images);
+      await _loadMessagesForSelected();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nie udało się zgłosić zwrotu: $e')),
+      );
+    }
+  }
+
+  Future<void> _showGiverReviewDialog(String offerId) async {
+    String condition = 'Ideal';
+    final picker = ImagePicker();
+    final images = <XFile>[];
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setState) {
+            return AlertDialog(
+              title: const Text('Ocena stanu przedmiotu'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: condition,
+                    decoration: const InputDecoration(
+                      labelText: 'Stan',
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'Ideal', child: Text('Idealny')),
+                      DropdownMenuItem(value: 'LightlyUsed', child: Text('Lekko zużyty')),
+                      DropdownMenuItem(value: 'HeavilyUsed', child: Text('Mocno zużyty')),
+                      DropdownMenuItem(value: 'Destroyed', child: Text('Zniszczony')),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() => condition = value);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final picked = await picker.pickMultiImage(
+                        imageQuality: 80,
+                      );
+                      if (picked.isEmpty) return;
+                      setState(() {
+                        images
+                          ..clear()
+                          ..addAll(picked);
+                      });
+                    },
+                    icon: const Icon(Icons.photo_library_outlined),
+                    label: Text('Dodaj zdjęcia (${images.length})'),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Anuluj'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    Navigator.of(ctx).pop();
+                    try {
+                      await RentalService.giverReview(
+                        offerId: offerId,
+                        condition: condition,
+                        images: images,
+                      );
+                      await _loadMessagesForSelected();
+                    } catch (e) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Nie udało się zakończyć: $e')),
+                      );
+                    }
+                  },
+                  child: const Text('Zatwierdź'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _removePendingAttachmentAt(int index) {
     setState(() {
       _pendingAttachments.removeAt(index);
@@ -543,8 +657,10 @@ class _ChatPageState extends State<ChatPage> {
             authResult: widget.authResult,
             initialCategory: AnnouncementMetadata.defaultCategory,
             initialType: AnnouncementMetadata.defaultAnnouncementType,
+            initialOfferKind: AnnouncementMetadata.offerKinds.first,
             categories: AnnouncementMetadata.categories,
             types: AnnouncementMetadata.types,
+            offerKinds: AnnouncementMetadata.offerKinds,
             onCreated: (_) async {},
           );
         },
@@ -700,6 +816,80 @@ class _ChatPageState extends State<ChatPage> {
             itemBuilder: (context, index) {
               final m = _messages[index];
               final isMine = m.senderId == currentUserId;
+              final giverId = _resolveGiverId();
+              final takerId = _resolveTakerId();
+              final isGiver = giverId != null && giverId == currentUserId;
+              final isTaker = takerId != null && takerId == currentUserId;
+              final offerId = m.data?['offerId']?.toString() ?? thread.listingId;
+
+              if (m.kind == 'rental_request' && isGiver) {
+                return Card(
+                  child: ListTile(
+                    title: const Text('Nowa prośba o wypożyczenie'),
+                    subtitle: Text(m.content),
+                    trailing: Wrap(
+                      spacing: 8,
+                      children: [
+                        TextButton(
+                          onPressed: () async {
+                            try {
+                              await RentalService.approveRental(offerId);
+                              await _loadMessagesForSelected();
+                            } catch (e) {
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Nie udało się zaakceptować: $e')),
+                              );
+                            }
+                          },
+                          child: const Text('Akceptuj'),
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            try {
+                              await RentalService.declineRental(offerId);
+                              await _loadMessagesForSelected();
+                            } catch (e) {
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Nie udało się odrzucić: $e')),
+                              );
+                            }
+                          },
+                          child: const Text('Odrzuć'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              if (m.kind == 'rental_returned' && isGiver) {
+                return Card(
+                  child: ListTile(
+                    title: const Text('Zwrot zgłoszony przez takera'),
+                    subtitle: Text(m.content),
+                    trailing: TextButton(
+                      onPressed: () => _showGiverReviewDialog(offerId),
+                      child: const Text('Oceń stan'),
+                    ),
+                  ),
+                );
+              }
+
+              if (m.kind == 'rental_approved' && isTaker) {
+                return Card(
+                  child: ListTile(
+                    title: const Text('Wypożyczenie aktywne'),
+                    subtitle: Text(m.content),
+                    trailing: TextButton(
+                      onPressed: () => _showReturnDialog(offerId),
+                      child: const Text('Zgłoś zwrot'),
+                    ),
+                  ),
+                );
+              }
+
               return _MessageBubble(
                 isMine: isMine,
                 content: m.content,

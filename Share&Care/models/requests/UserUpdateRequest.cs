@@ -17,4 +17,9 @@ public sealed class UserUpdateRequest
     public string? PostalCode { get; set; }
     public string? Street { get; set; }
     public string? BuildingNumber { get; set; }
+    public bool? ShowFirstName { get; set; }
+    public bool? ShowLastName { get; set; }
+    public bool? ShowCity { get; set; }
+    public bool? ShowPhoneNumber { get; set; }
+    public bool? ShowProfileImage { get; set; }
 }

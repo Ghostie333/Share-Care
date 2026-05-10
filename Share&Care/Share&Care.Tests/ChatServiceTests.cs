@@ -172,7 +172,7 @@ namespace Share_Care.Tests
             var service = new ChatService(logger.Object, db.Object);
 
             // Act
-            var result = await service.SaveMessageAsync("chat1", "user1", "hi");
+            var result = await service.SaveMessageAsync("chat1", "user1", "hi", null, null);
 
             // Assert
             Assert.Null(result);
@@ -227,7 +227,7 @@ namespace Share_Care.Tests
             var service = new ChatService(logger.Object, db.Object);
 
             // Act
-            var result = await service.SaveMessageAsync("chat1", "user1", "hello");
+            var result = await service.SaveMessageAsync("chat1", "user1", "hello", null, null);
 
             // Assert
             Assert.NotNull(result);
