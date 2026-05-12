@@ -99,7 +99,7 @@ rule CXX_SHARED_LIBRARY_LINKER__url_launcher_linux_plugin_Debug
 # Rule for re-running cmake.
 
 rule RERUN_CMAKE
-  command = /usr/bin/cmake --regenerate-during-build -S"/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/linux" -B"/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug"
+  command = /usr/bin/cmake --regenerate-during-build -S"/home/matwojek/Projects/backup/Share-Care_payment_not_all_working/Share&Care/wwwroot/frontend/linux" -B"/home/matwojek/Projects/backup/Share-Care_payment_not_all_working/Share&Care/wwwroot/frontend/build/linux/x64/debug"
   description = Re-running CMake...
   generator = 1
 

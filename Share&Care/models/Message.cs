@@ -13,6 +13,8 @@ namespace Share_Care.models
         public string ChatId { get; set; }
         public string SenderId { get; set; }
         public string Content { get; set; }
+        public string Kind { get; set; } = "text";
+        public string? DataJson { get; set; }
         public DateTime SentAt { get; set; }
         public bool IsRead { get; set; }           // warto dodać – znacznik przeczytania
     }

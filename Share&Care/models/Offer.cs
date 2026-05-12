@@ -22,6 +22,11 @@ namespace Share_Care.models
         public string? Description { get; set; }
         public string Category { get; set; }
         public string Status { get; set; } = "Active";
+        public string OfferKind { get; set; } = "Borrow"; // Borrow or Give
+        public string? CurrentBorrowerId { get; set; }
+        public DateTime? RentalDeadlineAt { get; set; }
+        public DateTime? RentalStartedAt { get; set; }
+        public DateTime? CompletedAt { get; set; }
 
         // GeoJSON Point (dla zapytań geolokalizacyjnych i indeksu 2dsphere)
         public GeoJsonPoint<GeoJson2DGeographicCoordinates>? Location { get; set; } 
