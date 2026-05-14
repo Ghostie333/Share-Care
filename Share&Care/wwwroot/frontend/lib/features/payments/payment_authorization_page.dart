@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:async';
 
 import '../../core/classic_style.dart';
 import '../../services/auth_service.dart';
 import '../../services/payment_service.dart';
 import '../../services/user_profile_service.dart';
 import '../../services/rental_service.dart';
+import '../../services/wallet_service.dart';
 import '../models/annoucement.dart';
 import 'payment_survey_page.dart';
 
@@ -24,7 +26,8 @@ class PaymentAuthorizationPage extends StatefulWidget {
       _PaymentAuthorizationPageState();
 }
 
-class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
+class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage>
+    with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
 
   late final TextEditingController _firstNameController;
@@ -50,6 +53,8 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
   bool _isCheckingPayment = false;
   String? _lastPaymentStatus;
 
+  Timer? _paymentPollTimer;
+
   bool _useProfileName = true;
   bool _useProfileEmail = true;
   bool _useProfilePhone = true;
@@ -58,6 +63,7 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _firstNameController = TextEditingController(
       text: widget.authResult.firstName,
     );
@@ -79,7 +85,19 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final hasPending = _pendingTransactionId != null;
+      if (hasPending) {
+        _checkPaymentAndContinue();
+      }
+    }
+  }
+
+  @override
   void dispose() {
+    _paymentPollTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     _firstNameController.dispose();
     _lastNameController.dispose();
     _emailController.dispose();
@@ -93,6 +111,15 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
     _taxIdController.dispose();
     _rentalDaysController.dispose();
     super.dispose();
+  }
+
+  void _startPaymentPolling() {
+    _paymentPollTimer?.cancel();
+    _paymentPollTimer = Timer.periodic(const Duration(seconds: 4), (_) async {
+      if (!mounted) return;
+      if (_pendingTransactionId == null) return;
+      await _checkPaymentAndContinue();
+    });
   }
 
   Future<void> _loadProfile() async {
@@ -186,57 +213,74 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
       final deadlineAt = _resolveDeadlineAt();
       final offerKind = widget.announcement.offerKind;
 
+      var shouldStartRentalNow = true;
+
+      // Flow docelowy dla wypożyczenia (Borrow): portfel -> rental/start.
+      // PayU uruchamiamy tylko jeśli brakuje środków do kaucji.
       if (offerKind == 'Borrow') {
         if (draft.amount <= 0) {
           throw Exception('Kaucja musi być większa od 0');
         }
 
-        final deposit = await PaymentService.createDeposit(amount: draft.amount);
+        final wallet = await WalletService.getMyWallet();
+        final requiredAmount = draft.amount;
 
-        setState(() {
-          _pendingTransactionId = deposit.transactionId;
-          _pendingDraft = draft;
-          _pendingDeadlineAt = deadlineAt;
-          _lastPaymentStatus = PaymentService.pendingStatus;
-        });
+        if (wallet.availableBalance + 1e-9 >= requiredAmount) {
+          shouldStartRentalNow = true;
+        } else {
+          shouldStartRentalNow = false;
+          final missing = requiredAmount - wallet.availableBalance;
+          final topUpAmount = missing <= 0 ? requiredAmount : missing;
 
-        final launched = await launchUrl(
-          Uri.parse(deposit.redirectUrl),
-          mode: LaunchMode.externalApplication,
-        );
+          final deposit = await PaymentService.createDeposit(amount: topUpAmount);
 
-        if (!launched) {
-          throw Exception('Nie udało się otworzyć strony płatności');
+          setState(() {
+            _pendingTransactionId = deposit.transactionId;
+            _pendingDraft = draft;
+            _pendingDeadlineAt = deadlineAt;
+            _lastPaymentStatus = PaymentService.pendingStatus;
+          });
+
+          _startPaymentPolling();
+
+          final launched = await launchUrl(
+            Uri.parse(deposit.redirectUrl),
+            mode: LaunchMode.externalApplication,
+          );
+
+          if (!launched) {
+            throw Exception('Nie udało się otworzyć strony płatności');
+          }
+
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'PayU otwarte (doładowanie portfela). Po płatności wróć i kliknij "Sprawdź płatność".',
+              ),
+            ),
+          );
+
+          return; // czekamy na potwierdzenie wpłaty
         }
-
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('PayU otwarte. Po płatności wróć i kliknij "Sprawdź płatność".'),
-          ),
-        );
-
-        return; // czekamy na potwierdzenie płatności
       }
 
-      await RentalService.startRental(
-        offerId: widget.announcement.id,
-        deadlineAt: deadlineAt,
-      );
+      if (shouldStartRentalNow) {
+        await RentalService.startRental(
+          offerId: widget.announcement.id,
+          deadlineAt: deadlineAt,
+        );
+      }
 
       if (!mounted) return;
-      final infoText = offerKind == 'Borrow'
-          ? 'Otworzyliśmy stronę PayU.\n\n'
-              'Po zakończeniu płatności wróć tutaj i przejdź do ankiety.'
-          : 'Przekazaliśmy prośbę do ogłoszeniodawcy.';
       await showDialog<void>(
         context: context,
         builder: (context) {
           return AlertDialog(
-            title: const Text('Przekierowanie do płatności'),
+            title: const Text('Prośba wysłana'),
             content: SingleChildScrollView(
               child: Text(
-                '$infoText\n\n'
+                'Przekazaliśmy prośbę do ogłoszeniodawcy.\n\n'
                 'Kod autoryzacji: ${draft.authorizationCode}\n'
                 'Kwota: ${draft.amount.toStringAsFixed(2)} zł',
               ),
@@ -260,7 +304,7 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Nie udało się rozpocząć płatności: $e')),
+        SnackBar(content: Text('Nie udało się rozpocząć procesu: $e')),
       );
     } finally {
       if (!mounted) return;
@@ -299,6 +343,8 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
       setState(() => _lastPaymentStatus = tx.status);
 
       if (PaymentService.isCompleted(tx.status)) {
+        _paymentPollTimer?.cancel();
+
         await RentalService.startRental(
           offerId: widget.announcement.id,
           deadlineAt: _pendingDeadlineAt,
@@ -349,15 +395,20 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage> {
       }
 
       if (PaymentService.isFailed(tx.status)) {
+        _paymentPollTimer?.cancel();
+        if (mounted) {
+          setState(() {
+            _pendingTransactionId = null;
+            _pendingDeadlineAt = null;
+          });
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Płatność anulowana lub nieudana.')),
         );
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Status płatności: ${tx.status}')),
-      );
+      // Statusy pośrednie (np. Pending) obsługujemy cicho – UI odświeża się samo.
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
