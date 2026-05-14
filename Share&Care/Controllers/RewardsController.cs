@@ -19,11 +19,11 @@ namespace Share_Care.Controllers
         // 1 PLN = 4 ShareCoins
         private const decimal PER_PLN_RATE = 4m;
 
-        private static readonly List<(string id, string name, string description, int cost)> _rewards =
+        private static readonly List<(string id, string name, string description, string voucherKey, int cost)> _rewards =
         [
-            ("reward-1000", "Voucher 50 PLN", "Voucher do popularnego sklepu", 1000),
-            ("reward-2500", "Voucher 150 PLN", "Wyższa wartość na zakupy", 2500),
-            ("reward-5000", "Paczka premium", "Specjalny zestaw nagród", 5000)
+            ("reward-1000", "Voucher 50 PLN", "Voucher do popularnego sklepu", "08M5NnQI5aOV", 0),
+            ("reward-2500", "Voucher 150 PLN", "Wyższa wartość na zakupy", "gPpHAnBkhUbj", 2500),
+            ("reward-5000", "Paczka premium", "Specjalny zestaw nagród", "7B7jPPhtj9s9", 5000)
         ];
 
         [HttpGet("list")]
@@ -31,10 +31,10 @@ namespace Share_Care.Controllers
         {
             return Ok(_rewards.Select(r => new
             {
-                id = r.id,
-                name = r.name,
-                description = r.description,
-                cost = r.cost
+                r.id,
+                r.name,
+                r.description,
+                r.cost
             }));
         }
 
@@ -46,21 +46,30 @@ namespace Share_Care.Controllers
             if (string.IsNullOrWhiteSpace(userId))
                 return Unauthorized();
 
+            if (string.IsNullOrWhiteSpace(request.RewardId))
+                return BadRequest("RewardId is required");
+
             var reward = _rewards.FirstOrDefault(r => r.id == request.RewardId);
-            if (reward.id == null)
+            if (reward.id is null)
                 return NotFound("Reward not found");
 
-            var user = await _users.Find(u => u.UserId == userId).FirstOrDefaultAsync();
-            if (user == null)
-                return NotFound("User not found");
-
-            if (user.Credits < reward.cost)
-                return BadRequest("Not enough credits");
+            var filter =
+                Builders<UserData>.Filter.Eq(u => u.UserId, userId) &
+                Builders<UserData>.Filter.Gte(u => u.Credits, reward.cost);
 
             var update = Builders<UserData>.Update.Inc(u => u.Credits, -reward.cost);
-            await _users.UpdateOneAsync(u => u.UserId == userId, update);
 
-            return Ok(new { credits = user.Credits - reward.cost });
+            var options = new FindOneAndUpdateOptions<UserData>
+            {
+                ReturnDocument = ReturnDocument.After
+            };
+
+            var updatedUser = await _users.FindOneAndUpdateAsync(filter, update, options);
+
+            if (updatedUser is null)
+                return BadRequest("Not enough credits or user not found");
+
+            return Ok(new { credits = updatedUser.Credits, reward.voucherKey });
         }
 
         [Authorize]
