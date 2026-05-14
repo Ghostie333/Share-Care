@@ -228,10 +228,6 @@ namespace Share_Care.Controllers
             if (!string.Equals(offer.UserId, giverId, StringComparison.Ordinal))
                 return Forbid();
 
-            var platformUserId = _config["Platform:UserId"] ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(platformUserId))
-                return StatusCode(500, "Missing platform user id configuration");
-
             var imageIds = await UploadImagesAsync(images, giverId);
             if (imageIds.Count > 0)
             {
@@ -240,15 +236,9 @@ namespace Share_Care.Controllers
                 await _escrows.UpdateOneAsync(e => e.OfferId == offerId, updateImages);
             }
 
-            var platformFeeRate = GetDecimalConfig("Platform:FeeRate", 0.05m);
-            var giverBonusRate = GetDecimalConfig("Platform:GiverBonusRate", 0.03m);
-
             var ok = await _escrowService.FinalizeEscrowAsync(
                 offerId,
-                request.Condition ?? "Ideal",
-                platformUserId,
-                platformFeeRate,
-                giverBonusRate);
+                request.Condition ?? "Ideal");
 
             if (!ok)
                 return BadRequest("Failed to finalize escrow");
@@ -293,18 +283,8 @@ namespace Share_Care.Controllers
             if (escrow.DeadlineAt.HasValue && escrow.DeadlineAt.Value > DateTime.UtcNow)
                 return BadRequest("Deadline not reached yet");
 
-            var platformUserId = _config["Platform:UserId"] ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(platformUserId))
-                return StatusCode(500, "Missing platform user id configuration");
-
-            var platformFeeRate = GetDecimalConfig("Platform:FeeRate", 0.05m);
-            var giverBonusRate = GetDecimalConfig("Platform:GiverBonusRate", 0.03m);
-
             var ok = await _escrowService.ClaimEscrowAsync(
-                offerId,
-                platformUserId,
-                platformFeeRate,
-                giverBonusRate);
+                offerId);
 
             if (!ok)
                 return BadRequest("Failed to claim escrow");

@@ -13,8 +13,8 @@ namespace Share_Care.Services
         Task<bool> CancelEscrowAsync(string offerId);
         Task<bool> RecordTakerReturnAsync(string offerId, List<string> imageIds);
         Task<bool> RecordGiverInspectionAsync(string offerId, string condition, List<string> imageIds);
-        Task<bool> FinalizeEscrowAsync(string offerId, string condition, string platformUserId, decimal platformFeeRate, decimal giverBonusRate);
-        Task<bool> ClaimEscrowAsync(string offerId, string platformUserId, decimal platformFeeRate, decimal giverBonusRate);
+        Task<bool> FinalizeEscrowAsync(string offerId, string condition);
+        Task<bool> ClaimEscrowAsync(string offerId);
         Task<List<Escrow>> GetExpiredInspectionsAsync();
         Task<bool> ClaimExpiredEscrowAsync(string offerId, string platformUserId, decimal platformFeeRate);
         Task<bool> SetInspectionDeadlineAsync(string offerId, int daysUntilDeadline = 14);
