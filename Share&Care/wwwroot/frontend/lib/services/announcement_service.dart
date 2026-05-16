@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
@@ -161,13 +162,10 @@ class AnnouncementService {
       'ContactNumber': announcement.contactNumber ?? '',
       'Description': announcement.description,
       'LocationText': announcement.location,
-      // Lat/Lng są opcjonalne po stronie backendu (i walidowane dopiero gdy
-      // jeden z nich jest podany).
     });
 
     final deposit = announcement.deposit;
     if (deposit != null) {
-      // Backend (.NET) używa pola Deposit (decimal?).
       request.fields['Deposit'] = deposit.toString();
     }
 
@@ -183,14 +181,29 @@ class AnnouncementService {
 
     if (images != null && images.isNotEmpty) {
       for (final image in images) {
-        if (image.path.isEmpty) continue;
-        request.files.add(
-          await http.MultipartFile.fromPath(
-            'Images',
-            image.path,
-            filename: image.name,
-          ),
-        );
+        // Flutter Web: nie ma prawdziwej ścieżki pliku -> wysyłamy bajty.
+        if (kIsWeb) {
+          final bytes = await image.readAsBytes();
+          if (bytes.isEmpty) continue;
+
+          request.files.add(
+            http.MultipartFile.fromBytes(
+              'Images',
+              bytes,
+              filename: image.name,
+            ),
+          );
+        } else {
+          if (image.path.isEmpty) continue;
+
+          request.files.add(
+            await http.MultipartFile.fromPath(
+              'Images',
+              image.path,
+              filename: image.name,
+            ),
+          );
+        }
       }
     }
 
@@ -198,7 +211,7 @@ class AnnouncementService {
     final res = await http.Response.fromStream(streamed);
 
     if (res.statusCode != 200 && res.statusCode != 201) {
-      throw Exception('Błąd tworzenia ogłoszenia: ${res.statusCode}');
+      throw Exception('Błąd tworzenia ogłoszenia: ${res.statusCode} ${res.body}');
     }
 
     final decoded = jsonDecode(res.body) as Map<String, dynamic>;
@@ -218,6 +231,7 @@ class AnnouncementService {
       createdAt: DateTime.now(),
       imageUrls: imageIds.map((e) => e.toString()).toList(),
       isOwner: true,
+      offerKind: announcement.offerKind,
       category: announcement.category,
       contactName: announcement.contactName,
       contactNumber: announcement.contactNumber,

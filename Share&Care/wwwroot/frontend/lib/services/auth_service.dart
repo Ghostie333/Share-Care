@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api_service.dart';
 
@@ -37,36 +38,31 @@ class AuthResult {
 
   factory AuthResult.fromJson(Map<String, dynamic> json) {
     return AuthResult(
-      userId:
-          (json['userId'] ??
-                  json['user_id'] ??
-                  json['UserId'] ??
-                  json['UserID'] ??
-                  json['User_ID'])
-              ?.toString(),
-      email:
-          (json['email'] ?? json['Email'] ?? json['userEmail'])?.toString() ??
+      userId: (json['userId'] ??
+              json['user_id'] ??
+              json['UserId'] ??
+              json['UserID'] ??
+              json['User_ID'])
+          ?.toString(),
+      email: (json['email'] ?? json['Email'] ?? json['userEmail'])?.toString() ??
           '',
-      firstName:
-          (json['firstName'] ??
+      firstName: (json['firstName'] ??
                   json['FirstName'] ??
                   json['name'] ??
                   json['Name'])
               ?.toString() ??
           '',
-      lastName:
-          (json['lastName'] ??
+      lastName: (json['lastName'] ??
                   json['LastName'] ??
                   json['surname'] ??
                   json['Surname'])
               ?.toString() ??
           '',
-      accessToken:
-          (json['access_token'] ??
-                  json['accessToken'] ??
-                  json['token'] ??
-                  json['Token'])
-              ?.toString(),
+      accessToken: (json['access_token'] ??
+              json['accessToken'] ??
+              json['token'] ??
+              json['Token'])
+          ?.toString(),
     );
   }
 
@@ -82,8 +78,33 @@ class AuthResult {
 }
 
 class AuthService {
-  // jeden współdzielony storage dla całej aplikacji
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+
+  static Future<void> _writeStorage(String key, String value) async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(key, value);
+      return;
+    }
+    await _secureStorage.write(key: key, value: value);
+  }
+
+  static Future<String?> _readStorage(String key) async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(key);
+    }
+    return _secureStorage.read(key: key);
+  }
+
+  static Future<void> _deleteStorage(String key) async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(key);
+      return;
+    }
+    await _secureStorage.delete(key: key);
+  }
 
   // rejestracja użytkownika w backendzie
   static Future<void> registerUser({
@@ -124,10 +145,9 @@ class AuthService {
       final decoded = jsonDecode(res.body) as Map<String, dynamic>;
       final token = decoded['access_token'] as String?;
 
-      // ZAPISZ TOKEN do secure storage
-      if (token != null) {
-        await _secureStorage.write(key: 'jwt_token', value: token);
-        print('Token zapisany po rejestracji: ${token.substring(0, 20)}...');
+      if (token != null && token.isNotEmpty) {
+        await _writeStorage('jwt_token', token);
+        debugPrint('Token saved after registration: ${token.substring(0, 20)}...');
       }
 
       return;
@@ -158,18 +178,9 @@ class AuthService {
 
     if (res.statusCode == 200) {
       final decoded = jsonDecode(res.body) as Map<String, dynamic>;
-      final token = decoded['access_token'] as String?;
-
-      // ZAPISZ TOKEN do secure storage
-      if (token != null) {
-        await _secureStorage.write(key: 'jwt_token', value: token);
-        print('Token zapisany po logowaniu: ${token.substring(0, 20)}...');
-      } else {
-        print('Brak tokenu w response!');
-      }
       final result = AuthResult.fromJson(decoded);
-      await _persistAuthResult(result);
 
+      await _persistAuthResult(result);
       return result;
     } else {
       throw Exception('Nieprawidłowy email lub hasło');
@@ -196,13 +207,9 @@ class AuthService {
 
     if (res.statusCode != 200 && res.statusCode != 201) {
       if (res.statusCode == 404) {
-        throw Exception(
-          'Endpoint logowania ${provider.apiValue} jest niedostępny.',
-        );
+        throw Exception('Endpoint logowania ${provider.apiValue} jest niedostępny.');
       }
-      throw Exception(
-        'Błąd logowania ${provider.apiValue}: ${res.statusCode} ${res.body}',
-      );
+      throw Exception('Błąd logowania ${provider.apiValue}: ${res.statusCode} ${res.body}');
     }
 
     final decoded = jsonDecode(res.body) as Map<String, dynamic>;
@@ -231,13 +238,9 @@ class AuthService {
 
     if (res.statusCode != 200 && res.statusCode != 201) {
       if (res.statusCode == 404) {
-        throw Exception(
-          'Endpoint rejestracji ${provider.apiValue} jest niedostępny.',
-        );
+        throw Exception('Endpoint rejestracji ${provider.apiValue} jest niedostępny.');
       }
-      throw Exception(
-        'Błąd rejestracji ${provider.apiValue}: ${res.statusCode} ${res.body}',
-      );
+      throw Exception('Błąd rejestracji ${provider.apiValue}: ${res.statusCode} ${res.body}');
     }
 
     final decoded = jsonDecode(res.body) as Map<String, dynamic>;
@@ -251,10 +254,7 @@ class AuthService {
     if (userRaw is Map<String, dynamic>) {
       final merged = <String, dynamic>{
         ...userRaw,
-        'access_token':
-            decoded['access_token'] ??
-            decoded['accessToken'] ??
-            decoded['token'],
+        'access_token': decoded['access_token'] ?? decoded['accessToken'] ?? decoded['token'],
       };
       return AuthResult.fromJson(merged);
     }
@@ -265,41 +265,32 @@ class AuthService {
   static Future<void> _persistAuthResult(AuthResult result) async {
     final token = result.accessToken;
     if (token != null && token.isNotEmpty) {
-      await _secureStorage.write(key: 'jwt_token', value: token);
+      await _writeStorage('jwt_token', token);
     }
 
-    await _secureStorage.write(
-      key: 'auth_result',
-      value: jsonEncode(result.toJson()),
-    );
+    await _writeStorage('auth_result', jsonEncode(result.toJson()));
   }
 
   // Sprawdź czy użytkownik jest zalogowany
   static Future<bool> isLoggedIn() async {
-    final token = await _secureStorage.read(key: 'jwt_token');
-    final loggedIn = token != null && token.isNotEmpty;
-    print(
-      'isLoggedIn sprawdza token: ${token != null ? "ISTNIEJE" : "BRAK"} → $loggedIn',
-    );
-    return loggedIn;
+    final token = await _readStorage('jwt_token');
+    return token != null && token.isNotEmpty;
   }
 
   // Wyloguj użytkownika
   static Future<void> logout() async {
-    await _secureStorage.delete(key: 'jwt_token');
-    await _secureStorage.delete(key: 'auth_result');
-    print('Użytkownik wylogowany, token usunięty');
+    await _deleteStorage('jwt_token');
+    await _deleteStorage('auth_result');
   }
 
   // Pobierz zapisany token (do API calls)
   static Future<String?> getToken() async {
-    final token = await _secureStorage.read(key: 'jwt_token');
-    return token;
+    return _readStorage('jwt_token');
   }
 
   // Pobierz zapamiętane dane zalogowanego użytkownika (o ile istnieją).
   static Future<AuthResult?> getStoredAuthResult() async {
-    final raw = await _secureStorage.read(key: 'auth_result');
+    final raw = await _readStorage('auth_result');
     if (raw == null || raw.isEmpty) return null;
     try {
       final Map<String, dynamic> data = jsonDecode(raw) as Map<String, dynamic>;
