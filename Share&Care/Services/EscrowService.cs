@@ -67,13 +67,13 @@ namespace Share_Care.Services
             }
         }
 
-        public async Task<Escrow> GetEscrowByBorrowerIdAsync(string borrowerId)
+        public async Task<List<Escrow>> GetEscrowsByBorrowerIdAsync(string borrowerId)
         {
             try
             {
-                var escrow = await _collection.Find(e => e.BorrowerId == borrowerId)
-                    .FirstOrDefaultAsync();
-                return escrow;
+                var escrows = await _collection.Find(e => e.BorrowerId == borrowerId)
+                    .ToListAsync();
+                return escrows;
             }
             catch (Exception ex)
             {
@@ -82,13 +82,13 @@ namespace Share_Care.Services
             }
         }
 
-        public async Task<Escrow> GetEscrowByLenderIdAsync(string lenderId)
+        public async Task<List<Escrow>> GetEscrowsByLenderIdAsync(string lenderId)
         {
             try
             {
-                var escrow = await _collection.Find(e => e.LenderId == lenderId)
-                    .FirstOrDefaultAsync();
-                return escrow;
+                var escrows = await _collection.Find(e => e.LenderId == lenderId)
+                    .ToListAsync();
+                return escrows;
             }
             catch (Exception ex)
             {
