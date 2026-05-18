@@ -626,15 +626,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 6),
         ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.tune),
-          title: const Text('Ustawienia wyświetlania'),
-          subtitle: const Text(
-            'Motyw, kontrast, czcionka, język (w przygotowaniu)',
-          ),
-          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        ),
-        ListTile(
-          contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.history),
           title: const Text('Historia'),
           subtitle: const Text(
@@ -980,6 +971,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 type,
                 offerKind,
                 contactNumber,
+                expirationDate,
               ) async {
                 try {
                   if (existingAd == null) {
@@ -1003,6 +995,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       category: encodedCategory,
                       contactName: ownerName,
                       contactNumber: contactNumber,
+                      expiresAt: expirationDate,
                     );
 
                     final created = await AnnouncementService.createOffer(
@@ -1020,7 +1013,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ..description = description
                       ..location = location
                       ..deposit = deposit
-                      ..offerKind = offerKind;
+                      ..offerKind = offerKind
+                      ..expiresAt = expirationDate;
 
                     await AnnouncementService.updateOffer(existingAd);
 
@@ -1050,14 +1044,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _openAdForm(existingAd: ad);
           },
           onClose: () async {
+            final bool willActivate = !ad.isActive;
             final confirmed =
                 await showDialog<bool>(
                   context: context,
                   builder: (context) {
                     return AlertDialog(
                       title: const Text('Zmień aktywność ogłoszenia'),
-                      content: const Text(
-                        'Czy na pewno chcesz oznaczyć to ogłoszenie jako nieaktywne?',
+                      content: Text(
+                        willActivate
+                            ? 'Czy na pewno chcesz ponownie aktywować to ogłoszenie?'
+                            : 'Czy na pewno chcesz oznaczyć to ogłoszenie jako nieaktywne?',
                       ),
                       actions: [
                         TextButton(
@@ -1077,16 +1074,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (!confirmed) return;
 
             try {
-              await AnnouncementService.closeOffer(ad.id);
+              if (willActivate) {
+                await AnnouncementService.activateOffer(ad.id);
+              } else {
+                await AnnouncementService.closeOffer(ad.id);
+              }
+
               if (!mounted) return;
               setState(() {
-                ad.isActive = false;
+                ad.isActive = willActivate;
+                if (willActivate) {
+                  _showActiveAds = true;
+                }
               });
               Navigator.of(ctx).pop();
             } catch (e) {
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Błąd zamykania ogłoszenia: $e')),
+                SnackBar(
+                  content: Text(
+                    willActivate
+                        ? 'Błąd aktywacji ogłoszenia: $e'
+                        : 'Błąd zamykania ogłoszenia: $e',
+                  ),
+                ),
               );
             }
           },

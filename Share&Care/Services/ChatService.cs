@@ -160,6 +160,34 @@ namespace Share_Care.Services
             return await cursor.ToListAsync();
         }
 
+        public async Task<List<Chat>> GetArchivedChatsAsync(string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return new List<Chat>();
+            }
+
+            var chatsCollection = _db.GetCollection<Chat>("chats");
+
+            var filter = Builders<Chat>.Filter.Or(
+                Builders<Chat>.Filter.And(
+                    Builders<Chat>.Filter.Eq(c => c.BuyerId, userId),
+                    Builders<Chat>.Filter.Eq(c => c.BuyerArchived, true)
+                ),
+                Builders<Chat>.Filter.And(
+                    Builders<Chat>.Filter.Eq(c => c.SellerId, userId),
+                    Builders<Chat>.Filter.Eq(c => c.SellerArchived, true)
+                ));
+
+            var cursor = await chatsCollection.FindAsync(filter,
+                new FindOptions<Chat, Chat>
+                {
+                    Sort = Builders<Chat>.Sort.Descending(c => c.LastMessageAt)
+                });
+
+            return await cursor.ToListAsync();
+        }
+
         public async Task<bool> SetArchivedForUserAsync(string chatId, string userId, bool archived)
         {
             if (string.IsNullOrWhiteSpace(chatId) || string.IsNullOrWhiteSpace(userId))

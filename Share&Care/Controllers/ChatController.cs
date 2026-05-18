@@ -111,6 +111,67 @@ namespace Share_Care.Controllers
         }
 
         /// <summary>
+        /// Zwraca zarchiwizowane czaty zalogowanego użytkownika.
+        /// </summary>
+        [Authorize]
+        [HttpGet("history")]
+        public async Task<IActionResult> GetChatHistory()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+                return Unauthorized();
+
+            var chats = await _chatService.GetArchivedChatsAsync(userId);
+
+            if (chats.Count == 0)
+            {
+                return Ok(Array.Empty<ChatSummary>());
+            }
+
+            var listingIds = chats.Select(c => c.ListingId).Distinct().ToList();
+            var offersCursor = await _offers.FindAsync(o => listingIds.Contains(o.OfferId));
+            var offers = await offersCursor.ToListAsync();
+            var offersById = offers.ToDictionary(o => o.OfferId, o => o);
+
+            var otherUserIds = chats
+                .Select(c => c.BuyerId == userId ? c.SellerId : c.BuyerId)
+                .Distinct()
+                .ToList();
+
+            var usersCursor = await _users.FindAsync(u => otherUserIds.Contains(u.UserId!));
+            var users = await usersCursor.ToListAsync();
+            var usersById = users.Where(u => u.UserId != null)
+                .ToDictionary(u => u.UserId!, u => u);
+
+            var result = chats
+                .Select(c =>
+                {
+                    offersById.TryGetValue(c.ListingId, out var offer);
+                    var otherUserId = c.BuyerId == userId ? c.SellerId : c.BuyerId;
+                    usersById.TryGetValue(otherUserId, out var otherUser);
+
+                    var listingStatus = offer?.Status ?? "Deleted";
+
+                    return new ChatSummary
+                    {
+                        ChatId = c.Id,
+                        ListingId = c.ListingId,
+                        ListingTitle = offer?.Title ?? string.Empty,
+                        ListingStatus = listingStatus,
+                        OtherUserId = otherUserId,
+                        OtherUserName = ((otherUser?.FirstName ?? string.Empty) + " " + (otherUser?.LastName ?? string.Empty)).Trim(),
+                        LastMessage = c.LastMessage,
+                        LastMessageAt = c.LastMessageAt,
+                        ListingFirstImageId = offer?.ImageIds?.FirstOrDefault()
+                    };
+                })
+                .OrderByDescending(c => c.LastMessageAt ?? DateTime.MinValue)
+                .ToList();
+
+            return Ok(result);
+        }
+
+        /// <summary>
         /// Wysyła wiadomość w kontekście konkretnego czatu.
         /// </summary>
         [Authorize]

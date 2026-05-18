@@ -28,6 +28,8 @@ namespace Share_Care.models
         public DateTime? RentalStartedAt { get; set; }
         public DateTime? CompletedAt { get; set; }
 
+        public DateTime? ExpirationDate { get; set; }
+
         // GeoJSON Point (dla zapytań geolokalizacyjnych i indeksu 2dsphere)
         public GeoJsonPoint<GeoJson2DGeographicCoordinates>? Location { get; set; } 
 

@@ -5,6 +5,7 @@ class AnnouncementMetadata {
   static const List<String> categories = <String>[
     'Wszystkie kategorie',
     'Książki',
+    'Jedzenie',
     'Elektronika',
     'Artykuły budowlane',
 		'Motoryzacja',

@@ -112,6 +112,20 @@ class ChatService {
         .toList();
   }
 
+  /// Pobiera zarchiwizowane czaty zalogowanego użytkownika.
+  static Future<List<ChatThreadSummary>> getArchivedChats() async {
+    final http.Response res = await ApiService.get('/chat/history');
+
+    if (res.statusCode != 200) {
+      throw Exception('Błąd pobierania historii czatów: ${res.statusCode}');
+    }
+
+    final decoded = jsonDecode(res.body) as List<dynamic>;
+    return decoded
+        .map((e) => ChatThreadSummary.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   /// Tworzy (lub zwraca istniejący) czat dla danego ogłoszenia i sprzedającego.
   /// Zwraca identyfikator chatu.
   static Future<String> createChat({

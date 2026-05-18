@@ -149,7 +149,12 @@ class Announcement {
 				isUrgent:
 					(json['isUrgent'] ?? json['IsUrgent'] ?? false) as bool,
 				expiresAt: DateTime.tryParse(
-						(json['expiresAt'] ?? json['ExpiresAt'] ?? '').toString(),
+						(json['expiresAt'] ??
+								json['ExpiresAt'] ??
+								json['expirationDate'] ??
+								json['ExpirationDate'] ??
+								'')
+							.toString(),
 					),
 			lat: coords?.lat,
 			lng: coords?.lng,
@@ -181,6 +186,7 @@ class Announcement {
 			'IsOwner': isOwner,
 			'IsUrgent': isUrgent,
 			'ExpiresAt': expiresAt?.toIso8601String(),
+			'ExpirationDate': expiresAt?.toIso8601String(),
 		};
 	}
 }

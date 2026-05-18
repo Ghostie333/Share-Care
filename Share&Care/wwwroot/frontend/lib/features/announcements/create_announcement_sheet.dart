@@ -73,7 +73,7 @@ Future<void> showCreateAnnouncementSheet({
         initialOfferKind: initialOfferKind,
         initialCity: city,
         initialPhoneNumber: phoneNumber,
-        onSubmit: (title, description, location, deposit, images, category, type, offerKind, contactNumber) async {
+        onSubmit: (title, description, location, deposit, images, category, type, offerKind, contactNumber, expirationDate) async {
           try {
             final encodedCategory = AnnouncementMetadata.encode(type, category);
 
@@ -93,6 +93,7 @@ Future<void> showCreateAnnouncementSheet({
               category: encodedCategory,
               contactName: ownerName,
               contactNumber: contactNumber,
+              expiresAt: expirationDate,
             );
 
             final created = await AnnouncementService.createOffer(

@@ -16,6 +16,11 @@ namespace Share_Care.Services
         Task<List<Chat>> GetUserChatsAsync(string userId);
 
         /// <summary>
+        /// Zwraca zarchiwizowane czaty dla danego użytkownika.
+        /// </summary>
+        Task<List<Chat>> GetArchivedChatsAsync(string userId);
+
+        /// <summary>
         /// Ustawia stan archiwizacji (aktywne/nieaktywne) dla konkretnego użytkownika.
         /// </summary>
         Task<bool> SetArchivedForUserAsync(string chatId, string userId, bool archived);

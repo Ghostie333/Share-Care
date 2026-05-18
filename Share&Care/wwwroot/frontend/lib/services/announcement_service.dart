@@ -164,6 +164,11 @@ class AnnouncementService {
       'LocationText': announcement.location,
     });
 
+    if (announcement.expiresAt != null) {
+      request.fields['ExpirationDate'] =
+          announcement.expiresAt!.toIso8601String();
+    }
+
     final deposit = announcement.deposit;
     if (deposit != null) {
       request.fields['Deposit'] = deposit.toString();
@@ -254,9 +259,16 @@ class AnnouncementService {
       throw Exception('Błąd aktualizacji ogłoszenia: ${res.statusCode}');
     }
 
-    final Map<String, dynamic> decoded =
-        jsonDecode(res.body) as Map<String, dynamic>;
-    return Announcement.fromJson(decoded);
+    final raw = res.body.trim();
+    if (raw.isEmpty) return announcement;
+
+    try {
+      final Map<String, dynamic> decoded =
+          jsonDecode(raw) as Map<String, dynamic>;
+      return Announcement.fromJson(decoded);
+    } catch (_) {
+      return announcement;
+    }
   }
 
   /// Usuwa ofertę (Offer) po OfferId – WYMAGA odpowiedniego endpointu
@@ -282,6 +294,20 @@ class AnnouncementService {
 
     if (res.statusCode != 200) {
       throw Exception('Błąd zamykania ogłoszenia: ${res.statusCode}');
+    }
+  }
+
+  /// Oznacza ofertę jako aktywną (Status = "Active") po stronie backendu.
+  ///
+  /// Backend: POST /offer/activate-offer/{offerId}
+  static Future<void> activateOffer(String id) async {
+    final http.Response res = await ApiService.postJson(
+      '/offer/activate-offer/$id',
+      <String, dynamic>{},
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception('Błąd aktywacji ogłoszenia: ${res.statusCode}');
     }
   }
 }

@@ -315,7 +315,7 @@ class _AnnouncementDetailsDialogState extends State<AnnouncementDetailsDialog> {
           ),
           if ((widget.ad.contactNumber ?? '').isNotEmpty)
             infoLine('Telefon', widget.ad.contactNumber ?? ''),
-          if (widget.ad.deposit != null)
+          if (widget.ad.offerKind == 'Borrow' && widget.ad.deposit != null)
             infoLine('Kaucja', '${widget.ad.deposit!.toStringAsFixed(2)} zł'),
           if (widget.ad.location.trim().isNotEmpty)
             infoLine('Lokalizacja', widget.ad.location),
@@ -332,7 +332,7 @@ class _AnnouncementDetailsDialogState extends State<AnnouncementDetailsDialog> {
             widget.ad.description,
             style: theme.textTheme.bodyMedium?.copyWith(fontSize: 15),
           ),
-          if (widget.ad.deposit != null)
+          if (widget.ad.offerKind == 'Borrow' && widget.ad.deposit != null)
             Align(
               alignment: Alignment.bottomRight,
               child: Container(
@@ -434,7 +434,10 @@ class _AnnouncementDetailsDialogState extends State<AnnouncementDetailsDialog> {
       );
     }
 
-    if (isAnnouncement && !widget.ad.isOwner && widget.onPayment != null) {
+    if (isAnnouncement &&
+        !widget.ad.isOwner &&
+        widget.onPayment != null &&
+        widget.ad.offerKind == 'Borrow') {
       buttons.add(
         buildAdaptiveButton(
           onPressed: () {
@@ -464,8 +467,8 @@ class _AnnouncementDetailsDialogState extends State<AnnouncementDetailsDialog> {
         buttons.add(
           buildAdaptiveButton(
             onPressed: widget.onClose!,
-            icon: Icons.visibility_off,
-            label: 'Nieaktywne',
+            icon: widget.ad.isActive ? Icons.visibility_off : Icons.visibility,
+            label: widget.ad.isActive ? 'Nieaktywne' : 'Aktywne',
           ),
         );
       }

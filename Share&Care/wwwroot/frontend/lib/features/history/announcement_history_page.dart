@@ -114,7 +114,7 @@ class _AnnouncementHistoryPageState extends State<AnnouncementHistoryPage> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            ad.deposit != null
+                            ad.offerKind == 'Borrow' && ad.deposit != null
                                 ? 'Kaucja: ${ad.deposit!.toStringAsFixed(2)} zł'
                                 : 'Bez kaucji',
                             style: Theme.of(context).textTheme.bodySmall

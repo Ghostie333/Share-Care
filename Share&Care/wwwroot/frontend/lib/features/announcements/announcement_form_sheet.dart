@@ -30,6 +30,7 @@ class AnnouncementFormSheet extends StatefulWidget {
     String type,
     String offerKind,
     String contactNumber,
+    DateTime? expirationDate,
   )
   onSubmit;
 
@@ -60,6 +61,7 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
   late final TextEditingController _locationController;
   late final TextEditingController _depositController;
   late final TextEditingController _contactNumberController;
+  late final TextEditingController _expirationController;
 
   final List<XFile> _selectedImages = [];
   final Map<String, Uint8List> _imageBytesByPath = {};
@@ -69,6 +71,11 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
   late String _selectedOfferKind;
   bool _useProfileCity = false;
   bool _useProfilePhone = false;
+
+  bool get _isBorrow => _selectedOfferKind == 'Borrow';
+  bool get _isFoodCategory => _selectedCategory == 'Jedzenie';
+
+  DateTime? _expirationDate;
 
   @override
   void initState() {
@@ -88,13 +95,25 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
     _contactNumberController = TextEditingController(
       text: widget.initialPhoneNumber ?? '',
     );
+    _expirationController = TextEditingController();
 
-    _selectedCategory =
-        widget.initialCategory ?? AnnouncementMetadata.defaultCategory;
-    _selectedType =
-        widget.initialType ?? AnnouncementMetadata.defaultAnnouncementType;
+    final existingCategoryEncoded = existing?.category ?? '';
+
+    _selectedCategory = existingCategoryEncoded.trim().isNotEmpty
+      ? AnnouncementMetadata.parseCategory(existingCategoryEncoded)
+      : (widget.initialCategory ?? AnnouncementMetadata.defaultCategory);
+    _selectedType = existingCategoryEncoded.trim().isNotEmpty
+      ? AnnouncementMetadata.parseType(existingCategoryEncoded)
+      : (widget.initialType ?? AnnouncementMetadata.defaultAnnouncementType);
     _selectedOfferKind =
       widget.initialOfferKind ?? AnnouncementMetadata.offerKinds.first;
+
+    if (!_isBorrow) {
+      _depositController.clear();
+    }
+
+    _expirationDate = existing?.expiresAt;
+    _expirationController.text = _formatDate(_expirationDate);
 
     _useProfileCity = (widget.initialCity ?? '').isNotEmpty;
     _useProfilePhone = (widget.initialPhoneNumber ?? '').isNotEmpty;
@@ -107,6 +126,7 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
     _locationController.dispose();
     _depositController.dispose();
     _contactNumberController.dispose();
+    _expirationController.dispose();
     super.dispose();
   }
 
@@ -130,27 +150,44 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                existing == null
-                    ? 'Dodaj nowe ogłoszenie'
-                    : 'Edytuj ogłoszenie',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                children: [
+                  const SizedBox(width: 40),
+                  Expanded(
+                    child: Text(
+                      existing == null
+                          ? 'Dodaj nowe ogłoszenie'
+                          : 'Edytuj ogłoszenie',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Zamknij',
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _titleController,
                 textInputAction: TextInputAction.next,
+                maxLength: 50,
                 decoration: const InputDecoration(
                   labelText: 'Tytuł ogłoszenia',
+                  helperText: 'Maksymalnie 50 znaków',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Podaj tytuł ogłoszenia';
+                  }
+                  if (value.trim().length > 50) {
+                    return 'Tytuł może mieć maksymalnie 50 znaków';
                   }
                   return null;
                 },
@@ -159,13 +196,18 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
               TextFormField(
                 controller: _descriptionController,
                 maxLines: 4,
+                maxLength: 300,
                 decoration: const InputDecoration(
                   labelText: 'Opis',
+                  helperText: 'Maksymalnie 300 znaków',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Podaj opis ogłoszenia';
+                  }
+                  if (value.trim().length > 300) {
+                    return 'Opis może mieć maksymalnie 300 znaków';
                   }
                   return null;
                 },
@@ -195,7 +237,13 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                               .toList(),
                           onChanged: (v) {
                             if (v == null) return;
-                            setState(() => _selectedCategory = v);
+                            setState(() {
+                              _selectedCategory = v;
+                              if (!_isFoodCategory) {
+                                _expirationDate = null;
+                                _expirationController.clear();
+                              }
+                            });
                           },
                         ),
                         const SizedBox(height: 12),
@@ -235,7 +283,12 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                               .toList(),
                           onChanged: (v) {
                             if (v == null) return;
-                            setState(() => _selectedOfferKind = v);
+                            setState(() {
+                              _selectedOfferKind = v;
+                              if (!_isBorrow) {
+                                _depositController.clear();
+                              }
+                            });
                           },
                         ),
                       ],
@@ -264,7 +317,13 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                                 .toList(),
                             onChanged: (v) {
                               if (v == null) return;
-                              setState(() => _selectedCategory = v);
+                              setState(() {
+                                _selectedCategory = v;
+                                if (!_isFoodCategory) {
+                                  _expirationDate = null;
+                                  _expirationController.clear();
+                                }
+                              });
                             },
                           ),
                         ),
@@ -310,7 +369,12 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                                 .toList(),
                             onChanged: (v) {
                               if (v == null) return;
-                              setState(() => _selectedOfferKind = v);
+                              setState(() {
+                                _selectedOfferKind = v;
+                                if (!_isBorrow) {
+                                  _depositController.clear();
+                                }
+                              });
                             },
                           ),
                         ),
@@ -378,26 +442,58 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
               ),
               const SizedBox(height: 12),
               _buildImagesPicker(),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _depositController,
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.done,
-                onFieldSubmitted: (_) => _onSavePressed(),
-                decoration: const InputDecoration(
-                  labelText: 'Kaucja (opcjonalnie)',
-                  border: OutlineInputBorder(),
+              if (_isFoodCategory) ...[
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _expirationController,
+                  readOnly: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Termin ważności',
+                    helperText: 'Wymagane dla kategorii Jedzenie',
+                    border: OutlineInputBorder(),
+                  ),
+                  onTap: () async {
+                    final now = DateTime.now();
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _expirationDate ?? now,
+                      firstDate: DateTime(now.year, now.month, now.day),
+                      lastDate: DateTime(now.year + 10),
+                    );
+                    if (picked == null) return;
+                    setState(() {
+                      _expirationDate = picked;
+                      _expirationController.text = _formatDate(picked);
+                    });
+                  },
+                  validator: (_) {
+                    if (_isFoodCategory && _expirationDate == null) {
+                      return 'Podaj termin ważności';
+                    }
+                    return null;
+                  },
                 ),
-                validator: (value) {
-                  if (_selectedOfferKind == 'Borrow') {
+              ],
+              if (_isBorrow) ...[
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _depositController,
+                  keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) => _onSavePressed(),
+                  decoration: const InputDecoration(
+                    labelText: 'Kaucja (wymagana)',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
                     final parsed = double.tryParse(value?.trim() ?? '');
                     if (parsed == null || parsed <= 0) {
                       return 'Wymagana kaucja dla wypożyczenia';
                     }
-                  }
-                  return null;
-                },
-              ),
+                    return null;
+                  },
+                ),
+              ],
               const SizedBox(height: 16),
               Align(
                 alignment: Alignment.centerRight,
@@ -555,9 +651,9 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
       return;
     }
 
-    final double? deposit = double.tryParse(
-      _depositController.text.replaceAll(',', '.'),
-    );
+    final double? deposit = _isBorrow
+        ? double.tryParse(_depositController.text.replaceAll(',', '.'))
+        : null;
 
     widget.onSubmit(
       _titleController.text.trim(),
@@ -569,8 +665,16 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
       _selectedType,
       _selectedOfferKind,
       _contactNumberController.text.trim(),
+      _expirationDate,
     );
 
     Navigator.of(context).pop();
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '';
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day.$month.${date.year}';
   }
 }

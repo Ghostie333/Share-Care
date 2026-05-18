@@ -27,12 +27,10 @@ class _ChatsHistoryPageState extends State<ChatsHistoryPage> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
-      final all = await ChatService.getMyChats();
+      final all = await ChatService.getArchivedChats();
       if (!mounted) return;
       setState(() {
-        _inactiveThreads = all
-            .where((t) => t.listingStatus.toLowerCase() != 'active')
-            .toList();
+        _inactiveThreads = all;
       });
     } catch (e) {
       if (!mounted) return;

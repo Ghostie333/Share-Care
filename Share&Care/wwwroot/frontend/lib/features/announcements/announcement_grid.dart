@@ -32,10 +32,10 @@ class AnnouncementGrid extends StatelessWidget {
             ? 2
             : 3;
         final childAspectRatio = width < 380
-            ? 1.85
-            : width < 520
-            ? 0.84
-            : 0.9;
+          ? 1.2
+          : width < 520
+          ? 1.0
+          : 0.9;
 
         return GridView.builder(
           itemCount: announcements.length,
@@ -141,7 +141,7 @@ class _AnnouncementCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (ad.deposit != null)
+                  if (ad.offerKind == 'Borrow' && ad.deposit != null)
                     Flexible(
                       child: Padding(
                         padding: const EdgeInsets.only(left: 8, bottom: 2),

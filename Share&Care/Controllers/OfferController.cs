@@ -41,6 +41,19 @@ namespace Share_Care.Controllers
                     return BadRequest(new { message = "Podaj oba pola: Lat i Lng." });
                 }
 
+                if (string.Equals(form.OfferKind, "Borrow", StringComparison.OrdinalIgnoreCase) &&
+                    (!form.Deposit.HasValue || form.Deposit.Value <= 0))
+                {
+                    return BadRequest(new { message = "Kaucja jest wymagana dla wypożyczenia." });
+                }
+
+                if (!string.IsNullOrWhiteSpace(form.Category) &&
+                    form.Category.Contains("Jedzenie", StringComparison.OrdinalIgnoreCase) &&
+                    !form.ExpirationDate.HasValue)
+                {
+                    return BadRequest(new { message = "Termin ważności jest wymagany dla kategorii Jedzenie." });
+                }
+
                 var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (string.IsNullOrWhiteSpace(currentUserId))
                 {
@@ -88,6 +101,7 @@ namespace Share_Care.Controllers
                     ContactNumber = form.ContactNumber ?? string.Empty,
                     Description = form.Description ?? string.Empty,
                     Deposit = form.Deposit,
+                    ExpirationDate = form.ExpirationDate,
                     LocationText = string.IsNullOrWhiteSpace(form.LocationText)
                         ? null
                         : form.LocationText!.Trim(),
@@ -319,6 +333,41 @@ namespace Share_Care.Controllers
             }
         }
 
+        [Authorize]
+        [HttpPost("activate-offer/{offerId}")]
+        public async Task<IActionResult> ActivateOffer(string offerId)
+        {
+            try
+            {
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrWhiteSpace(currentUserId))
+                {
+                    return Unauthorized();
+                }
+
+                var offer = await _collection.Find(x => x.OfferId == offerId).FirstOrDefaultAsync();
+                if (offer is null)
+                {
+                    return NotFound();
+                }
+
+                if (!string.Equals(offer.UserId, currentUserId, StringComparison.Ordinal))
+                {
+                    return Forbid();
+                }
+
+                var update = Builders<Offer>.Update.Set(x => x.Status, "Active");
+                await _collection.FindOneAndUpdateAsync(x => x.OfferId == offerId, update);
+
+                return Ok(new { message = "Aktywowano ofertę" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Błąd aktywacji oferty");
+                return Problem("Błąd bazy danych", statusCode: StatusCodes.Status500InternalServerError);
+            }
+        }
+
         [HttpGet("get-offer-page")]
         public async Task<IActionResult> GetOfferPage(string offerId)
         {
@@ -384,6 +433,19 @@ namespace Share_Care.Controllers
                     return Unauthorized();
                 }
 
+                if (string.Equals(form.OfferKind, "Borrow", StringComparison.OrdinalIgnoreCase) &&
+                    (!form.Deposit.HasValue || form.Deposit.Value <= 0))
+                {
+                    return BadRequest(new { message = "Kaucja jest wymagana dla wypożyczenia." });
+                }
+
+                if (!string.IsNullOrWhiteSpace(form.Category) &&
+                    form.Category.Contains("Jedzenie", StringComparison.OrdinalIgnoreCase) &&
+                    !form.ExpirationDate.HasValue)
+                {
+                    return BadRequest(new { message = "Termin ważności jest wymagany dla kategorii Jedzenie." });
+                }
+
                 var offer = await _collection.Find(x => x.OfferId == offerId).FirstOrDefaultAsync();
                 if (offer is null)
                 {
@@ -401,7 +463,8 @@ namespace Share_Care.Controllers
                     .Set(x => x.OfferKind, string.IsNullOrWhiteSpace(form.OfferKind) ? "Borrow" : form.OfferKind)
                     .Set(x => x.ContactNumber, form.ContactNumber)
                     .Set(x => x.Description, form.Description)
-                    .Set(x => x.Deposit, form.Deposit);
+                    .Set(x => x.Deposit, form.Deposit)
+                    .Set(x => x.ExpirationDate, form.ExpirationDate);
 
                 await _collection.FindOneAndUpdateAsync(x => x.OfferId == offerId, update);
 

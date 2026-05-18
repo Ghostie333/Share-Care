@@ -467,8 +467,24 @@ class _ChatPageState extends State<ChatPage> {
     final text = _messageController.text.trim();
     if (text.isEmpty && _pendingAttachments.isEmpty) return;
 
+    final attachmentsPayload = _pendingAttachments
+        .map((att) => att.toJson())
+        .toList(growable: false);
+    final contentToSend = text.isNotEmpty
+        ? text
+        : (attachmentsPayload.isNotEmpty ? 'Zdjęcie' : '');
+    final kind = attachmentsPayload.isNotEmpty ? 'image' : 'text';
+    final data = attachmentsPayload.isNotEmpty
+        ? <String, dynamic>{'attachments': attachmentsPayload}
+        : null;
+
     try {
-      final sent = await ChatService.sendMessage(chatId: chatId, content: text);
+      final sent = await ChatService.sendMessage(
+        chatId: chatId,
+        content: contentToSend,
+        kind: kind,
+        data: data,
+      );
 
       _messageController.clear();
       _pendingAttachments.clear();
@@ -895,7 +911,7 @@ class _ChatPageState extends State<ChatPage> {
                 content: m.content,
                 time: _formatTime(m.sentAt),
                 isRead: m.isRead,
-                attachments: const <LocalChatAttachment>[],
+                attachments: _attachmentsFromMessage(m),
               );
             },
           ),
@@ -993,6 +1009,18 @@ class _ChatPageState extends State<ChatPage> {
           ),
       ],
     );
+  }
+
+  List<LocalChatAttachment> _attachmentsFromMessage(ChatMessage message) {
+    final raw = message.data?['attachments'];
+    if (raw is! List) return const [];
+
+    return raw
+        .whereType<Map>()
+        .map((item) => LocalChatAttachment.fromJson(
+          Map<String, dynamic>.from(item),
+        ))
+        .toList(growable: false);
   }
 }
 
