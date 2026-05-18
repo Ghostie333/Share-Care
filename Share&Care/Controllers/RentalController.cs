@@ -154,6 +154,9 @@ namespace Share_Care.Controllers
             if (offer == null)
                 return NotFound();
 
+            if (offer.Status == "InProgress")
+                return Forbid();
+
             if (!string.Equals(offer.UserId, giverId, StringComparison.Ordinal))
                 return Forbid();
 
@@ -251,7 +254,7 @@ namespace Share_Care.Controllers
             }
 
             var update = Builders<Offer>.Update
-                .Set(o => o.Status, "Completed")
+                .Set(o => o.Status, "Acitve")
                 .Set(o => o.CompletedAt, DateTime.UtcNow);
 
             await _offers.UpdateOneAsync(o => o.OfferId == offerId, update);
@@ -292,7 +295,7 @@ namespace Share_Care.Controllers
             await _offers.UpdateOneAsync(
                 o => o.OfferId == offerId,
                 Builders<Offer>.Update
-                    .Set(o => o.Status, "Completed")
+                    .Set(o => o.Status, "Active")
                     .Set(o => o.CompletedAt, DateTime.UtcNow));
 
             await SendRentalUpdateMessage(offer, giverId, "rental_claimed", "Kaucja została przejęta po przekroczeniu terminu");

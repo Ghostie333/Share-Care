@@ -121,10 +121,7 @@ namespace Share_Care.Services
 
             await _walletService.UnlockFundsAsync(escrow.BorrowerId, escrow.Amount);
 
-            await _collection.UpdateOneAsync(
-                e => e.Id == escrow.Id,
-                Builders<Escrow>.Update.Set(e => e.Status, "Canceled")
-            );
+            await _collection.DeleteOneAsync(e => e.Id == escrow.Id);
 
             return true;
         }
