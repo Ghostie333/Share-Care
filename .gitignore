@@ -6,3 +6,4 @@
 appsettings.Development.json
 Share&Care/appsettings.Development.json
 .vs
+/Share&Care/wwwroot/frontend/build

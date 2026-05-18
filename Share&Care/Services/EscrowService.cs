@@ -118,10 +118,7 @@ namespace Share_Care.Services
 
         public async Task<bool> FinalizeEscrowAsync(
             string offerId,
-            string condition,
-            string platformUserId,
-            decimal platformFeeRate,
-            decimal giverBonusRate)
+            string condition)
         {
             var escrow = await GetEscrowByOfferIdAsync(offerId);
 
@@ -131,23 +128,13 @@ namespace Share_Care.Services
             var (giverPercent, _) = ResolveConditionSplit(condition);
 
             var total = escrow.Amount;
-            var platformFee = RoundMoney(total * platformFeeRate);
-            var remaining = total - platformFee;
-            if (remaining < 0) remaining = 0;
 
-            var giverAmount = RoundMoney(remaining * giverPercent);
-            var takerAmount = remaining - giverAmount;
-
-            var giverBonus = RoundMoney(total * giverBonusRate);
-            var bonusApplied = giverBonus > takerAmount ? takerAmount : giverBonus;
-            takerAmount -= bonusApplied;
-            giverAmount += bonusApplied;
+            var giverAmount = RoundMoney(total * giverPercent);
+            var takerAmount = total - giverAmount;
 
             var success = await ApplyTransfersAsync(
                 escrow.BorrowerId,
                 escrow.LenderId,
-                platformUserId,
-                platformFee,
                 giverAmount,
                 takerAmount);
 
@@ -159,8 +146,6 @@ namespace Share_Care.Services
                 .Set(e => e.ReturnStatus, "GiverReviewed")
                 .Set(e => e.Condition, condition)
                 .Set(e => e.GiverReviewedAt, DateTime.UtcNow)
-                .Set(e => e.PlatformFee, platformFee)
-                .Set(e => e.GiverBonus, bonusApplied)
                 .Set(e => e.GiverAmount, giverAmount)
                 .Set(e => e.TakerAmount, takerAmount);
 
@@ -170,36 +155,19 @@ namespace Share_Care.Services
         }
 
         public async Task<bool> ClaimEscrowAsync(
-            string offerId,
-            string platformUserId,
-            decimal platformFeeRate,
-            decimal giverBonusRate)
+            string offerId)
         {
             return await FinalizeEscrowAsync(
                 offerId,
-                "NotReturned",
-                platformUserId,
-                platformFeeRate,
-                giverBonusRate);
+                "NotReturned");
         }
 
         private async Task<bool> ApplyTransfersAsync(
             string borrowerId,
             string lenderId,
-            string platformUserId,
-            decimal platformFee,
             decimal giverAmount,
             decimal takerAmount)
         {
-            if (platformFee > 0)
-            {
-                var ok = await _walletService.TransferLockedFundsAsync(
-                    borrowerId,
-                    platformUserId,
-                    platformFee);
-                if (!ok) return false;
-            }
-
             if (giverAmount > 0)
             {
                 var ok = await _walletService.TransferLockedFundsAsync(
@@ -281,7 +249,7 @@ namespace Share_Care.Services
                 return false;
 
             // Jeśli Giver nie sprawdzi w terminie - 95% do Takera, 5% platformy
-            return await FinalizeEscrowAsync(offerId, "ExpiredInspection", platformUserId, platformFeeRate, 0m);
+            return await FinalizeEscrowAsync(offerId, "ExpiredInspection");
         }
 
         public async Task<bool> SetInspectionDeadlineAsync(string offerId, int daysUntilDeadline = 14)

@@ -1,8 +1,8 @@
-# Install script for directory: /home/matwojek/Projects/backup/Share-Care_payment_not_all_working/Share&Care/wwwroot/frontend/linux/flutter
+# Install script for directory: /home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/linux/flutter
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  set(CMAKE_INSTALL_PREFIX "/home/matwojek/Projects/backup/Share-Care_payment_not_all_working/Share&Care/wwwroot/frontend/build/linux/x64/debug/bundle")
+  set(CMAKE_INSTALL_PREFIX "/home/matwojek/Projects/Share-Care/Share&Care/wwwroot/frontend/build/linux/x64/debug/bundle")
 endif()
 string(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
