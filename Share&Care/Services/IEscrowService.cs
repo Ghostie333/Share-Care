@@ -12,6 +12,8 @@ namespace Share_Care.Services
         Task<bool> ApproveEscrowAsync(string offerId);
         Task<bool> CancelEscrowAsync(string offerId);
         Task<bool> RecordTakerReturnAsync(string offerId, List<string> imageIds);
+        Task<List<Escrow>> GetEscrowsByBorrowerIdAsync(string borrowerId);
+        Task<List<Escrow>> GetEscrowsByLenderIdAsync(string lenderId);
         Task<bool> RecordGiverInspectionAsync(string offerId, string condition, List<string> imageIds);
         Task<bool> FinalizeEscrowAsync(string offerId, string condition);
         Task<bool> ClaimEscrowAsync(string offerId);
