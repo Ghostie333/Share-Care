@@ -14,7 +14,7 @@ services:
 
   backend:
     build:
-      context: "./Share&Care"
+      context: "./Share&Care"                 # cudzysłowy przez znak &
     container_name: "sharecareapp-backend"
     depends_on:
       - mongo
@@ -25,6 +25,8 @@ services:
       ASPNETCORE_URLS: "http://+:8080"
     ports:
       - "7070:8080"
+    volumes:
+      - "./Share&Care/wwwroot:/app/wwwroot"   # też w cudzysłowie
     restart: unless-stopped
 
 volumes:
