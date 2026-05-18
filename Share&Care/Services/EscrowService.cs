@@ -67,6 +67,36 @@ namespace Share_Care.Services
             }
         }
 
+        public async Task<Escrow> GetEscrowByBorrowerIdAsync(string borrowerId)
+        {
+            try
+            {
+                var escrow = await _collection.Find(e => e.BorrowerId == borrowerId)
+                    .FirstOrDefaultAsync();
+                return escrow;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Nie udało się pobrać depozytu");
+                return null;
+            }
+        }
+
+        public async Task<Escrow> GetEscrowByLenderIdAsync(string lenderId)
+        {
+            try
+            {
+                var escrow = await _collection.Find(e => e.LenderId == lenderId)
+                    .FirstOrDefaultAsync();
+                return escrow;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Nie udało się pobrać depozytu");
+                return null;
+            }
+        }
+
         public async Task<bool> ApproveEscrowAsync(string offerId)
         {
             var escrow = await GetEscrowByOfferIdAsync(offerId);
