@@ -318,6 +318,46 @@ namespace Share_Care.Controllers
             return Ok(escrow);
         }
 
+        [Authorize]
+        [HttpGet("lender")]
+        public async Task<IActionResult> GetLenderEscrows()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            
+            if(string.IsNullOrWhiteSpace(userId))
+                return Unauthorized();
+
+            var escrows = await _escrowService.GetEscrowsByLenderIdAsync(userId);
+
+            if (escrows is null)
+            {
+
+                return NotFound();
+            }
+
+            return Ok(escrows);
+        }
+
+        [Authorize]
+        [HttpGet("borrower")]
+        public async Task<IActionResult> GetBorrowerEscrows()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if(string.IsNullOrWhiteSpace(userId))
+                return Unauthorized();
+
+            var escrows = await _escrowService.GetEscrowsByBorrowerIdAsync(userId);
+
+            if (escrows is null)
+            {
+
+                return NotFound();
+            }
+
+            return Ok(escrows);
+        }
+
         private async Task<List<string>> UploadImagesAsync(List<IFormFile>? images, string userId)
         {
             var imageIds = new List<string>();
