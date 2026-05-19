@@ -4,6 +4,7 @@ import '../../services/auth_service.dart';
 import '../../utils/animations.dart';
 import 'announcement_history_page.dart';
 import 'chats_history_page.dart';
+import 'report_history_page.dart';
 
 class HistoryPage extends StatelessWidget {
   final AuthResult authResult;
@@ -34,6 +35,19 @@ class HistoryPage extends StatelessWidget {
               Navigator.of(context).push(
                 createSlideFadeRoute(
                   AnnouncementHistoryPage(authResult: authResult),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          _HistoryCategoryTile(
+            title: 'Historia zgłoszeń',
+            subtitle: 'Nieaktywne zgłoszenia',
+            icon: Icons.report_gmailerrorred_outlined,
+            onTap: () {
+              Navigator.of(context).push(
+                createSlideFadeRoute(
+                  ReportHistoryPage(authResult: authResult),
                 ),
               );
             },

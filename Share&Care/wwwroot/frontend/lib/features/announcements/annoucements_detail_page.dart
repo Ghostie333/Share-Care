@@ -8,6 +8,7 @@ import '../../config/app_config.dart';
 import '../../services/auth_service.dart';
 import '../profile/public_profile_page.dart';
 import '../profile/profile_page.dart';
+import '../../widgets/ad_placeholder.dart';
 
 class AnnouncementDetailsDialog extends StatefulWidget {
   final Announcement ad;
@@ -262,6 +263,13 @@ class _AnnouncementDetailsDialogState extends State<AnnouncementDetailsDialog> {
       );
     }
 
+    String formatDate(DateTime? date) {
+      if (date == null) return '';
+      final day = date.day.toString().padLeft(2, '0');
+      final month = date.month.toString().padLeft(2, '0');
+      return '$day.$month.${date.year}';
+    }
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,7 +319,11 @@ class _AnnouncementDetailsDialogState extends State<AnnouncementDetailsDialog> {
             infoLine('Ogłoszeniodawca', widget.ad.ownerName),
           infoLine(
             'Rodzaj',
-            widget.ad.offerKind == 'Give' ? 'Oddanie' : 'Wypożyczenie',
+            widget.ad.offerKind == 'Give'
+                ? 'Oddanie'
+                : widget.ad.offerKind == 'WantToTake'
+                ? 'Potrzebuję'
+                : 'Wypożyczenie',
           ),
           if ((widget.ad.contactNumber ?? '').isNotEmpty)
             infoLine('Telefon', widget.ad.contactNumber ?? ''),
@@ -319,6 +331,8 @@ class _AnnouncementDetailsDialogState extends State<AnnouncementDetailsDialog> {
             infoLine('Kaucja', '${widget.ad.deposit!.toStringAsFixed(2)} zł'),
           if (widget.ad.location.trim().isNotEmpty)
             infoLine('Lokalizacja', widget.ad.location),
+          if (widget.ad.expiresAt != null)
+            infoLine('Ważne do', formatDate(widget.ad.expiresAt)),
           const SizedBox(height: 10),
           Text(
             'Opis',
@@ -332,6 +346,8 @@ class _AnnouncementDetailsDialogState extends State<AnnouncementDetailsDialog> {
             widget.ad.description,
             style: theme.textTheme.bodyMedium?.copyWith(fontSize: 15),
           ),
+          const SizedBox(height: 12),
+          const AdPlaceholder(label: 'Reklama', height: 90),
           if (widget.ad.offerKind == 'Borrow' && widget.ad.deposit != null)
             Align(
               alignment: Alignment.bottomRight,

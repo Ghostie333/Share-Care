@@ -47,6 +47,14 @@ namespace Share_Care.Controllers
                     return BadRequest(new { message = "Kaucja jest wymagana dla wypożyczenia." });
                 }
 
+                if (string.Equals(form.OfferKind, "WantToTake", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!form.ExpirationDate.HasValue)
+                    {
+                        return BadRequest(new { message = "Termin ważności jest wymagany dla zgłoszenia." });
+                    }
+                }
+
                 if (!string.IsNullOrWhiteSpace(form.Category) &&
                     form.Category.Contains("Jedzenie", StringComparison.OrdinalIgnoreCase) &&
                     !form.ExpirationDate.HasValue)
@@ -437,6 +445,24 @@ namespace Share_Care.Controllers
                     (!form.Deposit.HasValue || form.Deposit.Value <= 0))
                 {
                     return BadRequest(new { message = "Kaucja jest wymagana dla wypożyczenia." });
+                }
+
+                if (string.Equals(form.OfferKind, "WantToTake", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (string.IsNullOrWhiteSpace(form.ContactNumber))
+                    {
+                        return BadRequest(new { message = "Numer telefonu jest wymagany dla zgłoszenia." });
+                    }
+
+                    if (string.IsNullOrWhiteSpace(form.LocationText))
+                    {
+                        return BadRequest(new { message = "Lokalizacja jest wymagana dla zgłoszenia." });
+                    }
+
+                    if (!form.ExpirationDate.HasValue)
+                    {
+                        return BadRequest(new { message = "Termin ważności jest wymagany dla zgłoszenia." });
+                    }
                 }
 
                 if (!string.IsNullOrWhiteSpace(form.Category) &&

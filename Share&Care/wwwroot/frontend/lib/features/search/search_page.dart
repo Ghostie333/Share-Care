@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/widgets/ad_placeholder.dart';
 
 import '../../core/classic_style.dart';
 import '../../services/auth_service.dart';
@@ -280,6 +281,8 @@ class _SearchPageState extends State<SearchPage> {
           return Icons.construction;
         case 'motoryzacja':
           return Icons.directions_car;
+        case 'jedzenie': 
+          return Icons.food_bank;
         default:
           return Icons.category_outlined;
       }
@@ -346,6 +349,8 @@ class _SearchPageState extends State<SearchPage> {
     }
 
     final tiles = <Widget>[
+      const SizedBox(height: 10),
+      const AdPlaceholder(label: 'Reklama'),
       buildCategoryTile(
         title: 'Wszystkie kategorie',
         subtitle: 'Przeglądaj wszystkie ogłoszenia',

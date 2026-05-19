@@ -22,6 +22,7 @@ import '../search/search_page.dart';
 import '../profile/profile_page.dart';
 import '../announcements/create_report_sheet.dart';
 import '../payments/payment_authorization_page.dart';
+import '../../widgets/ad_placeholder.dart';
 
 enum HomeFeedMode { all, announcements, reports }
 
@@ -756,6 +757,8 @@ class _HomePageState extends State<HomePage> {
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
+          const SizedBox(height: 10),
+          const AdPlaceholder(label: 'Reklama'),
           const SizedBox(height: 8),
           if (_isLoading)
             const Center(child: CircularProgressIndicator())

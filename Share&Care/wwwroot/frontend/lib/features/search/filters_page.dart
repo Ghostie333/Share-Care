@@ -21,6 +21,10 @@ class _FiltersPageState extends State<FiltersPage> {
   final _maxPriceController = TextEditingController();
   final _locationController = TextEditingController();
   final _radiusController = TextEditingController();
+  final _expirationFromController = TextEditingController();
+  final _expirationToController = TextEditingController();
+  DateTime? _expirationFrom;
+  DateTime? _expirationTo;
 
   @override
   void initState() {
@@ -40,6 +44,10 @@ class _FiltersPageState extends State<FiltersPage> {
     if (widget.initial.radiusKm != null) {
       _radiusController.text = widget.initial.radiusKm!.toStringAsFixed(0);
     }
+    _expirationFrom = widget.initial.expirationFrom;
+    _expirationTo = widget.initial.expirationTo;
+    _expirationFromController.text = _formatDate(_expirationFrom);
+    _expirationToController.text = _formatDate(_expirationTo);
   }
 
   @override
@@ -48,6 +56,8 @@ class _FiltersPageState extends State<FiltersPage> {
     _maxPriceController.dispose();
     _locationController.dispose();
     _radiusController.dispose();
+    _expirationFromController.dispose();
+    _expirationToController.dispose();
     super.dispose();
   }
 
@@ -70,6 +80,8 @@ class _FiltersPageState extends State<FiltersPage> {
           ? null
           : _locationController.text.trim(),
       radiusKm: radius,
+      expirationFrom: _expirationFrom,
+      expirationTo: _expirationTo,
     );
 
     Navigator.of(context).pop<SearchFilters>(filters);
@@ -84,8 +96,42 @@ class _FiltersPageState extends State<FiltersPage> {
       _maxPriceController.clear();
       _locationController.clear();
       _radiusController.clear();
+      _expirationFrom = null;
+      _expirationTo = null;
+      _expirationFromController.clear();
+      _expirationToController.clear();
     });
     Navigator.of(context).pop<SearchFilters>(const SearchFilters());
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '';
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day.$month.${date.year}';
+  }
+
+  Future<void> _pickDate({required bool isFrom}) async {
+    final now = DateTime.now();
+    final initial = isFrom ? _expirationFrom : _expirationTo;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial ?? now,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+
+    if (picked == null) return;
+
+    setState(() {
+      if (isFrom) {
+        _expirationFrom = picked;
+        _expirationFromController.text = _formatDate(picked);
+      } else {
+        _expirationTo = picked;
+        _expirationToController.text = _formatDate(picked);
+      }
+    });
   }
 
   @override
@@ -121,6 +167,20 @@ class _FiltersPageState extends State<FiltersPage> {
                     selected: _sortOption == null,
                     onSelected: (_) {
                       setState(() => _sortOption = null);
+                    },
+                  ),
+                  ChoiceChip(
+                    label: const Text('Najnowsze'),
+                    selected: _sortOption == SortOption.newest,
+                    onSelected: (_) {
+                      setState(() => _sortOption = SortOption.newest);
+                    },
+                  ),
+                  ChoiceChip(
+                    label: const Text('Najstarsze'),
+                    selected: _sortOption == SortOption.oldest,
+                    onSelected: (_) {
+                      setState(() => _sortOption = SortOption.oldest);
                     },
                   ),
                   ChoiceChip(
@@ -278,6 +338,44 @@ class _FiltersPageState extends State<FiltersPage> {
                   border: OutlineInputBorder(),
                   filled: true,
                 ),
+              ),
+
+              const SizedBox(height: 24),
+              Text(
+                'Wazne do (od - do)',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _expirationFromController,
+                      readOnly: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Od',
+                        border: OutlineInputBorder(),
+                        filled: true,
+                      ),
+                      onTap: () => _pickDate(isFrom: true),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _expirationToController,
+                      readOnly: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Do',
+                        border: OutlineInputBorder(),
+                        filled: true,
+                      ),
+                      onTap: () => _pickDate(isFrom: false),
+                    ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 24),

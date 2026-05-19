@@ -74,6 +74,8 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
 
   bool get _isBorrow => _selectedOfferKind == 'Borrow';
   bool get _isFoodCategory => _selectedCategory == 'Jedzenie';
+  bool get _isReportType =>
+      _selectedType == AnnouncementMetadata.defaultReportType;
 
   DateTime? _expirationDate;
 
@@ -107,6 +109,10 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
       : (widget.initialType ?? AnnouncementMetadata.defaultAnnouncementType);
     _selectedOfferKind =
       widget.initialOfferKind ?? AnnouncementMetadata.offerKinds.first;
+
+    if (_isReportType) {
+      _selectedOfferKind = 'WantToTake';
+    }
 
     if (!_isBorrow) {
       _depositController.clear();
@@ -261,36 +267,44 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                               .toList(),
                           onChanged: (v) {
                             if (v == null) return;
-                            setState(() => _selectedType = v);
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
-                          value: _selectedOfferKind,
-                          decoration: const InputDecoration(
-                            labelText: 'Rodzaj',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: widget.offerKinds
-                              .map(
-                                (k) => DropdownMenuItem(
-                                  value: k,
-                                  child: Text(
-                                    AnnouncementMetadata.offerKindLabel(k),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (v) {
-                            if (v == null) return;
                             setState(() {
-                              _selectedOfferKind = v;
-                              if (!_isBorrow) {
+                              _selectedType = v;
+                              if (_isReportType) {
+                                _selectedOfferKind = 'WantToTake';
                                 _depositController.clear();
                               }
                             });
                           },
                         ),
+                        if (!_isReportType) ...[
+                          const SizedBox(height: 12),
+                          DropdownButtonFormField<String>(
+                            value: _selectedOfferKind,
+                            decoration: const InputDecoration(
+                              labelText: 'Rodzaj',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: widget.offerKinds
+                                .map(
+                                  (k) => DropdownMenuItem(
+                                    value: k,
+                                    child: Text(
+                                      AnnouncementMetadata.offerKindLabel(k),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (v) {
+                              if (v == null) return;
+                              setState(() {
+                                _selectedOfferKind = v;
+                                if (!_isBorrow) {
+                                  _depositController.clear();
+                                }
+                              });
+                            },
+                          ),
+                        ],
                       ],
                     )
                   : Row(
@@ -345,39 +359,47 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                                 .toList(),
                             onChanged: (v) {
                               if (v == null) return;
-                              setState(() => _selectedType = v);
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            value: _selectedOfferKind,
-                            decoration: const InputDecoration(
-                              labelText: 'Rodzaj',
-                              border: OutlineInputBorder(),
-                            ),
-                            items: widget.offerKinds
-                                .map(
-                                  (k) => DropdownMenuItem(
-                                    value: k,
-                                    child: Text(
-                                      AnnouncementMetadata.offerKindLabel(k),
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (v) {
-                              if (v == null) return;
                               setState(() {
-                                _selectedOfferKind = v;
-                                if (!_isBorrow) {
+                                _selectedType = v;
+                                if (_isReportType) {
+                                  _selectedOfferKind = 'WantToTake';
                                   _depositController.clear();
                                 }
                               });
                             },
                           ),
                         ),
+                        if (!_isReportType) ...[
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedOfferKind,
+                              decoration: const InputDecoration(
+                                labelText: 'Rodzaj',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: widget.offerKinds
+                                  .map(
+                                    (k) => DropdownMenuItem(
+                                      value: k,
+                                      child: Text(
+                                        AnnouncementMetadata.offerKindLabel(k),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (v) {
+                                if (v == null) return;
+                                setState(() {
+                                  _selectedOfferKind = v;
+                                  if (!_isBorrow) {
+                                    _depositController.clear();
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                        ],
                       ],
                     ),
               const SizedBox(height: 12),
@@ -422,6 +444,12 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                   labelText: 'Numer telefonu do kontaktu',
                   border: OutlineInputBorder(),
                 ),
+                validator: (value) {
+                  if (_isReportType && (value == null || value.trim().isEmpty)) {
+                    return 'Podaj numer telefonu';
+                  }
+                  return null;
+                },
               ),
               CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
@@ -442,14 +470,14 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
               ),
               const SizedBox(height: 12),
               _buildImagesPicker(),
-              if (_isFoodCategory) ...[
+              if (_isFoodCategory || _isReportType) ...[
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _expirationController,
                   readOnly: true,
                   decoration: const InputDecoration(
                     labelText: 'Termin ważności',
-                    helperText: 'Wymagane dla kategorii Jedzenie',
+                    helperText: 'Wymagane',
                     border: OutlineInputBorder(),
                   ),
                   onTap: () async {
@@ -467,14 +495,15 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                     });
                   },
                   validator: (_) {
-                    if (_isFoodCategory && _expirationDate == null) {
+                    if ((_isFoodCategory || _isReportType) &&
+                        _expirationDate == null) {
                       return 'Podaj termin ważności';
                     }
                     return null;
                   },
                 ),
               ],
-              if (_isBorrow) ...[
+              if (_isBorrow && !_isReportType) ...[
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _depositController,
@@ -651,9 +680,11 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
       return;
     }
 
-    final double? deposit = _isBorrow
-        ? double.tryParse(_depositController.text.replaceAll(',', '.'))
-        : null;
+    final double? deposit = _isBorrow && !_isReportType
+      ? double.tryParse(_depositController.text.replaceAll(',', '.'))
+      : null;
+
+    final offerKind = _isReportType ? 'WantToTake' : _selectedOfferKind;
 
     widget.onSubmit(
       _titleController.text.trim(),
@@ -663,7 +694,7 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
       _selectedImages,
       _selectedCategory,
       _selectedType,
-      _selectedOfferKind,
+      offerKind,
       _contactNumberController.text.trim(),
       _expirationDate,
     );

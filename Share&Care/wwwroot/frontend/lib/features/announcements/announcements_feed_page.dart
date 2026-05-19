@@ -50,6 +50,8 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
   double? _maxDeposit;
   String? _locationFilter;
   double? _radiusKm;
+  DateTime? _expirationFrom;
+  DateTime? _expirationTo;
 
   @override
   void initState() {
@@ -119,6 +121,8 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
       maxDeposit: _maxDeposit,
       location: _locationFilter,
       radiusKm: _radiusKm,
+      expirationFrom: _expirationFrom,
+      expirationTo: _expirationTo,
       searchText: _searchQuery,
     );
     filtered = SearchFilters.applyTo(filtered, filters);
@@ -304,6 +308,8 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
               maxDeposit: _maxDeposit,
               location: _locationFilter,
               radiusKm: _radiusKm,
+              expirationFrom: _expirationFrom,
+              expirationTo: _expirationTo,
               searchText: _searchQuery,
             );
 
@@ -320,6 +326,8 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
                 _maxDeposit = result.maxDeposit;
                 _locationFilter = result.location;
                 _radiusKm = result.radiusKm;
+                _expirationFrom = result.expirationFrom;
+                _expirationTo = result.expirationTo;
               });
             }
           },
@@ -351,6 +359,12 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
     }
     if (_locationFilter != null && _locationFilter!.isNotEmpty) {
       labels.add('Lokalizacja: ${_locationFilter!}');
+    }
+    if (_expirationFrom != null || _expirationTo != null) {
+      final fromText =
+          _expirationFrom != null ? _formatDate(_expirationFrom!) : '-';
+      final toText = _expirationTo != null ? _formatDate(_expirationTo!) : '-';
+      labels.add('Wazne do: $fromText - $toText');
     }
     if (_sortOption != null) {
       labels.add('Sortowanie: ${_sortOptionLabel(_sortOption!)}');
@@ -393,6 +407,10 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
 
   String _sortOptionLabel(SortOption option) {
     switch (option) {
+      case SortOption.newest:
+        return 'Najnowsze';
+      case SortOption.oldest:
+        return 'Najstarsze';
       case SortOption.nameAsc:
         return 'Nazwa A-Z';
       case SortOption.nameDesc:
@@ -402,6 +420,12 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
       case SortOption.depositDesc:
         return 'Kaucja malejąco';
     }
+  }
+
+  String _formatDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day.$month.${date.year}';
   }
 
   Widget _buildOffersCard(BuildContext context, List<Announcement> filtered) {

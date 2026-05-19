@@ -80,21 +80,58 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                     const SizedBox(height: 16),
                     _buildAchievements(theme, achievements, unlockedAchievements),
                     const SizedBox(height: 16),
-                    Text(
-                      'Ogłoszenia (${_profile!.activeOffersCount} aktywnych)',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    AnnouncementGrid(
+                    _buildListingSection(
+                      theme,
+                      title: 'Ogłoszenia',
+                      subtitleCount: _profile!.activeOffersCount,
                       announcements: _profile!.activeOffers,
-                      onTap: (ad) {
-                        _openAdDetails(ad);
-                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _buildListingSection(
+                      theme,
+                      title: 'Zgłoszenia',
+                      subtitleCount: _profile!.activeReportsCount,
+                      announcements: _profile!.activeReports,
                     ),
                   ],
                 ),
+    );
+  }
+
+  Widget _buildListingSection(
+    ThemeData theme, {
+    required String title,
+    required int subtitleCount,
+    required List<Announcement> announcements,
+  }) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              '$title ($subtitleCount aktywnych)',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (announcements.isEmpty)
+              Text(
+                'Brak aktywnych ${title.toLowerCase()}.',
+                style: theme.textTheme.bodyMedium,
+              )
+            else
+              AnnouncementGrid(
+                announcements: announcements,
+                onTap: (ad) {
+                  _openAdDetails(ad);
+                },
+              ),
+          ],
+        ),
+      ),
     );
   }
 

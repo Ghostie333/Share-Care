@@ -28,7 +28,9 @@ class AnnouncementMetadata {
   static const String defaultReportType = 'Zgłoszenie';
 
   static String offerKindLabel(String kind) {
-    return kind == 'Give' ? 'Oddanie' : 'Wypożyczenie';
+    if (kind == 'Give') return 'Oddanie';
+    if (kind == 'WantToTake') return 'Potrzebuję';
+    return 'Wypożyczenie';
   }
 
   /// Koduje typ i kategorię do jednego pola Category ("Typ|Kategoria").

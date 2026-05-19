@@ -27,6 +27,7 @@ import '../search/search_page.dart';
 import '../rewards/rewards_page.dart';
 import '../home/home_page.dart';
 import '../payments/payment_authorization_page.dart';
+import '../../widgets/ad_placeholder.dart';
 
 class ProfileScreen extends StatefulWidget {
   final AuthResult authResult;
@@ -58,6 +59,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   final List<Announcement> _ads = [];
   bool _showActiveAds = true;
+  bool _showActiveReports = true;
 
   String get _initials {
     final firstInitial = _firstName.isNotEmpty ? _firstName[0] : '';
@@ -223,7 +225,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 16),
             _buildSectionCard(child: _buildAchievementsSection()),
             const SizedBox(height: 16),
-            _buildSectionCard(child: _buildAdsSection()),
+            _buildSectionCard(child: _buildAdSection()),
+            const SizedBox(height: 16),
+            _buildSectionCard(child: _buildOffersSection()),
+            const SizedBox(height: 16),
+            _buildSectionCard(child: _buildReportsSection()),
             const SizedBox(height: 16),
             _buildSectionCard(child: _buildOtherSectionsPlaceholder()),
             const SizedBox(height: 20),
@@ -537,9 +543,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildAdsSection() {
-    final activeAds = _ads.where((ad) => ad.isActive).toList();
-    final inactiveAds = _ads.where((ad) => !ad.isActive).toList();
+  Widget _buildOffersSection() {
+    final offers = _ads.where((ad) => !_isReport(ad)).toList();
+    final activeAds = offers.where((ad) => ad.isActive).toList();
+    final inactiveAds = offers.where((ad) => !ad.isActive).toList();
     final count = _showActiveAds ? activeAds.length : inactiveAds.length;
 
     final theme = Theme.of(context);
@@ -548,7 +555,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
-          _showActiveAds
+            _showActiveAds
               ? 'Aktywne ogłoszenia ($count)'
               : 'Nieaktywne ogłoszenia ($count)',
           textAlign: TextAlign.center,
@@ -601,12 +608,109 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        AnnouncementGrid(
-          announcements: _showActiveAds ? activeAds : inactiveAds,
-          onTap: _openAdDetails,
-        ),
+        if (count == 0)
+          Text(
+            _showActiveAds
+                ? 'Brak aktywnych ogłoszeń.'
+                : 'Brak nieaktywnych ogłoszeń.',
+            style: theme.textTheme.bodyMedium,
+          )
+        else
+          AnnouncementGrid(
+            announcements: _showActiveAds ? activeAds : inactiveAds,
+            onTap: _openAdDetails,
+          ),
       ],
     );
+  }
+
+  Widget _buildReportsSection() {
+    final reports = _ads.where(_isReport).toList();
+    final activeReports = reports.where((ad) => ad.isActive).toList();
+    final inactiveReports = reports.where((ad) => !ad.isActive).toList();
+    final count = _showActiveReports
+        ? activeReports.length
+        : inactiveReports.length;
+
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          _showActiveReports
+              ? 'Aktywne zgłoszenia ($count)'
+              : 'Nieaktywne zgłoszenia ($count)',
+          textAlign: TextAlign.center,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  backgroundColor: _showActiveReports
+                      ? theme.colorScheme.primary.withOpacity(0.18)
+                      : Colors.transparent,
+                  foregroundColor: theme.colorScheme.onSurface,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                ),
+                onPressed: () {
+                  if (!_showActiveReports) {
+                    setState(() => _showActiveReports = true);
+                  }
+                },
+                child: const Text('Aktywne'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  backgroundColor: !_showActiveReports
+                      ? theme.colorScheme.primary.withOpacity(0.18)
+                      : Colors.transparent,
+                  foregroundColor: theme.colorScheme.onSurface,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                ),
+                onPressed: () {
+                  if (_showActiveReports) {
+                    setState(() => _showActiveReports = false);
+                  }
+                },
+                child: const Text('Nieaktywne'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (count == 0)
+          Text(
+            _showActiveReports
+                ? 'Brak aktywnych zgłoszeń.'
+                : 'Brak nieaktywnych zgłoszeń.',
+            style: theme.textTheme.bodyMedium,
+          )
+        else
+          AnnouncementGrid(
+            announcements: _showActiveReports ? activeReports : inactiveReports,
+            onTap: _openAdDetails,
+          ),
+      ],
+    );
+  }
+
+  bool _isReport(Announcement ad) {
+    return ad.offerKind == 'WantToTake' ||
+        AnnouncementMetadata.parseType(ad.category) ==
+            AnnouncementMetadata.defaultReportType;
   }
 
   Widget _buildOtherSectionsPlaceholder() {
@@ -652,6 +756,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ],
     );
+  }
+
+  Widget _buildAdSection() {
+    return const AdPlaceholder(label: 'Reklama');
   }
 
   Widget _buildAchievementsSection() {

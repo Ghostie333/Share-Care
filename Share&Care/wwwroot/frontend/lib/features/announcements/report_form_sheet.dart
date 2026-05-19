@@ -13,7 +13,7 @@ class ReportFormSheet extends StatefulWidget {
     String title,
     String description,
     String location,
-    double? deposit,
+    String contactNumber,
     List<XFile> images,
     String category,
     String type,
@@ -27,6 +27,7 @@ class ReportFormSheet extends StatefulWidget {
 
   final String initialCategory;
   final String initialType;
+  final String? initialPhoneNumber;
 
   const ReportFormSheet({
     super.key,
@@ -37,6 +38,7 @@ class ReportFormSheet extends StatefulWidget {
     required this.types,
     required this.initialCategory,
     required this.initialType,
+    this.initialPhoneNumber,
   });
 
   @override
@@ -48,7 +50,7 @@ class _ReportFormSheetState extends State<ReportFormSheet> {
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
   late final TextEditingController _locationController;
-  late final TextEditingController _depositController;
+  late final TextEditingController _contactNumberController;
   late final TextEditingController _expiresAtController;
 
   final List<XFile> _selectedImages = [];
@@ -71,14 +73,16 @@ class _ReportFormSheetState extends State<ReportFormSheet> {
     _locationController = TextEditingController(
       text: widget.existingAd?.location ?? '',
     );
-    _depositController = TextEditingController(
-      text: widget.existingAd?.deposit?.toString() ?? '',
+    _contactNumberController = TextEditingController(
+      text: widget.existingAd?.contactNumber ?? (widget.initialPhoneNumber ?? ''),
     );
 
     _expiresAtController = TextEditingController();
 
     _selectedCategory = widget.initialCategory;
     _selectedType = widget.initialType;
+    _expiresAt = widget.existingAd?.expiresAt;
+    _expiresAtController.text = _formatDate(_expiresAt);
   }
 
   @override
@@ -86,7 +90,7 @@ class _ReportFormSheetState extends State<ReportFormSheet> {
     _titleController.dispose();
     _descriptionController.dispose();
     _locationController.dispose();
-    _depositController.dispose();
+    _contactNumberController.dispose();
     _expiresAtController.dispose();
     super.dispose();
   }
@@ -111,8 +115,8 @@ class _ReportFormSheetState extends State<ReportFormSheet> {
             children: [
               Text(
                 existing == null
-                    ? 'Dodaj nowe zgloszenie'
-                    : 'Edytuj zgloszenie',
+                    ? 'Dodaj nowe zgłoszenie'
+                    : 'Edytuj zgłoszenie',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 18,
@@ -167,13 +171,18 @@ class _ReportFormSheetState extends State<ReportFormSheet> {
               TextFormField(
                 controller: _titleController,
                 textInputAction: TextInputAction.next,
+                maxLength: 50,
                 decoration: const InputDecoration(
-                  labelText: 'Tytul',
+                  labelText: 'Tytuł',
+                  helperText: 'Maksymalnie 50 znaków',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Podaj tytul';
+                    return 'Podaj tytuł';
+                  }
+                  if (value.trim().length > 50) {
+                    return 'Tytuł może mieć maksymalnie 50 znaków';
                   }
                   return null;
                 },
@@ -183,13 +192,18 @@ class _ReportFormSheetState extends State<ReportFormSheet> {
               TextFormField(
                 controller: _descriptionController,
                 maxLines: 4,
+                maxLength: 300,
                 decoration: const InputDecoration(
                   labelText: 'Opis',
+                  helperText: 'Maksymalnie 300 znaków',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Podaj opis';
+                  }
+                  if (value.trim().length > 300) {
+                    return 'Opis może mieć maksymalnie 300 znaków';
                   }
                   return null;
                 },
@@ -205,7 +219,24 @@ class _ReportFormSheetState extends State<ReportFormSheet> {
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Podaj lokalizacje';
+                    return 'Podaj lokalizację';
+                  }
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _contactNumberController,
+                textInputAction: TextInputAction.next,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: 'Numer telefonu do kontaktu',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Podaj numer telefonu';
                   }
                   return null;
                 },
@@ -225,10 +256,10 @@ class _ReportFormSheetState extends State<ReportFormSheet> {
 
               TextFormField(
                 controller: _expiresAtController,
-                keyboardType: TextInputType.datetime,
-                textInputAction: TextInputAction.next,
+                readOnly: true,
+                textInputAction: TextInputAction.done,
                 decoration: InputDecoration(
-                  labelText: 'Wyświetlaj zgłoszenie do (DD.MM.RRRR)',
+                  labelText: 'Wyświetlaj zgłoszenie do',
                   border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.calendar_today_outlined),
@@ -236,13 +267,8 @@ class _ReportFormSheetState extends State<ReportFormSheet> {
                   ),
                 ),
                 validator: (value) {
-                  final raw = value?.trim() ?? '';
-                  if (raw.isEmpty) {
-                    return null; // pole opcjonalne
-                  }
-                  final dateRegex = RegExp(r'^\d{2}\.\d{2}\.\d{4}$');
-                  if (!dateRegex.hasMatch(raw)) {
-                    return 'Format daty: DD.MM.RRRR';
+                  if (_expiresAt == null) {
+                    return 'Podaj termin ważności';
                   }
                   return null;
                 },
@@ -251,17 +277,6 @@ class _ReportFormSheetState extends State<ReportFormSheet> {
               const SizedBox(height: 12),
               _buildImagesPicker(),
               const SizedBox(height: 12),
-
-              TextFormField(
-                controller: _depositController,
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.done,
-                onFieldSubmitted: (_) => _onSavePressed(),
-                decoration: const InputDecoration(
-                  labelText: 'Kaucja (opcjonalnie)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
 
               const SizedBox(height: 16),
               Align(
@@ -286,7 +301,7 @@ class _ReportFormSheetState extends State<ReportFormSheet> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              'Zdjecia (max 8)',
+              'Zdjęcia (max 8)',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             Text('${_selectedImages.length}/8'),
@@ -308,7 +323,7 @@ class _ReportFormSheetState extends State<ReportFormSheet> {
                   _imageBytesByPath.clear();
                 }),
                 icon: const Icon(Icons.delete_outline),
-                label: const Text('Wyczysc'),
+                label: const Text('Wyczyść'),
               ),
           ],
         ),
@@ -410,31 +425,13 @@ class _ReportFormSheetState extends State<ReportFormSheet> {
   void _onSavePressed() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    final double? deposit = double.tryParse(
-      _depositController.text.replaceAll(',', '.'),
-    );
-
-    DateTime? expiresAt = _expiresAt;
-    final raw = _expiresAtController.text.trim();
-    if (expiresAt == null && raw.isNotEmpty) {
-      try {
-        final parts = raw.split('.');
-        if (parts.length == 3) {
-          final day = int.parse(parts[0]);
-          final month = int.parse(parts[1]);
-          final year = int.parse(parts[2]);
-          expiresAt = DateTime(year, month, day);
-        }
-      } catch (_) {
-        // Jeśli parsowanie się nie uda – zostawiamy null.
-      }
-    }
+    final expiresAt = _expiresAt;
 
     widget.onSubmit(
       _titleController.text.trim(),
       _descriptionController.text.trim(),
       _locationController.text.trim(),
-      deposit,
+      _contactNumberController.text.trim(),
       _selectedImages,
       _selectedCategory,
       _selectedType,
@@ -464,5 +461,12 @@ class _ReportFormSheetState extends State<ReportFormSheet> {
       final year = selected.year.toString();
       _expiresAtController.text = '$day.$month.$year';
     });
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '';
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day.$month.${date.year}';
   }
 }

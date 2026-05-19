@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/annoucement.dart';
 import '../../config/app_config.dart';
+import 'announcement_metadata.dart';
 
 /// Lista / siatka ogłoszeń użytkownika.
 class AnnouncementGrid extends StatelessWidget {
@@ -77,6 +78,7 @@ class _AnnouncementCard extends StatelessWidget {
       fontWeight: FontWeight.bold,
       fontSize: isPhone ? 11 : null,
     );
+    final typeLabel = AnnouncementMetadata.parseType(ad.category);
 
     return Card(
       color: theme.cardColor,
@@ -128,16 +130,30 @@ class _AnnouncementCard extends StatelessWidget {
                   Expanded(
                     child: Align(
                       alignment: Alignment.bottomLeft,
-                      child: Chip(
-                        label: Text(ad.isActive ? 'Aktywne' : 'Zakończone'),
-                        backgroundColor: ad.isActive
-                            ? theme.colorScheme.primaryContainer
-                            : theme.colorScheme.surfaceVariant,
-                        labelStyle: theme.textTheme.labelMedium?.copyWith(
-                          color: ad.isActive
-                              ? theme.colorScheme.onPrimaryContainer
-                              : theme.colorScheme.onSurfaceVariant,
-                        ),
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          Chip(
+                            label: Text(ad.isActive ? 'Aktywne' : 'Zakończone'),
+                            backgroundColor: ad.isActive
+                                ? theme.colorScheme.primaryContainer
+                                : theme.colorScheme.surfaceVariant,
+                            labelStyle: theme.textTheme.labelMedium?.copyWith(
+                              color: ad.isActive
+                                  ? theme.colorScheme.onPrimaryContainer
+                                  : theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          Chip(
+                            label: Text(typeLabel),
+                            backgroundColor:
+                                theme.colorScheme.secondaryContainer,
+                            labelStyle: theme.textTheme.labelMedium?.copyWith(
+                              color: theme.colorScheme.onSecondaryContainer,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

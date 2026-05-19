@@ -171,18 +171,21 @@ namespace Share_Care.Controllers
                 var userOffers = await _offers
                     .Find(o => o.UserId == user.UserId)
                     .ToListAsync();
-                var activeOffers = userOffers
+                var offersForStats = userOffers
+                    .Where(o => !IsReport(o))
+                    .ToList();
+                var activeOffers = offersForStats
                     .Where(o => string.Equals(o.Status, "Active", StringComparison.OrdinalIgnoreCase))
                     .ToList();
-                var completedOffers = userOffers
+                var completedOffers = offersForStats
                     .Where(o => string.Equals(o.Status, "Completed", StringComparison.OrdinalIgnoreCase))
                     .ToList();
-                var differentCitiesCount = userOffers
+                var differentCitiesCount = offersForStats
                     .Select(o => string.IsNullOrWhiteSpace(o.LocationText) ? string.Empty : o.LocationText.Trim().ToLowerInvariant())
                     .Where(city => !string.IsNullOrWhiteSpace(city))
                     .Distinct()
                     .Count();
-                var giveOffersCount = userOffers.Count(o => string.Equals(o.OfferKind, "Give", StringComparison.OrdinalIgnoreCase));
+                var giveOffersCount = offersForStats.Count(o => string.Equals(o.OfferKind, "Give", StringComparison.OrdinalIgnoreCase));
                 var negotiationsCount = await _escrows.CountDocumentsAsync(
                     e => e.BorrowerId == user.UserId || e.LenderId == user.UserId);
                 var firstDayPurchasesCount = await CountFirstDayPurchasesAsync(user.UserId ?? string.Empty);
@@ -206,7 +209,7 @@ namespace Share_Care.Controllers
                     showCity = user.ShowCity,
                     showPhoneNumber = user.ShowPhoneNumber,
                     showProfileImage = user.ShowProfileImage,
-                    offersCount = userOffers.Count,
+                    offersCount = offersForStats.Count,
                     activeOffersCount = activeOffers.Count,
                     completedCount = completedOffers.Count,
                     negotiationsCount,
@@ -239,22 +242,31 @@ namespace Share_Care.Controllers
             var userOffers = await _offers
                 .Find(o => o.UserId == user.UserId)
                 .ToListAsync();
-            var activeOffers = userOffers
+            var offersForStats = userOffers
+                .Where(o => !IsReport(o))
+                .ToList();
+            var reportOffers = userOffers
+                .Where(o => IsReport(o))
+                .ToList();
+            var activeOffers = offersForStats
                 .Where(o => string.Equals(o.Status, "Active", StringComparison.OrdinalIgnoreCase))
                 .ToList();
-            var completedOffersAll = userOffers
+            var activeReports = reportOffers
+                .Where(o => string.Equals(o.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            var completedOffersAll = offersForStats
                 .Where(o => string.Equals(o.Status, "Completed", StringComparison.OrdinalIgnoreCase))
                 .ToList();
             var completedOffers = completedOffersAll
                 .OrderByDescending(o => o.CompletedAt)
                 .Take(10)
                 .ToList();
-            var differentCitiesCount = userOffers
+            var differentCitiesCount = offersForStats
                 .Select(o => string.IsNullOrWhiteSpace(o.LocationText) ? string.Empty : o.LocationText.Trim().ToLowerInvariant())
                 .Where(city => !string.IsNullOrWhiteSpace(city))
                 .Distinct()
                 .Count();
-            var giveOffersCount = userOffers.Count(o => string.Equals(o.OfferKind, "Give", StringComparison.OrdinalIgnoreCase));
+            var giveOffersCount = offersForStats.Count(o => string.Equals(o.OfferKind, "Give", StringComparison.OrdinalIgnoreCase));
             var negotiationsCount = await _escrows.CountDocumentsAsync(
                 e => e.BorrowerId == user.UserId || e.LenderId == user.UserId);
             var firstDayPurchasesCount = await CountFirstDayPurchasesAsync(user.UserId ?? string.Empty);
@@ -280,8 +292,9 @@ namespace Share_Care.Controllers
                 showCity = user.ShowCity,
                 showPhoneNumber = user.ShowPhoneNumber,
                 showProfileImage = user.ShowProfileImage,
-                offersCount = userOffers.Count,
+                offersCount = offersForStats.Count,
                 activeOffersCount = activeOffers.Count,
+                activeReportsCount = activeReports.Count,
                     completedCount = completedOffersAll.Count,
                 negotiationsCount,
                 giveOffersCount,
@@ -290,6 +303,16 @@ namespace Share_Care.Controllers
                 loweredPriceChangesCount = user.LoweredPriceChangesCount,
                 rank,
                 activeOffers = activeOffers.Select(o => new
+                {
+                    offerId = o.OfferId,
+                    title = o.Title,
+                    category = o.Category,
+                    deposit = o.Deposit,
+                    offerKind = o.OfferKind,
+                    locationText = o.LocationText,
+                    imageIds = o.ImageIds,
+                }),
+                activeReports = activeReports.Select(o => new
                 {
                     offerId = o.OfferId,
                     title = o.Title,
@@ -509,6 +532,34 @@ namespace Share_Care.Controllers
             }
 
             return count;
+        }
+
+        private static bool IsReport(Offer offer)
+        {
+            if (offer == null)
+            {
+                return false;
+            }
+
+            if (string.Equals(offer.OfferKind, "WantToTake", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var category = offer.Category ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(category))
+            {
+                return false;
+            }
+
+            var type = category;
+            var separatorIndex = category.IndexOf('|');
+            if (separatorIndex >= 0)
+            {
+                type = category.Substring(0, separatorIndex);
+            }
+
+            return string.Equals(type.Trim(), "Zgłoszenie", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

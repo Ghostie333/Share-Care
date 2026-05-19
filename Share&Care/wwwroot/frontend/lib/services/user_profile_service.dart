@@ -169,6 +169,7 @@ class PublicProfileInfo {
   final int ratingCount;
   final int offersCount;
   final int activeOffersCount;
+  final int activeReportsCount;
   final int completedCount;
   final int negotiationsCount;
   final int giveOffersCount;
@@ -177,6 +178,7 @@ class PublicProfileInfo {
   final int loweredPriceChangesCount;
   final String rank;
   final List<Announcement> activeOffers;
+  final List<Announcement> activeReports;
 
   const PublicProfileInfo({
     required this.userId,
@@ -193,6 +195,7 @@ class PublicProfileInfo {
     required this.ratingCount,
     required this.offersCount,
     required this.activeOffersCount,
+    required this.activeReportsCount,
     required this.completedCount,
     required this.negotiationsCount,
     required this.giveOffersCount,
@@ -201,11 +204,14 @@ class PublicProfileInfo {
     required this.loweredPriceChangesCount,
     required this.rank,
     required this.activeOffers,
+    required this.activeReports,
   });
 
   factory PublicProfileInfo.fromJson(Map<String, dynamic> json) {
     final offersJson =
       (json['activeOffers'] as List<dynamic>? ?? json['offers'] as List<dynamic>? ?? const []);
+    final reportsJson =
+      (json['activeReports'] as List<dynamic>? ?? const []);
     return PublicProfileInfo(
       userId: (json['userId'] ?? '').toString(),
       firstName: (json['firstName'] ?? '').toString(),
@@ -226,6 +232,8 @@ class PublicProfileInfo {
       offersCount: int.tryParse((json['offersCount'] ?? 0).toString()) ?? 0,
       activeOffersCount:
         int.tryParse((json['activeOffersCount'] ?? 0).toString()) ?? 0,
+      activeReportsCount:
+        int.tryParse((json['activeReportsCount'] ?? 0).toString()) ?? 0,
       completedCount: int.tryParse((json['completedCount'] ?? 0).toString()) ?? 0,
       negotiationsCount:
         int.tryParse((json['negotiationsCount'] ?? 0).toString()) ?? 0,
@@ -239,6 +247,9 @@ class PublicProfileInfo {
         int.tryParse((json['loweredPriceChangesCount'] ?? 0).toString()) ?? 0,
       rank: (json['rank'] ?? '').toString(),
       activeOffers: offersJson
+          .map((e) => Announcement.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      activeReports: reportsJson
           .map((e) => Announcement.fromJson(e as Map<String, dynamic>))
           .toList(),
     );

@@ -1,7 +1,14 @@
 import '../models/annoucement.dart';
 
 /// Opcje sortowania listy ogłoszeń.
-enum SortOption { nameAsc, nameDesc, depositAsc, depositDesc }
+enum SortOption {
+  newest,
+  oldest,
+  nameAsc,
+  nameDesc,
+  depositAsc,
+  depositDesc,
+}
 
 /// Zestaw filtrów stosowanych na liście ogłoszeń.
 class SearchFilters {
@@ -13,6 +20,8 @@ class SearchFilters {
   final String? location;
   final double? radiusKm;
   final String? searchText;
+  final DateTime? expirationFrom;
+  final DateTime? expirationTo;
 
   const SearchFilters({
     this.sortOption,
@@ -23,6 +32,8 @@ class SearchFilters {
     this.location,
     this.radiusKm,
     this.searchText,
+    this.expirationFrom,
+    this.expirationTo,
   });
 
   SearchFilters copyWith({
@@ -34,6 +45,8 @@ class SearchFilters {
     String? location,
     double? radiusKm,
     String? searchText,
+    DateTime? expirationFrom,
+    DateTime? expirationTo,
   }) {
     return SearchFilters(
       sortOption: sortOption ?? this.sortOption,
@@ -44,6 +57,8 @@ class SearchFilters {
       location: location ?? this.location,
       radiusKm: radiusKm ?? this.radiusKm,
       searchText: searchText ?? this.searchText,
+      expirationFrom: expirationFrom ?? this.expirationFrom,
+      expirationTo: expirationTo ?? this.expirationTo,
     );
   }
 
@@ -83,8 +98,35 @@ class SearchFilters {
           .toList();
     }
 
+    if (filters.expirationFrom != null) {
+      final from = _dateOnly(filters.expirationFrom!);
+      result = result
+          .where(
+            (a) =>
+                a.expiresAt != null &&
+                !_dateOnly(a.expiresAt!).isBefore(from),
+          )
+          .toList();
+    }
+    if (filters.expirationTo != null) {
+      final to = _dateOnly(filters.expirationTo!);
+      result = result
+          .where(
+            (a) =>
+                a.expiresAt != null &&
+                !_dateOnly(a.expiresAt!).isAfter(to),
+          )
+          .toList();
+    }
+
     // Sortowanie
     switch (filters.sortOption) {
+      case SortOption.newest:
+        result.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        break;
+      case SortOption.oldest:
+        result.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        break;
       case SortOption.nameAsc:
         result.sort(
           (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
@@ -113,5 +155,9 @@ class SearchFilters {
     if (rawCategory == null || rawCategory.isEmpty) return '';
     final parts = rawCategory.split('|');
     return parts.first.trim();
+  }
+
+  static DateTime _dateOnly(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
   }
 }

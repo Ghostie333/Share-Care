@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/announcement_service.dart';
 import '../../services/auth_service.dart';
 import '../announcements/annoucements_detail_page.dart';
+import '../announcements/announcement_metadata.dart';
 import '../models/annoucement.dart';
 
 class AnnouncementHistoryPage extends StatefulWidget {
@@ -40,7 +41,9 @@ class _AnnouncementHistoryPageState extends State<AnnouncementHistoryPage> {
       final all = await AnnouncementService.getUserOffers(userId);
       if (!mounted) return;
       setState(() {
-        _inactiveAnnouncements = all.where((a) => !a.isActive).toList();
+        _inactiveAnnouncements = all
+            .where((a) => !_isReport(a) && !a.isActive)
+            .toList();
       });
     } catch (e) {
       if (!mounted) return;
@@ -129,5 +132,11 @@ class _AnnouncementHistoryPageState extends State<AnnouncementHistoryPage> {
               ),
             ),
     );
+  }
+
+  bool _isReport(Announcement ad) {
+    return ad.offerKind == 'WantToTake' ||
+        AnnouncementMetadata.parseType(ad.category) ==
+            AnnouncementMetadata.defaultReportType;
   }
 }

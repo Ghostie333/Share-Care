@@ -439,6 +439,9 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage>
     final scaffoldBg = theme.brightness == Brightness.dark
         ? ClassicStyle.my_dark_theme
         : ClassicStyle.my_light_green;
+    final depositTextColor = theme.brightness == Brightness.dark
+      ? Colors.black87
+      : theme.colorScheme.onSurface;
 
     return Scaffold(
       backgroundColor: scaffoldBg,
@@ -505,14 +508,18 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage>
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.savings_outlined),
+                          Icon(
+                            Icons.savings_outlined,
+                            color: depositTextColor,
+                          ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
                               'Kaucja: $depositText',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,
+                                color: depositTextColor,
                               ),
                             ),
                           ),
