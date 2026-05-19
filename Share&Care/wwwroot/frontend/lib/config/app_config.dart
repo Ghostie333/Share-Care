@@ -11,4 +11,7 @@ class AppConfig {
     'MAPTILER_API_KEY',
     defaultValue: '',
   );
+
+  // Informacja o wersji aplikacji
+  static const String version = '0.9.3'; 
 }

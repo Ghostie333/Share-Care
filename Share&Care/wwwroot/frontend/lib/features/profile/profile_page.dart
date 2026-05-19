@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../../services/auth_service.dart';
 import '../../services/announcement_service.dart';
 import '../../services/user_profile_service.dart';
@@ -235,7 +234,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 20),
             Center(
               child: Text(
-                'Wersja: 0.1.0',
+                'Wersja: ${AppConfig.version}',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.textTheme.bodySmall?.color?.withOpacity(0.8),
                 ),
