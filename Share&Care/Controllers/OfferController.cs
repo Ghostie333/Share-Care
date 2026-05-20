@@ -36,11 +36,6 @@ namespace Share_Care.Controllers
                     return ValidationProblem(ModelState);
                 }
 
-                if (form.Lat.HasValue ^ form.Lng.HasValue)
-                {
-                    return BadRequest(new { message = "Podaj oba pola: Lat i Lng." });
-                }
-
                 if (string.Equals(form.OfferKind, "Borrow", StringComparison.OrdinalIgnoreCase) &&
                     (!form.Deposit.HasValue || form.Deposit.Value <= 0))
                 {
@@ -114,10 +109,6 @@ namespace Share_Care.Controllers
                         ? null
                         : form.LocationText!.Trim(),
                     CreatedAt = DateTime.UtcNow,
-                    Location = (form.Lat.HasValue && form.Lng.HasValue)
-                        ? new GeoJsonPoint<GeoJson2DGeographicCoordinates>(
-                            new GeoJson2DGeographicCoordinates(form.Lng.Value, form.Lat.Value))
-                        : null,
                     ImageIds = imageIds
                 };
 
@@ -169,29 +160,6 @@ namespace Share_Care.Controllers
                         filterBuilder.Regex(x => x.Description, new BsonRegularExpression(filters.SearchText, "i"))
                     );
                     filterList.Add(textFilter);
-                }
-
-                // Filtr lokalizacji
-                if (filters.Lat.HasValue && filters.Lng.HasValue && filters.RadiusKm.HasValue)
-                {
-                    var point = GeoJson.Point(GeoJson.Position(filters.Lng.Value, filters.Lat.Value));
-                    var locationFilter = filterBuilder.Near(
-                        x => x.Location,
-                        point,
-                        maxDistance: filters.RadiusKm.Value * 1000,
-                        minDistance: 0
-                    );
-                    filterList.Add(locationFilter);
-                }
-
-                // Filtr dat
-                if (filters.CreatedAfter.HasValue)
-                {
-                    filterList.Add(filterBuilder.Gte(x => x.CreatedAt, filters.CreatedAfter.Value));
-                }
-                if (filters.CreatedBefore.HasValue)
-                {
-                    filterList.Add(filterBuilder.Lte(x => x.CreatedAt, filters.CreatedBefore.Value));
                 }
 
                 var finalFilter = filterList.Count > 0
@@ -435,12 +403,18 @@ namespace Share_Care.Controllers
         {
             try
             {
+                if (!ModelState.IsValid)
+                {
+                    return ValidationProblem(ModelState);
+                }
+
                 var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (string.IsNullOrWhiteSpace(currentUserId))
                 {
                     return Unauthorized();
                 }
 
+                // Walidacje specyficzne dla aktualizacji
                 if (string.Equals(form.OfferKind, "Borrow", StringComparison.OrdinalIgnoreCase) &&
                     (!form.Deposit.HasValue || form.Deposit.Value <= 0))
                 {
@@ -490,20 +464,10 @@ namespace Share_Care.Controllers
                     .Set(x => x.ContactNumber, form.ContactNumber)
                     .Set(x => x.Description, form.Description)
                     .Set(x => x.Deposit, form.Deposit)
-                    .Set(x => x.ExpirationDate, form.ExpirationDate);
+                    .Set(x => x.ExpirationDate, form.ExpirationDate)
+                    .Set(x => x.LocationText, string.IsNullOrWhiteSpace(form.LocationText) ? null : form.LocationText.Trim());
 
                 await _collection.FindOneAndUpdateAsync(x => x.OfferId == offerId, update);
-
-                var loweredPrice = offer.Deposit.HasValue
-                    && form.Deposit.HasValue
-                    && form.Deposit.Value < offer.Deposit.Value;
-
-                if (loweredPrice)
-                {
-                    await _users.UpdateOneAsync(
-                        u => u.UserId == currentUserId,
-                        Builders<UserData>.Update.Inc(u => u.LoweredPriceChangesCount, 1));
-                }
 
                 return Ok("Pomyślnie zaktualizowano ofertę");
             }

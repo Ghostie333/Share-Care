@@ -95,7 +95,7 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
       text: existing?.deposit?.toString() ?? '',
     );
     _contactNumberController = TextEditingController(
-      text: widget.initialPhoneNumber ?? '',
+      text: existing?.contactNumber ?? (widget.initialPhoneNumber ?? ''),
     );
     _expirationController = TextEditingController();
 

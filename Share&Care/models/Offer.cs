@@ -30,9 +30,6 @@ namespace Share_Care.models
 
         public DateTime? ExpirationDate { get; set; }
 
-        // GeoJSON Point (dla zapytań geolokalizacyjnych i indeksu 2dsphere)
-        public GeoJsonPoint<GeoJson2DGeographicCoordinates>? Location { get; set; } 
-
         // Tekstowa lokalizacja (miasto / adres) widoczna w szczegółach ogłoszenia.
         public string? LocationText { get; set; }
 

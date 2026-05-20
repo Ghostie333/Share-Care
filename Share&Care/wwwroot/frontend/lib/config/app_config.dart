@@ -2,7 +2,7 @@
 class AppConfig {
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://192.168.1.68:7070',
+    defaultValue: 'http://92.5.29.30:7070',
   );
 
   /// Klucz MapTiler używany w widoku mapy na stronie głównej.

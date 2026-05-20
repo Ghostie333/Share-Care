@@ -1082,10 +1082,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ) async {
                 try {
                   if (existingAd == null) {
-                    final encodedCategory = AnnouncementMetadata.encode(
-                      type,
-                      category,
-                    );
+                    final encodedCategory = AnnouncementMetadata.encode(type, category);
                     final newAnnouncement = Announcement(
                       id: '',
                       userId: userId,
@@ -1115,13 +1112,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _ads.add(created);
                     });
                   } else {
+                    final encodedCategory = AnnouncementMetadata.encode(type, category);
+
                     existingAd
                       ..title = title
                       ..description = description
                       ..location = location
                       ..deposit = deposit
                       ..offerKind = offerKind
-                      ..expiresAt = expirationDate;
+                      ..expiresAt = expirationDate
+                      ..contactNumber = contactNumber
+                      ..category = encodedCategory;
 
                     await AnnouncementService.updateOffer(existingAd);
 
