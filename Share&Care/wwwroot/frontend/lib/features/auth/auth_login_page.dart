@@ -31,7 +31,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _submitLogin() async {
-    if (!_formKey.currentState!.validate()) return;
+    final form = _formKey.currentState;
+    if (form == null) return;
+    if (!form.validate()) return;
 
     setState(() => _isLoading = true);
 
@@ -43,7 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
       if (widget.onLoginSuccess != null) {
-        widget.onLoginSuccess!(result);
+        widget.onLoginSuccess?.call(result);
       } else {
         Navigator.of(
           context,
@@ -62,12 +64,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _submitSocialLogin(SocialAuthProvider provider) async {
     setState(() => _socialLoadingProvider = provider);
-
     try {
       final result = await AuthService.loginWithSocial(provider: provider);
       if (!mounted) return;
       if (widget.onLoginSuccess != null) {
-        widget.onLoginSuccess!(result);
+        widget.onLoginSuccess?.call(result);
       } else {
         Navigator.of(
           context,

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -168,8 +168,10 @@ namespace Share_Care.Controllers
 
             try
             {
+                var userKey = string.IsNullOrWhiteSpace(user.UserId) ? userId : user.UserId;
+
                 var userOffers = await _offers
-                    .Find(o => o.UserId == user.UserId)
+                    .Find(o => o.UserId == userKey)
                     .ToListAsync();
                 var offersForStats = userOffers
                     .Where(o => !IsReport(o))
@@ -187,9 +189,9 @@ namespace Share_Care.Controllers
                     .Count();
                 var giveOffersCount = offersForStats.Count(o => string.Equals(o.OfferKind, "Give", StringComparison.OrdinalIgnoreCase));
                 var negotiationsCount = await _escrows.CountDocumentsAsync(
-                    e => e.BorrowerId == user.UserId || e.LenderId == user.UserId);
-                var firstDayPurchasesCount = await CountFirstDayPurchasesAsync(user.UserId ?? string.Empty);
-                var wallet = await _walletService.GetWalletByUserIdAsync(user.UserId ?? string.Empty);
+                    e => e.BorrowerId == userKey || e.LenderId == userKey);
+                var firstDayPurchasesCount = await CountFirstDayPurchasesAsync(userKey);
+                var wallet = await _walletService.GetWalletByUserIdAsync(userKey);
                 return Ok(new
                 {
                     brithday = user.Brithday,
@@ -239,8 +241,10 @@ namespace Share_Care.Controllers
             var user = await _users.Find(filter).FirstOrDefaultAsync();
             if (user == null) return NotFound("User not found");
 
+            var userKey = string.IsNullOrWhiteSpace(user.UserId) ? userId : user.UserId;
+
             var userOffers = await _offers
-                .Find(o => o.UserId == user.UserId)
+                .Find(o => o.UserId == userKey)
                 .ToListAsync();
             var offersForStats = userOffers
                 .Where(o => !IsReport(o))
@@ -268,8 +272,8 @@ namespace Share_Care.Controllers
                 .Count();
             var giveOffersCount = offersForStats.Count(o => string.Equals(o.OfferKind, "Give", StringComparison.OrdinalIgnoreCase));
             var negotiationsCount = await _escrows.CountDocumentsAsync(
-                e => e.BorrowerId == user.UserId || e.LenderId == user.UserId);
-            var firstDayPurchasesCount = await CountFirstDayPurchasesAsync(user.UserId ?? string.Empty);
+                e => e.BorrowerId == userKey || e.LenderId == userKey);
+            var firstDayPurchasesCount = await CountFirstDayPurchasesAsync(userKey);
 
             var rank = ResolveRank(user.Credits, user.Raiting);
 
@@ -512,9 +516,21 @@ namespace Share_Care.Controllers
                 return 0;
             }
 
-            var offerIds = escrows.Select(e => e.OfferId).Distinct().ToList();
+            var offerIds = escrows
+                .Select(e => e.OfferId)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct()
+                .ToList();
+            if (offerIds.Count == 0)
+            {
+                return 0;
+            }
+
             var offers = await _offers.Find(o => offerIds.Contains(o.OfferId)).ToListAsync();
-            var offersById = offers.ToDictionary(o => o.OfferId, o => o);
+            var offersById = offers
+                .Where(o => !string.IsNullOrWhiteSpace(o.OfferId))
+                .GroupBy(o => o.OfferId)
+                .ToDictionary(g => g.Key, g => g.First());
 
             var count = 0;
             foreach (var escrow in escrows)

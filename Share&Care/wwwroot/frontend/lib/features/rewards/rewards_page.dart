@@ -54,14 +54,53 @@ class _RewardsPageState extends State<RewardsPage> {
     }
   }
 
+  Future<bool> _confirmRedeem() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Potwierdzenie'),
+        content: const Text('Czy na pewno chcesz odebrać nagrodę?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Nie'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Tak'),
+          ),
+        ],
+      ),
+    );
+
+    return result ?? false;
+  }
+
+  Future<void> _showSuccessDialog() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Gratulacje!'),
+        content: const Text('To twoja nagroda.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _redeem(RewardItem reward) async {
+    final confirmed = await _confirmRedeem();
+    if (!confirmed) return;
+
     try {
-      final credits = await RewardsService.redeemReward(reward.id);
+      final result = await RewardsService.redeemReward(reward.id);
       if (!mounted) return;
-      setState(() => _credits = credits);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Zrealizowano nagrodę. Pozostałe shareCoiny: $credits')),
-      );
+      setState(() => _credits = result.credits);
+      await _showSuccessDialog();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

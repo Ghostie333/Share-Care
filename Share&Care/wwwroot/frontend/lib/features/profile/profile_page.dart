@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../services/auth_service.dart';
 import '../../services/announcement_service.dart';
 import '../../services/user_profile_service.dart';
@@ -234,7 +235,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 20),
             Center(
               child: Text(
-                'Wersja: ${AppConfig.version}',
+                'Wersja: 0.9.3',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.textTheme.bodySmall?.color?.withOpacity(0.8),
                 ),
@@ -1082,7 +1083,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ) async {
                 try {
                   if (existingAd == null) {
-                    final encodedCategory = AnnouncementMetadata.encode(type, category);
+                    final encodedCategory = AnnouncementMetadata.encode(
+                      type,
+                      category,
+                    );
                     final newAnnouncement = Announcement(
                       id: '',
                       userId: userId,
@@ -1112,17 +1116,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _ads.add(created);
                     });
                   } else {
-                    final encodedCategory = AnnouncementMetadata.encode(type, category);
-
                     existingAd
                       ..title = title
                       ..description = description
                       ..location = location
                       ..deposit = deposit
                       ..offerKind = offerKind
-                      ..expiresAt = expirationDate
-                      ..contactNumber = contactNumber
-                      ..category = encodedCategory;
+                      ..expiresAt = expirationDate;
 
                     await AnnouncementService.updateOffer(existingAd);
 

@@ -27,6 +27,23 @@ class RewardItem {
 	}
 }
 
+class RedeemRewardResult {
+	final int credits;
+	final String voucherKey;
+
+	const RedeemRewardResult({
+		required this.credits,
+		required this.voucherKey,
+	});
+
+	factory RedeemRewardResult.fromJson(Map<String, dynamic> json) {
+		return RedeemRewardResult(
+			credits: int.tryParse((json['credits'] ?? 0).toString()) ?? 0,
+			voucherKey: (json['voucherKey'] ?? '').toString(),
+		);
+	}
+}
+
 class RewardsService {
 	RewardsService._();
 
@@ -42,7 +59,7 @@ class RewardsService {
 				.toList();
 	}
 
-	static Future<int> redeemReward(String rewardId) async {
+	static Future<RedeemRewardResult> redeemReward(String rewardId) async {
 		final http.Response res = await ApiService.postJson(
 			'/rewards/redeem',
 			{'RewardId': rewardId},
@@ -53,6 +70,6 @@ class RewardsService {
 		}
 
 		final Map<String, dynamic> data = jsonDecode(res.body) as Map<String, dynamic>;
-		return int.tryParse((data['credits'] ?? 0).toString()) ?? 0;
+		return RedeemRewardResult.fromJson(data);
 	}
 }
