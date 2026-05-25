@@ -1,5 +1,6 @@
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:convert';
 
 import 'api_service.dart';
@@ -112,9 +113,29 @@ class RentalService {
     request.headers.addAll(headers);
 
     for (final image in images) {
-      request.files.add(
-        await http.MultipartFile.fromPath('images', image.path, filename: image.name),
-      );
+      // Flutter Web: MultipartFile.fromPath wymaga dart:io, więc wysyłamy bajty.
+      if (kIsWeb) {
+        final bytes = await image.readAsBytes();
+        if (bytes.isEmpty) continue;
+
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'images',
+            bytes,
+            filename: image.name,
+          ),
+        );
+      } else {
+        if (image.path.isEmpty) continue;
+
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'images',
+            image.path,
+            filename: image.name,
+          ),
+        );
+      }
     }
 
     final streamed = await request.send();
@@ -140,9 +161,29 @@ class RentalService {
     request.fields['Condition'] = condition;
 
     for (final image in images) {
-      request.files.add(
-        await http.MultipartFile.fromPath('images', image.path, filename: image.name),
-      );
+      // Flutter Web: MultipartFile.fromPath wymaga dart:io, więc wysyłamy bajty.
+      if (kIsWeb) {
+        final bytes = await image.readAsBytes();
+        if (bytes.isEmpty) continue;
+
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'images',
+            bytes,
+            filename: image.name,
+          ),
+        );
+      } else {
+        if (image.path.isEmpty) continue;
+
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'images',
+            image.path,
+            filename: image.name,
+          ),
+        );
+      }
     }
 
     final streamed = await request.send();
