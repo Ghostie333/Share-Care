@@ -68,7 +68,9 @@ RUN flutter clean
 RUN flutter pub get
 
 # Build Flutter web app
-RUN flutter build web --release
+# PWA/service worker cache potrafi trzymać starą wersję frontendu; wyłączamy go,
+# żeby zmiany (np. poprawki multipart dla web) były widoczne od razu po deployu.
+RUN flutter build web --release --pwa-strategy=none
 
 # Save Flutter build to temp folder
 RUN mkdir -p /src/flutter-build && \
@@ -96,9 +98,9 @@ RUN dotnet publish "./Share&Care.csproj" \
     -o /app/publish \
     /p:UseAppHost=false
 
-# Copy Flutter build into ASP.NET wwwroot
-RUN mkdir -p /app/publish/wwwroot && \
-    cp -r /src/flutter-build/* /app/publish/wwwroot/
+# Copy Flutter build into ASP.NET wwwroot/frontend/build/web (zgodnie z Program.cs)
+RUN mkdir -p /app/publish/wwwroot/frontend/build/web && \
+    cp -r /src/flutter-build/* /app/publish/wwwroot/frontend/build/web/
 
 # =========================
 # Final image

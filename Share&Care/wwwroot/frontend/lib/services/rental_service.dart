@@ -128,7 +128,7 @@ class RentalService {
     final streamed = await request.send();
     final res = await http.Response.fromStream(streamed);
     if (res.statusCode != 200) {
-      throw Exception('Błąd zgłoszenia zwrotu: ${res.statusCode} ${res.body}');
+      throw Exception('Błąd zgłoszenia zwrotu 1: ${res.statusCode} ${res.body}');
     }
   }
 
