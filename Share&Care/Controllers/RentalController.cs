@@ -254,7 +254,8 @@ namespace Share_Care.Controllers
             }
 
             var update = Builders<Offer>.Update
-                .Set(o => o.Status, "Acitve")
+                .Set(o => o.Status, "Active")
+                .Set(o => o.CurrentBorrowerId, null)
                 .Set(o => o.CompletedAt, DateTime.UtcNow);
 
             await _offers.UpdateOneAsync(o => o.OfferId == offerId, update);
