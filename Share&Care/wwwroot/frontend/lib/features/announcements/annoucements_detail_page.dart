@@ -16,7 +16,7 @@ class AnnouncementDetailsDialog extends StatefulWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onChat;
   final VoidCallback? onPayment;
-  final VoidCallback? onClose; // oznaczenie ogłoszenia jako nieaktywne
+  final VoidCallback? onClose; // oznaczenie ogloszenia jako nieaktywne
 
   const AnnouncementDetailsDialog({
     super.key,
@@ -168,10 +168,13 @@ class _AnnouncementDetailsDialogState extends State<AnnouncementDetailsDialog> {
               final url = _resolveImageUrl(widget.ad.imageUrls[index]);
               return ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  url,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _imagePlaceholder(theme),
+                child: GestureDetector(
+                  onTap: () => _openImageViewer(index),
+                  child: Image.network(
+                    url,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _imagePlaceholder(theme),
+                  ),
                 ),
               );
             },
@@ -232,6 +235,68 @@ class _AnnouncementDetailsDialogState extends State<AnnouncementDetailsDialog> {
           ),
         ),
       ],
+    );
+  }
+
+  void _openImageViewer(int startIndex) {
+    if (!_hasImages) return;
+
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (context) {
+        final controller = PageController(initialPage: startIndex);
+        return Dialog(
+          insetPadding: const EdgeInsets.all(12),
+          backgroundColor: Colors.transparent,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: PageView.builder(
+                  controller: controller,
+                  itemCount: _imageCount,
+                  itemBuilder: (_, index) {
+                    final url = _resolveImageUrl(widget.ad.imageUrls[index]);
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        return InteractiveViewer(
+                          minScale: 0.8,
+                          maxScale: 4,
+                          child: SizedBox(
+                            width: constraints.maxWidth,
+                            height: constraints.maxHeight,
+                            child: Image.network(
+                              url,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => Center(
+                                child: Icon(
+                                  Icons.image,
+                                  size: 72,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                  color: Colors.white,
+                  tooltip: 'Zamknij',
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

@@ -399,7 +399,10 @@ namespace Share_Care.Controllers
         // Aktualizacja oferty
         [Authorize]
         [HttpPut("update-offer/{offerId}")]
-        public async Task<IActionResult> UpdateOffer([FromBody] CreateOfferRequest form, string offerId)
+        [Consumes("multipart/form-data")]
+        [RequestSizeLimit(50_000_000)]
+        [RequestFormLimits(MultipartBodyLengthLimit = 50_000_000)]
+        public async Task<IActionResult> UpdateOffer([FromForm] CreateOfferRequest form, string offerId)
         {
             try
             {
@@ -467,9 +470,42 @@ namespace Share_Care.Controllers
                     .Set(x => x.ExpirationDate, form.ExpirationDate)
                     .Set(x => x.LocationText, string.IsNullOrWhiteSpace(form.LocationText) ? null : form.LocationText.Trim());
 
+                var imageIds = offer.ImageIds ?? new List<string>();
+                if (form.Images != null && form.Images.Count > 0)
+                {
+                    if (_gridFS is null)
+                    {
+                        return Problem("Brak konfiguracji GridFS", statusCode: StatusCodes.Status500InternalServerError);
+                    }
+
+                    foreach (var file in form.Images)
+                    {
+                        if (file == null || file.Length == 0) continue;
+
+                        using var stream = file.OpenReadStream();
+                        var fileId = await _gridFS.UploadFromStreamAsync(
+                            file.FileName,
+                            stream,
+                            new GridFSUploadOptions
+                            {
+                                Metadata = new BsonDocument
+                                {
+                                    { "contentType", file.ContentType ?? "application/octet-stream" },
+                                    { "originalName", file.FileName },
+                                    { "userId", currentUserId }
+                                }
+                            });
+
+                        imageIds.Add(fileId.ToString());
+                    }
+
+                    update = update.Set(x => x.ImageIds, imageIds);
+                }
+
                 await _collection.FindOneAndUpdateAsync(x => x.OfferId == offerId, update);
 
-                return Ok("Pomyślnie zaktualizowano ofertę");
+                var updated = await _collection.Find(x => x.OfferId == offerId).FirstOrDefaultAsync();
+                return Ok(updated ?? offer);
             }
             catch (Exception ex)
             {

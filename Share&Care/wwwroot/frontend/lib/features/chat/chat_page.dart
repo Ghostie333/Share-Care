@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import '../../core/classic_style.dart';
 import '../../config/app_config.dart';
@@ -1332,13 +1333,17 @@ class _MessageBubble extends StatelessWidget {
                           if (att.base64Data == null) {
                             return const Icon(Icons.insert_drive_file);
                           }
+                          final bytes = base64Decode(att.base64Data!);
                           return ClipRRect(
                             borderRadius: BorderRadius.circular(10),
-                            child: Image.memory(
-                              base64Decode(att.base64Data!),
-                              width: 140,
-                              height: 100,
-                              fit: BoxFit.cover,
+                            child: GestureDetector(
+                              onTap: () => _openAttachmentPreview(context, bytes),
+                              child: Image.memory(
+                                bytes,
+                                width: 140,
+                                height: 100,
+                                fit: BoxFit.cover,
+                              ),
                             ),
                           );
                         }).toList(),
@@ -1369,6 +1374,49 @@ class _MessageBubble extends StatelessWidget {
                   ),
                 ],
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openAttachmentPreview(BuildContext context, Uint8List bytes) {
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.all(12),
+        backgroundColor: Colors.transparent,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return InteractiveViewer(
+                    minScale: 0.8,
+                    maxScale: 4,
+                    child: SizedBox(
+                      width: constraints.maxWidth,
+                      height: constraints.maxHeight,
+                      child: Image.memory(
+                        bytes,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.close),
+                color: Colors.white,
+                tooltip: 'Zamknij',
+              ),
             ),
           ],
         ),

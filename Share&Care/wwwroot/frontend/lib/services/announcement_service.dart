@@ -245,18 +245,69 @@ class AnnouncementService {
     );
   }
 
-  /// Aktualizuje istniejącą ofertę (Offer) – WYMAGA odpowiedniego endpointu
-  /// po stronie .NET (np. PUT /offer/{offerId}).
-  static Future<Announcement> updateOffer(Announcement announcement) async {
-    final Map<String, dynamic> body = announcement.toJson();
+  /// Aktualizuje istniejącą ofertę (Offer) wraz z opcjonalnymi obrazami.
+  static Future<Announcement> updateOffer(
+    Announcement announcement, {
+    List<XFile>? images,
+  }) async {
+    final token = await AuthService.getToken();
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/offer/update-offer/${announcement.id}');
+    final request = http.MultipartRequest('PUT', uri);
 
-    final http.Response res = await ApiService.putJson(
-      '/offer/update-offer/${announcement.id}',
-      body,
-    );
+    if (token != null && token.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+
+    request.fields.addAll({
+      'Title': announcement.title,
+      'ContactName': announcement.contactName ?? announcement.ownerName,
+      'Category': announcement.category ?? 'Inne',
+      'OfferKind': announcement.offerKind,
+      'ContactNumber': announcement.contactNumber ?? '',
+      'Description': announcement.description,
+      'LocationText': announcement.location,
+    });
+
+    if (announcement.expiresAt != null) {
+      request.fields['ExpirationDate'] =
+          announcement.expiresAt!.toIso8601String();
+    }
+
+    final deposit = announcement.deposit;
+    if (deposit != null) {
+      request.fields['Deposit'] = deposit.toString();
+    }
+
+    if (images != null && images.isNotEmpty) {
+      for (final image in images) {
+        if (kIsWeb) {
+          final bytes = await image.readAsBytes();
+          if (bytes.isEmpty) continue;
+          request.files.add(
+            http.MultipartFile.fromBytes(
+              'Images',
+              bytes,
+              filename: image.name,
+            ),
+          );
+        } else {
+          if (image.path.isEmpty) continue;
+          request.files.add(
+            await http.MultipartFile.fromPath(
+              'Images',
+              image.path,
+              filename: image.name,
+            ),
+          );
+        }
+      }
+    }
+
+    final streamed = await request.send();
+    final res = await http.Response.fromStream(streamed);
 
     if (res.statusCode != 200) {
-      throw Exception('Błąd aktualizacji ogłoszenia: ${res.statusCode}');
+      throw Exception('Błąd aktualizacji ogłoszenia: ${res.statusCode} ${res.body}');
     }
 
     final raw = res.body.trim();

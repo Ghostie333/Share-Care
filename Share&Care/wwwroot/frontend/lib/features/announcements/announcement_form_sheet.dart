@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../features/models/annoucement.dart';
+import '../../config/app_config.dart';
 import 'announcement_metadata.dart';
 
 class AnnouncementFormSheet extends StatefulWidget {
@@ -65,6 +66,7 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
 
   final List<XFile> _selectedImages = [];
   final Map<String, Uint8List> _imageBytesByPath = {};
+  final List<String> _existingImageUrls = [];
 
   late String _selectedCategory;
   late String _selectedType;
@@ -120,6 +122,10 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
 
     _expirationDate = existing?.expiresAt;
     _expirationController.text = _formatDate(_expirationDate);
+
+    if (existing?.imageUrls.isNotEmpty ?? false) {
+      _existingImageUrls.addAll(existing!.imageUrls);
+    }
 
     _useProfileCity = (widget.initialCity ?? '').isNotEmpty;
     _useProfilePhone = (widget.initialPhoneNumber ?? '').isNotEmpty;
@@ -543,6 +549,8 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
 
   Widget _buildImagesPicker() {
     final isNarrow = MediaQuery.of(context).size.width < 520;
+    final totalImages = _existingImageUrls.length + _selectedImages.length;
+    final remaining = 8 - totalImages;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -554,7 +562,7 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
               'Zdjęcia (max 8)',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            Text('${_selectedImages.length}/8'),
+            Text('$totalImages/8'),
           ],
         ),
         const SizedBox(height: 8),
@@ -562,7 +570,7 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
           spacing: 8,
           children: [
             ElevatedButton.icon(
-              onPressed: _pickImages,
+              onPressed: remaining <= 0 ? null : _pickImages,
               icon: const Icon(Icons.photo_library),
               label: const Text('Dodaj'),
             ),
@@ -575,6 +583,47 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                 icon: const Icon(Icons.delete_outline),
                 label: const Text('Wyczyść'),
               ),
+              if (_existingImageUrls.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Obecne zdjęcia',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: isNarrow ? 200 : 170,
+                  child: GridView.builder(
+                    itemCount: _existingImageUrls.length,
+                    shrinkWrap: true,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: isNarrow ? 3 : 4,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                    ),
+                    itemBuilder: (context, index) {
+                      final url = _resolveImageUrl(_existingImageUrls[index]);
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          url,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const DecoratedBox(
+                            decoration: BoxDecoration(color: Colors.black12),
+                            child: Center(
+                              child: Icon(
+                                Icons.image,
+                                color: Colors.black38,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
           ],
         ),
         if (_selectedImages.isNotEmpty) ...[
@@ -650,7 +699,7 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
   }
 
   Future<void> _pickImages() async {
-    final remaining = 8 - _selectedImages.length;
+    final remaining = 8 - (_selectedImages.length + _existingImageUrls.length);
     if (remaining <= 0) return;
 
     final ImagePicker picker = ImagePicker();
@@ -707,5 +756,11 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
     final day = date.day.toString().padLeft(2, '0');
     final month = date.month.toString().padLeft(2, '0');
     return '$day.$month.${date.year}';
+  }
+
+  String _resolveImageUrl(String idOrUrl) {
+    final v = idOrUrl.trim();
+    if (v.startsWith('http://') || v.startsWith('https://')) return v;
+    return '${AppConfig.apiBaseUrl}/offer/image/$v';
   }
 }

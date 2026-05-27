@@ -1124,7 +1124,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ..offerKind = offerKind
                       ..expiresAt = expirationDate;
 
-                    await AnnouncementService.updateOffer(existingAd);
+                    final updated = await AnnouncementService.updateOffer(
+                      existingAd,
+                      images: images,
+                    );
+
+                    existingAd.imageUrls = updated.imageUrls;
 
                     if (!mounted) return;
                     setState(() {});

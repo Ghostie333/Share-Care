@@ -7,6 +7,7 @@ using Share_Care.models;
 using Share_Care.Models.Requests;
 using Share_Care.Services;
 using System.Security.Claims;
+using System.Globalization;
 using System.Text.Json;
 
 namespace Share_Care.Controllers
@@ -173,7 +174,11 @@ namespace Share_Care.Controllers
 
             await _offers.UpdateOneAsync(o => o.OfferId == offerId, update);
 
-            await SendRentalUpdateMessage(offer, giverId, "rental_declined", "Giver odrzucił prośbę");
+            var declineMessage = string.Equals(offer.OfferKind, "Borrow", StringComparison.OrdinalIgnoreCase)
+                ? "Giver odrzucił prośbę. Kaucja wróciła na konto takera."
+                : "Giver odrzucił prośbę.";
+
+            await SendRentalUpdateMessage(offer, giverId, "rental_declined", declineMessage);
 
             return Ok();
         }
@@ -248,9 +253,33 @@ namespace Share_Care.Controllers
 
             // Award bonus credits to giver
             var escrow = await _escrowService.GetEscrowByOfferIdAsync(offerId);
-            if (escrow?.GiverBonus != null && escrow.GiverBonus > 0)
+            if (escrow != null)
             {
-                await _rewardsService.AwardGiverBonusAsync(offer.UserId, escrow.GiverBonus.Value);
+                var giverBonus = escrow.GiverBonus;
+                if (!giverBonus.HasValue || giverBonus.Value <= 0)
+                {
+                    var rateRaw = _config["Platform:GiverBonusRate"];
+                    if (decimal.TryParse(
+                            rateRaw,
+                            NumberStyles.Number,
+                            CultureInfo.InvariantCulture,
+                            out var rate) &&
+                        rate > 0)
+                    {
+                        giverBonus = Math.Round(escrow.Amount * rate, 2, MidpointRounding.AwayFromZero);
+                        if (giverBonus > 0)
+                        {
+                            await _escrows.UpdateOneAsync(
+                                e => e.Id == escrow.Id,
+                                Builders<Escrow>.Update.Set(e => e.GiverBonus, giverBonus));
+                        }
+                    }
+                }
+
+                if (giverBonus.HasValue && giverBonus.Value > 0)
+                {
+                    await _rewardsService.AwardGiverBonusAsync(offer.UserId, giverBonus.Value);
+                }
             }
 
             var update = Builders<Offer>.Update
