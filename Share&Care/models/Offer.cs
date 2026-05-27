@@ -4,6 +4,7 @@ using MongoDB.Driver.GeoJsonObjectModel;
 
 namespace Share_Care.models
 {
+    [BsonIgnoreExtraElements]
     public class Offer
     {
         [BsonId]
