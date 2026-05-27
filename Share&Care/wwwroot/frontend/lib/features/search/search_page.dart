@@ -275,6 +275,8 @@ class _SearchPageState extends State<SearchPage> {
       switch (label.toLowerCase()) {
         case 'książki':
           return Icons.menu_book;
+        case 'gry planszowe':
+          return Icons.casino_outlined;
         case 'elektronika':
           return Icons.devices_other;
         case 'artykuły budowlane':

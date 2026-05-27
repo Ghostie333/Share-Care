@@ -15,6 +15,7 @@ namespace Share_Care.Controllers
         private readonly IChatService _chatService = chatService;
         private readonly IMongoCollection<Offer> _offers = db.GetCollection<Offer>("offers");
         private readonly IMongoCollection<UserData> _users = db.GetCollection<UserData>("users");
+        private readonly IMongoCollection<Chat> _chats = db.GetCollection<Chat>("chats");
 
         [Authorize]
         [HttpGet("{chatId}/messages")]
@@ -97,6 +98,7 @@ namespace Share_Care.Controllers
                         ListingId = c.ListingId,
                         ListingTitle = offer?.Title ?? string.Empty,
                         ListingStatus = listingStatus,
+                        CurrentBorrowerId = offer?.CurrentBorrowerId,
                         OtherUserId = otherUserId,
                         OtherUserName = ((otherUser?.FirstName ?? string.Empty) + " " + (otherUser?.LastName ?? string.Empty)).Trim(),
                         LastMessage = c.LastMessage,
@@ -158,6 +160,7 @@ namespace Share_Care.Controllers
                         ListingId = c.ListingId,
                         ListingTitle = offer?.Title ?? string.Empty,
                         ListingStatus = listingStatus,
+                        CurrentBorrowerId = offer?.CurrentBorrowerId,
                         OtherUserId = otherUserId,
                         OtherUserName = ((otherUser?.FirstName ?? string.Empty) + " " + (otherUser?.LastName ?? string.Empty)).Trim(),
                         LastMessage = c.LastMessage,
@@ -186,6 +189,19 @@ namespace Share_Care.Controllers
             var senderId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrWhiteSpace(senderId))
                 return Unauthorized();
+
+            var chat = await _chats.Find(c => c.Id == chatId).FirstOrDefaultAsync();
+            if (chat is null)
+                return NotFound();
+
+            var offer = await _offers.Find(o => o.OfferId == chat.ListingId).FirstOrDefaultAsync();
+            if (offer != null && string.Equals(offer.Status, "InProgress", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!string.Equals(offer.CurrentBorrowerId, senderId, StringComparison.Ordinal))
+                {
+                    return Forbid();
+                }
+            }
 
             var message = await _chatService.SaveMessageAsync(
                 chatId,

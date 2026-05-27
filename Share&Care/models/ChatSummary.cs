@@ -16,6 +16,8 @@ namespace Share_Care.models
         /// </summary>
         public string ListingStatus { get; set; } = string.Empty;
 
+        public string? CurrentBorrowerId { get; set; }
+
         public string OtherUserId { get; set; } = null!;
         public string OtherUserName { get; set; } = string.Empty;
 

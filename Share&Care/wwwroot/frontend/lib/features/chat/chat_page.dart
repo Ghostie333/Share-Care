@@ -10,6 +10,7 @@ import '../../services/auth_service.dart';
 import '../../services/chat_service.dart';
 import '../../services/announcement_service.dart';
 import '../../services/rental_service.dart';
+import '../../services/ticket_service.dart';
 import '../../utils/animations.dart';
 import '../announcements/announcement_metadata.dart';
 import '../announcements/create_announcement_sheet.dart';
@@ -332,6 +333,129 @@ class _ChatPageState extends State<ChatPage> {
     return null;
   }
 
+  bool _canSendMessage(ChatThreadSummary thread, String currentUserId) {
+    final status = thread.listingStatus.toLowerCase();
+    if (status == 'active') return true;
+    if (status == 'inprogress') {
+      return thread.currentBorrowerId != null &&
+          thread.currentBorrowerId == currentUserId;
+    }
+    return false;
+  }
+
+  String _resolveReadOnlyReason(
+    ChatThreadSummary thread,
+    String currentUserId,
+  ) {
+    final status = thread.listingStatus.toLowerCase();
+    if (status == 'inprogress') {
+      if (thread.currentBorrowerId == currentUserId) {
+        return 'Czat aktywny dla wypozyczajacego w trakcie realizacji.';
+      }
+      return 'Czat tylko do odczytu (w trakcie realizacji moze pisac tylko wypozyczajacy).';
+    }
+    return 'Czat tylko do odczytu (ogloszenie nieaktywne lub usuniete).';
+  }
+
+  Future<void> _showTicketDialog(ChatThreadSummary thread) async {
+    final controller = TextEditingController();
+    String reason = 'Nieprawidlowa ocena';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Zglos sprawe do administracji'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              value: reason,
+              decoration: const InputDecoration(
+                labelText: 'Powod',
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem(
+                  value: 'Nieprawidlowa ocena',
+                  child: Text('Nieprawidlowa ocena'),
+                ),
+                DropdownMenuItem(
+                  value: 'Nieprawidlowy stan',
+                  child: Text('Nieprawidlowy stan rzeczy'),
+                ),
+                DropdownMenuItem(
+                  value: 'Inne',
+                  child: Text('Inne'),
+                ),
+              ],
+              onChanged: (value) {
+                if (value == null) return;
+                reason = value;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Opis',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Anuluj'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Wyslij'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      controller.dispose();
+      return;
+    }
+
+    final description = controller.text.trim();
+    if (description.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Opis nie moze byc pusty.')),
+        );
+      }
+      controller.dispose();
+      return;
+    }
+
+    try {
+      await TicketService.createTicket(
+        reason: reason,
+        description: description,
+        listingId: thread.listingId,
+        chatId: thread.chatId,
+        targetUserId: thread.otherUserId,
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Zgloszenie zostalo wyslane.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nie udalo sie wyslac: $e')),
+      );
+    } finally {
+      controller.dispose();
+    }
+  }
+
   Future<void> _showReturnDialog(String offerId) async {
     final picker = ImagePicker();
     final images = await picker.pickMultiImage(imageQuality: 80);
@@ -502,6 +626,7 @@ class _ChatPageState extends State<ChatPage> {
             listingId: t.listingId,
             listingTitle: t.listingTitle,
             listingStatus: t.listingStatus,
+            currentBorrowerId: t.currentBorrowerId,
             otherUserId: t.otherUserId,
             otherUserName: t.otherUserName,
             lastMessage: sent.content,
@@ -779,6 +904,8 @@ class _ChatPageState extends State<ChatPage> {
     required bool isNarrow,
   }) {
     final currentUserId = _userId ?? '';
+    final canSend = _canSendMessage(thread, currentUserId);
+    final readOnlyReason = _resolveReadOnlyReason(thread, currentUserId);
 
     return Column(
       children: [
@@ -802,11 +929,23 @@ class _ChatPageState extends State<ChatPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                thread.otherUserName,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      thread.otherUserName,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => _showTicketDialog(thread),
+                    icon: const Icon(Icons.flag_outlined),
+                    label: const Text('Zglos sprawe'),
+                  ),
+                ],
               ),
               const SizedBox(height: 4),
               Text(thread.listingTitle),
@@ -920,11 +1059,11 @@ class _ChatPageState extends State<ChatPage> {
           top: false,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-            child: thread.listingStatus.toLowerCase() != 'active'
+            child: !canSend
                 ? Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'Czat tylko do odczytu (ogłoszenie nieaktywne lub usunięte).',
+                      readOnlyReason,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),

@@ -80,6 +80,38 @@ class AuthResult {
 class AuthService {
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
+  static DateTime? _tryReadTokenExpiry(String token) {
+    final parts = token.split('.');
+    if (parts.length < 2) return null;
+
+    try {
+      final payload = parts[1];
+      final normalized = base64Url.normalize(payload);
+      final decoded = utf8.decode(base64Url.decode(normalized));
+      final Map<String, dynamic> json = jsonDecode(decoded) as Map<String, dynamic>;
+      final exp = json['exp'];
+      if (exp is int) {
+        return DateTime.fromMillisecondsSinceEpoch(exp * 1000, isUtc: true);
+      }
+      if (exp is String) {
+        final parsed = int.tryParse(exp);
+        if (parsed != null) {
+          return DateTime.fromMillisecondsSinceEpoch(parsed * 1000, isUtc: true);
+        }
+      }
+    } catch (_) {
+      return null;
+    }
+
+    return null;
+  }
+
+  static bool _isTokenExpired(String token) {
+    final expiry = _tryReadTokenExpiry(token);
+    if (expiry == null) return false;
+    return expiry.isBefore(DateTime.now().toUtc().add(const Duration(minutes: 1)));
+  }
+
   static Future<void> _writeStorage(String key, String value) async {
     if (kIsWeb) {
       final prefs = await SharedPreferences.getInstance();
@@ -273,7 +305,7 @@ class AuthService {
 
   // Sprawdź czy użytkownik jest zalogowany
   static Future<bool> isLoggedIn() async {
-    final token = await _readStorage('jwt_token');
+    final token = await getToken();
     return token != null && token.isNotEmpty;
   }
 
@@ -285,11 +317,20 @@ class AuthService {
 
   // Pobierz zapisany token (do API calls)
   static Future<String?> getToken() async {
-    return _readStorage('jwt_token');
+    final token = await _readStorage('jwt_token');
+    if (token == null || token.isEmpty) return null;
+    if (_isTokenExpired(token)) {
+      await logout();
+      return null;
+    }
+    return token;
   }
 
   // Pobierz zapamiętane dane zalogowanego użytkownika (o ile istnieją).
   static Future<AuthResult?> getStoredAuthResult() async {
+    final token = await getToken();
+    if (token == null || token.isEmpty) return null;
+
     final raw = await _readStorage('auth_result');
     if (raw == null || raw.isEmpty) return null;
     try {

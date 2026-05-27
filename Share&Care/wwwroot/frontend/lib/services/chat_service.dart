@@ -9,6 +9,7 @@ class ChatThreadSummary {
   final String listingId;
   final String listingTitle;
   final String listingStatus; // "Active", "Inactive", "Deleted"
+  final String? currentBorrowerId;
   final String otherUserId;
   final String otherUserName;
   final String? lastMessage;
@@ -20,6 +21,7 @@ class ChatThreadSummary {
     required this.listingId,
     required this.listingTitle,
     required this.listingStatus,
+    this.currentBorrowerId,
     required this.otherUserId,
     required this.otherUserName,
     this.lastMessage,
@@ -33,6 +35,8 @@ class ChatThreadSummary {
       listingId: (json['listingId'] ?? json['ListingId']).toString(),
       listingTitle: (json['listingTitle'] ?? json['ListingTitle'] ?? '').toString(),
       listingStatus: (json['listingStatus'] ?? json['ListingStatus'] ?? '').toString(),
+        currentBorrowerId:
+          (json['currentBorrowerId'] ?? json['CurrentBorrowerId'])?.toString(),
       otherUserId: (json['otherUserId'] ?? json['OtherUserId'] ?? '').toString(),
       otherUserName: (json['otherUserName'] ?? json['OtherUserName'] ?? '').toString(),
       lastMessage: (json['lastMessage'] ?? json['LastMessage'])?.toString(),

@@ -6,6 +6,7 @@ class AnnouncementMetadata {
     'Wszystkie kategorie',
     'Książki',
     'Jedzenie',
+    'Gry planszowe',
     'Elektronika',
     'Artykuły budowlane',
 		'Motoryzacja',

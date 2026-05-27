@@ -57,12 +57,14 @@ class _HomePageState extends State<HomePage> {
   HomeFeedMode _mode = HomeFeedMode.all;
   String _searchQuery = '';
   String? _selectedCategory;
+  late bool _aboutExpanded;
 
   @override
   void initState() {
     super.initState();
     _searchQuery = widget.initialSearchQuery ?? '';
     _selectedCategory = widget.initialCategory;
+    _aboutExpanded = !(widget.authResult.userId?.isNotEmpty ?? false);
     _loadProfileIfPossible();
     _loadOffers();
   }
@@ -274,6 +276,8 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               child: Column(
                 children: [
+                  _buildAboutTile(context),
+                  const SizedBox(height: 12),
                   _buildMapCard(context),
                   const SizedBox(height: 16),
                   _buildOffersCard(context, filtered),
@@ -546,6 +550,7 @@ class _HomePageState extends State<HomePage> {
         (markerAds.isNotEmpty
             ? LatLng(markerAds.first.lat!, markerAds.first.lng!)
             : const LatLng(52.2297, 21.0122)); // Warszawa jako domyślne centrum
+    
 
     return Container(
       width: double.infinity,
@@ -668,6 +673,51 @@ class _HomePageState extends State<HomePage> {
             ],
           ],
         ),
+      ),
+    );
+  }
+
+   Widget _buildAboutTile(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      color: theme.cardColor,
+      child: ExpansionTile(
+        initiallyExpanded: _aboutExpanded,
+        onExpansionChanged: (value) {
+          setState(() => _aboutExpanded = value);
+        },
+        title: const Text('Share&Care - o platformie'),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        children: [
+          Center(
+            child: Image.asset(
+              'images/logo/shareandcare_logo.png',
+              height: 72,
+              fit: BoxFit.contain,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Dziel sie, wypozyczaj i dawaj drugie zycie rzeczom.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: Text(
+              'Share&Care to lokalna platforma wymiany i wypozyczania. '
+              'Znajdź ogloszenia w okolicy, pomóż innym i buduj zaufanie '
+              'dzięki wspólnym spotkaniom i bezpiecznemu mechanizmowi wypożyczania,'
+              'który dba o ineteresy obu stron',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium,
+            ),
+          ),
+        ],
       ),
     );
   }
