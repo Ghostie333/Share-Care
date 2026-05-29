@@ -209,4 +209,26 @@ class ChatService {
       throw Exception('Błąd usuwania czatu: ${res.statusCode}');
     }
   }
+
+  /// Wysyla oferte w ramach chatu zgloszenia.
+  static Future<ChatMessage> sendOfferInChat({
+    required String chatId,
+    required String offerId,
+  }) async {
+    final body = <String, dynamic>{
+      'OfferId': offerId,
+    };
+
+    final http.Response res = await ApiService.postJson(
+      '/chat/$chatId/offers',
+      body,
+    );
+
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw Exception('Blad wysylania oferty: ${res.statusCode}');
+    }
+
+    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+    return ChatMessage.fromJson(decoded);
+  }
 }

@@ -5,6 +5,7 @@ using Share_Care.Services;
 using Share_Care.Models.Requests;
 using Share_Care.models;
 using System.Security.Claims;
+using System.Text.Json;
 
 namespace Share_Care.Controllers
 {
@@ -217,6 +218,90 @@ namespace Share_Care.Controllers
             }
 
             return Ok(message);
+        }
+
+        [Authorize]
+        [HttpPost("{chatId}/offers")]
+        public async Task<IActionResult> SendOfferInChat(string chatId, [FromBody] SendChatOfferRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return ValidationProblem(ModelState);
+            }
+
+            var senderId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(senderId))
+                return Unauthorized();
+
+            var chat = await _chats.Find(c => c.Id == chatId).FirstOrDefaultAsync();
+            if (chat is null)
+                return NotFound();
+
+            var report = await _offers.Find(o => o.OfferId == chat.ListingId).FirstOrDefaultAsync();
+            if (report is null)
+                return NotFound("Zgloszenie nie istnieje.");
+
+            if (!IsReportListing(report))
+                return BadRequest("Ten chat nie dotyczy zgloszenia.");
+
+            var offerId = request.OfferId?.Trim();
+            if (string.IsNullOrWhiteSpace(offerId))
+                return BadRequest("Brak offerId");
+
+            var offer = await _offers.Find(o => o.OfferId == offerId).FirstOrDefaultAsync();
+            if (offer is null)
+                return NotFound("Oferta nie istnieje.");
+
+            if (!string.Equals(offer.UserId, senderId, StringComparison.Ordinal))
+                return Forbid();
+
+            var firstImageId = offer.ImageIds is { Count: > 0 }
+                ? offer.ImageIds[0]
+                : null;
+
+            var payload = JsonSerializer.Serialize(new
+            {
+                offerId = offer.OfferId,
+                title = offer.Title,
+                deposit = offer.Deposit,
+                offerKind = offer.OfferKind,
+                category = offer.Category,
+                imageId = firstImageId,
+                ownerId = offer.UserId,
+                ownerName = offer.ContactName,
+                isChatOnly = offer.IsChatOnly,
+                status = offer.Status,
+                reportId = chat.ListingId
+            });
+
+            var message = await _chatService.SaveMessageAsync(
+                chatId,
+                senderId,
+                $"Oferta: {offer.Title}",
+                "report_offer",
+                payload);
+
+            if (message is null)
+                return Forbid();
+
+            return Ok(message);
+        }
+
+        private static bool IsReportListing(Offer offer)
+        {
+            if (string.Equals(offer.OfferKind, "WantToTake", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var raw = (offer.Category ?? string.Empty).Trim();
+            if (raw.Contains('|'))
+            {
+                var parts = raw.Split('|');
+                raw = parts.Length > 0 ? parts[0].Trim() : raw;
+            }
+
+            return string.Equals(raw, "Zgloszenie", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>

@@ -12,8 +12,10 @@ import '../../services/chat_service.dart';
 import '../../services/announcement_service.dart';
 import '../../services/rental_service.dart';
 import '../../services/ticket_service.dart';
+import '../../services/user_profile_service.dart';
 import '../../utils/animations.dart';
 import '../announcements/announcement_metadata.dart';
+import '../announcements/announcement_form_sheet.dart';
 import '../announcements/create_announcement_sheet.dart';
 import '../auth/auth_login_page.dart';
 // import '../auth/auth_registration_page.dart';
@@ -67,6 +69,11 @@ class _ChatPageState extends State<ChatPage> {
 
   // Wiadomości w aktualnie wybranym czacie.
   List<ChatMessage> _messages = [];
+
+  final Map<String, Announcement> _listingCache = {};
+  Announcement? _selectedListing;
+  final Map<String, Announcement> _offerCache = {};
+  final Set<String> _offerLoading = {};
 
   // Filtrowanie czatów po statusie ogłoszenia.
   // null = wszystkie, "Active" = tylko aktywne, "Inactive" = tylko nieaktywne.
@@ -251,12 +258,44 @@ class _ChatPageState extends State<ChatPage> {
         _messages = msgs..sort((a, b) => a.sentAt.compareTo(b.sentAt));
       });
 
+      final thread = _selectedThread;
+      if (thread != null) {
+        await _loadListingForThread(thread);
+      }
+
       _startPolling(chatId);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Nie udało się pobrać wiadomości: $e')),
       );
+    }
+  }
+
+  Future<void> _loadListingForThread(ChatThreadSummary thread) async {
+    if (_listingCache.containsKey(thread.listingId)) {
+      if (!mounted) return;
+      setState(() {
+        _selectedListing = _listingCache[thread.listingId];
+      });
+      return;
+    }
+
+    try {
+      final ad = await AnnouncementService.getOfferById(
+        thread.listingId,
+        currentUserId: _userId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _listingCache[thread.listingId] = ad;
+        _selectedListing = ad;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _selectedListing = null;
+      });
     }
   }
 
@@ -454,6 +493,407 @@ class _ChatPageState extends State<ChatPage> {
       );
     } finally {
       controller.dispose();
+    }
+  }
+
+  bool _isReportListing(Announcement? listing) {
+    if (listing == null) return false;
+    return AnnouncementMetadata.parseType(listing.category) ==
+        AnnouncementMetadata.defaultReportType;
+  }
+
+  Future<void> _showOfferActions(ChatThreadSummary thread) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Theme.of(context).cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Zaoferuj w zgłoszeniu',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  _showShareOfferSheet(thread);
+                },
+                icon: const Icon(Icons.campaign_outlined),
+                label: const Text('Udostepnij swoje ogloszenie'),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  _showCreateChatOfferSheet(thread);
+                },
+                icon: const Icon(Icons.add_circle_outline),
+                label: const Text('Utworz oferte w chacie'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showShareOfferSheet(ChatThreadSummary thread) async {
+    final userId = _userId;
+    if (userId == null || userId.isEmpty) return;
+
+    final offersFuture = AnnouncementService.getUserOffers(userId);
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: FutureBuilder<List<Announcement>>(
+              future: offersFuture,
+              builder: (ctx, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (snapshot.hasError) {
+                  return Text('Nie udalo sie pobrac ofert: ${snapshot.error}');
+                }
+
+                final offers = (snapshot.data ?? [])
+                    .where((o) => o.isActive)
+                    .where((o) =>
+                        AnnouncementMetadata.parseType(o.category) ==
+                        AnnouncementMetadata.defaultAnnouncementType)
+                    .toList();
+
+                if (offers.isEmpty) {
+                  return const Text('Brak aktywnych ogloszen do udostepnienia.');
+                }
+
+                return ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: offers.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final offer = offers[index];
+                    return Card(
+                      child: ListTile(
+                        title: Text(offer.title),
+                        subtitle: Text(
+                          offer.deposit != null
+                              ? 'Kaucja: ${offer.deposit!.toStringAsFixed(2)} zl'
+                              : 'Bez kaucji',
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () async {
+                          Navigator.of(ctx).pop();
+                          await _sendOfferInChat(thread, offer.id);
+                        },
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showCreateChatOfferSheet(ChatThreadSummary thread) async {
+    final userId = _userId;
+    if (userId == null || userId.isEmpty) return;
+
+    UserProfileInfo profile;
+    try {
+      profile = await UserProfileService.fetchProfile(userId);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nie udalo sie pobrac profilu: $e')),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+
+    final ownerName = '${profile.firstName} ${profile.lastName}'.trim();
+    final phoneNumber = profile.phoneNumber;
+    final city = profile.city;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return AnnouncementFormSheet(
+          existingAd: null,
+          ownerName: ownerName,
+          categories: AnnouncementMetadata.categories,
+          types: const [AnnouncementMetadata.defaultAnnouncementType],
+          offerKinds: AnnouncementMetadata.offerKinds,
+          initialCategory: AnnouncementMetadata.defaultCategory,
+          initialType: AnnouncementMetadata.defaultAnnouncementType,
+          initialOfferKind: AnnouncementMetadata.offerKinds.first,
+          initialCity: city,
+          initialPhoneNumber: phoneNumber,
+          onSubmit: (
+            title,
+            description,
+            location,
+            deposit,
+            images,
+            category,
+            type,
+            offerKind,
+            contactNumber,
+            expirationDate,
+          ) async {
+            try {
+              final encodedCategory =
+                  AnnouncementMetadata.encode(type, category);
+
+              final newAnnouncement = Announcement(
+                id: '',
+                userId: userId,
+                title: title,
+                description: description,
+                location: location,
+                deposit: deposit,
+                ownerName: ownerName,
+                isActive: true,
+                createdAt: DateTime.now(),
+                imageUrls: const [],
+                isOwner: true,
+                offerKind: offerKind,
+                category: encodedCategory,
+                contactName: ownerName,
+                contactNumber: contactNumber,
+                expiresAt: expirationDate,
+              );
+
+              final created = await AnnouncementService.createChatOffer(
+                newAnnouncement,
+                reportId: thread.listingId,
+                images: images,
+              );
+
+              await _sendOfferInChat(thread, created.id);
+            } catch (e) {
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Blad tworzenia oferty: $e')),
+              );
+            }
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _sendOfferInChat(ChatThreadSummary thread, String offerId) async {
+    try {
+      final sent = await ChatService.sendOfferInChat(
+        chatId: thread.chatId,
+        offerId: offerId,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _messages = List<ChatMessage>.from(_messages)..add(sent);
+        _messages.sort((a, b) => a.sentAt.compareTo(b.sentAt));
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nie udalo sie wyslac oferty: $e')),
+      );
+    }
+  }
+
+  Future<void> _openOfferDetails(String offerId) async {
+    try {
+      final ad = await AnnouncementService.getOfferById(
+        offerId,
+        currentUserId: _userId,
+      );
+      if (!mounted) return;
+
+      showDialog<void>(
+        context: context,
+        builder: (_) => AnnouncementDetailsDialog(ad: ad),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nie udalo sie otworzyc oferty: $e')),
+      );
+    }
+  }
+
+  Future<void> _openPaymentForOffer(String offerId) async {
+    try {
+      final ad = await AnnouncementService.getOfferById(
+        offerId,
+        currentUserId: _userId,
+      );
+      if (!mounted) return;
+
+      Navigator.of(context).push(
+        createSlideFadeRoute(
+          PaymentAuthorizationPage(
+            authResult: widget.authResult,
+            announcement: ad,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nie udalo sie otworzyc platnosci: $e')),
+      );
+    }
+  }
+
+  Future<void> _openEditOffer(String offerId) async {
+    final userId = _userId;
+    if (userId == null || userId.isEmpty) return;
+
+    Announcement existing;
+    UserProfileInfo profile;
+    try {
+      existing = await AnnouncementService.getOfferById(
+        offerId,
+        currentUserId: userId,
+      );
+      profile = await UserProfileService.fetchProfile(userId);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nie udalo sie pobrac danych: $e')),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+
+    final ownerName = '${profile.firstName} ${profile.lastName}'.trim();
+    final phoneNumber = profile.phoneNumber;
+    final city = profile.city;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return AnnouncementFormSheet(
+          existingAd: existing,
+          ownerName: ownerName,
+          categories: AnnouncementMetadata.categories,
+          types: AnnouncementMetadata.types,
+          offerKinds: AnnouncementMetadata.offerKinds,
+          initialCategory: AnnouncementMetadata.defaultCategory,
+          initialType: AnnouncementMetadata.defaultAnnouncementType,
+          initialOfferKind: existing.offerKind,
+          initialCity: city,
+          initialPhoneNumber: phoneNumber,
+          onSubmit: (
+            title,
+            description,
+            location,
+            deposit,
+            images,
+            category,
+            type,
+            offerKind,
+            contactNumber,
+            expirationDate,
+          ) async {
+            try {
+              final encodedCategory =
+                  AnnouncementMetadata.encode(type, category);
+
+              final updated = Announcement(
+                id: existing.id,
+                userId: existing.userId,
+                title: title,
+                description: description,
+                location: location,
+                deposit: deposit,
+                ownerName: ownerName,
+                isActive: existing.isActive,
+                createdAt: existing.createdAt,
+                imageUrls: existing.imageUrls,
+                isOwner: true,
+                offerKind: offerKind,
+                category: encodedCategory,
+                contactName: ownerName,
+                contactNumber: contactNumber,
+                expiresAt: expirationDate,
+              );
+
+              final saved = await AnnouncementService.updateOffer(
+                updated,
+                images: images,
+              );
+
+              if (!mounted) return;
+              setState(() {
+                _offerCache[saved.id] = saved;
+              });
+            } catch (e) {
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Blad edycji oferty: $e')),
+              );
+            }
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _ensureOfferCached(String offerId) async {
+    if (_offerCache.containsKey(offerId) || _offerLoading.contains(offerId)) {
+      return;
+    }
+    _offerLoading.add(offerId);
+    try {
+      final ad = await AnnouncementService.getOfferById(
+        offerId,
+        currentUserId: _userId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _offerCache[offerId] = ad;
+      });
+    } catch (_) {
+      // ignore
+    } finally {
+      _offerLoading.remove(offerId);
     }
   }
 
@@ -907,6 +1347,9 @@ class _ChatPageState extends State<ChatPage> {
     final currentUserId = _userId ?? '';
     final canSend = _canSendMessage(thread, currentUserId);
     final readOnlyReason = _resolveReadOnlyReason(thread, currentUserId);
+    final listing = _selectedListing;
+    final canOffer =
+        _isReportListing(listing) && listing?.userId != currentUserId;
 
     return Column(
       children: [
@@ -920,6 +1363,7 @@ class _ChatPageState extends State<ChatPage> {
                 setState(() {
                   _selectedChatId = null;
                   _messages = [];
+                  _selectedListing = null;
                   _pollTimer?.cancel();
                 });
               },
@@ -941,6 +1385,12 @@ class _ChatPageState extends State<ChatPage> {
                           ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                   ),
+                  if (canOffer)
+                    TextButton.icon(
+                      onPressed: () => _showOfferActions(thread),
+                      icon: const Icon(Icons.add_circle_outline),
+                      label: const Text('Zaoferuj'),
+                    ),
                   TextButton.icon(
                     onPressed: () => _showTicketDialog(thread),
                     icon: const Icon(Icons.flag_outlined),
@@ -977,6 +1427,37 @@ class _ChatPageState extends State<ChatPage> {
               final isGiver = giverId != null && giverId == currentUserId;
               final isTaker = takerId != null && takerId == currentUserId;
               final offerId = m.data?['offerId']?.toString() ?? thread.listingId;
+
+              if (m.kind == 'report_offer') {
+                final data = m.data ?? <String, dynamic>{};
+                final sharedOfferId = data['offerId']?.toString();
+                if (sharedOfferId != null && sharedOfferId.isNotEmpty) {
+                  _ensureOfferCached(sharedOfferId);
+                }
+
+                final offer = sharedOfferId != null &&
+                        _offerCache.containsKey(sharedOfferId)
+                    ? _offerCache[sharedOfferId]
+                    : _offerFromSnapshot(data);
+
+                if (offer != null) {
+                  final isReportOwner =
+                      _selectedListing?.userId == currentUserId;
+                  final isOfferOwner = offer.userId == currentUserId;
+                  final status = (data['status'] ?? '').toString().toLowerCase();
+                    final canRent =
+                      isReportOwner && (status.isEmpty || status == 'active');
+
+                  return _buildReportOfferCard(
+                    offer: offer,
+                    canRent: canRent,
+                    canEdit: isOfferOwner,
+                    onDetails: () => _openOfferDetails(offer.id),
+                    onRent: () => _openPaymentForOffer(offer.id),
+                    onEdit: () => _openEditOffer(offer.id),
+                  );
+                }
+              }
 
               if (m.kind == 'rental_request' && isGiver) {
                 return Card(
@@ -1161,6 +1642,189 @@ class _ChatPageState extends State<ChatPage> {
           Map<String, dynamic>.from(item),
         ))
         .toList(growable: false);
+  }
+
+  Announcement? _offerFromSnapshot(Map<String, dynamic> data) {
+    final offerId = data['offerId']?.toString();
+    if (offerId == null || offerId.isEmpty) return null;
+
+    final depositRaw = data['deposit'];
+    final deposit = depositRaw != null
+        ? double.tryParse(depositRaw.toString())
+        : null;
+
+    final imageId = data['imageId']?.toString();
+
+    return Announcement(
+      id: offerId,
+      userId: data['ownerId']?.toString(),
+      title: (data['title'] ?? '').toString(),
+      description: '',
+      location: '',
+      deposit: deposit,
+      ownerName: (data['ownerName'] ?? '').toString(),
+      isActive: true,
+      createdAt: DateTime.now(),
+      imageUrls: imageId == null || imageId.isEmpty ? const [] : [imageId],
+      isOwner: false,
+      offerKind: (data['offerKind'] ?? 'Borrow').toString(),
+      category: data['category']?.toString(),
+    );
+  }
+
+  Widget _buildReportOfferCard({
+    required Announcement offer,
+    required bool canRent,
+    required bool canEdit,
+    required VoidCallback onDetails,
+    required VoidCallback onRent,
+    required VoidCallback onEdit,
+  }) {
+    final theme = Theme.of(context);
+    final typeLabel = AnnouncementMetadata.parseType(offer.category);
+    final imageId = offer.imageUrls.isNotEmpty ? offer.imageUrls.first : null;
+    final imageUrl = imageId == null
+        ? null
+        : '${AppConfig.apiBaseUrl}/offer/image/$imageId';
+
+    return Card(
+      color: theme.cardColor,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final isWide = width >= 520;
+          final imageAspect = width < 360 ? 4 / 3 : 16 / 9;
+
+          final image = ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: AspectRatio(
+              aspectRatio: imageAspect,
+              child: imageUrl == null
+                  ? Container(
+                      color: theme.colorScheme.surfaceVariant,
+                      child: Icon(
+                        Icons.image,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    )
+                  : Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) {
+                        return Container(
+                          color: theme.colorScheme.surfaceVariant,
+                          child: Icon(
+                            Icons.image,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          );
+
+          final details = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                offer.title,
+                maxLines: isWide ? 2 : 3,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  Chip(
+                    label: Text(typeLabel),
+                    backgroundColor: theme.colorScheme.secondaryContainer,
+                    labelStyle: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.onSecondaryContainer,
+                    ),
+                  ),
+                  Chip(
+                    label: Text(AnnouncementMetadata.offerKindLabel(offer.offerKind)),
+                    backgroundColor: theme.colorScheme.primaryContainer,
+                    labelStyle: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                ],
+              ),
+              if (offer.offerKind == 'Borrow' && offer.deposit != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'Kaucja: ${offer.deposit!.toStringAsFixed(2)} zl',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: onDetails,
+                    icon: const Icon(Icons.link),
+                    label: const Text('Szczegoly'),
+                  ),
+                  if (canRent)
+                    ElevatedButton.icon(
+                      onPressed: onRent,
+                      icon: const Icon(Icons.payments_outlined),
+                      label: const Text('Wypożycz'),
+                    ),
+                  if (canEdit)
+                    TextButton.icon(
+                      onPressed: onEdit,
+                      icon: const Icon(Icons.edit_outlined),
+                      label: const Text('Edytuj'),
+                    ),
+                ],
+              ),
+            ],
+          );
+
+          if (!isWide) {
+            return Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  image,
+                  const SizedBox(height: 10),
+                  details,
+                ],
+              ),
+            );
+          }
+
+          return Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Flexible(
+                  flex: 5,
+                  child: image,
+                ),
+                const SizedBox(width: 12),
+                Flexible(
+                  flex: 7,
+                  child: details,
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 }
 

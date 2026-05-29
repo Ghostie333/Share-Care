@@ -27,6 +27,7 @@ namespace Share_Care.Controllers
         private readonly IRewardsService _rewardsService = rewardsService;
         private readonly IMongoCollection<Offer> _offers = db.GetCollection<Offer>("offers");
         private readonly IMongoCollection<Escrow> _escrows = db.GetCollection<Escrow>("escrows");
+        private readonly IMongoCollection<Chat> _chats = db.GetCollection<Chat>("chats");
         private readonly GridFSBucket? _gridFS = gridFs;
         private readonly IConfiguration _config = config;
 
@@ -77,7 +78,22 @@ namespace Share_Care.Controllers
 
             await _offers.UpdateOneAsync(o => o.OfferId == offer.OfferId, update);
 
-            var chat = await _chatService.CreateChatAsync(offer.OfferId, borrowerId, offer.UserId);
+            Chat? chat = null;
+            if (!string.IsNullOrWhiteSpace(request.ChatId))
+            {
+                chat = await _chats.Find(c => c.Id == request.ChatId).FirstOrDefaultAsync();
+                if (chat != null)
+                {
+                    var belongs = chat.BuyerId == borrowerId || chat.SellerId == borrowerId;
+                    var otherId = chat.BuyerId == borrowerId ? chat.SellerId : chat.BuyerId;
+                    if (!belongs || !string.Equals(otherId, offer.UserId, StringComparison.Ordinal))
+                    {
+                        chat = null;
+                    }
+                }
+            }
+
+            chat ??= await _chatService.CreateChatAsync(offer.OfferId, borrowerId, offer.UserId);
             if (chat != null)
             {
                 var payload = JsonSerializer.Serialize(new

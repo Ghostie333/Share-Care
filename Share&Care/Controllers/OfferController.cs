@@ -124,7 +124,7 @@ namespace Share_Care.Controllers
 
         // GET /offer/get-offers?userId=123&category=Elektronika&status=Active&page=1&limit=20
         [HttpGet("get-offers")]
-        public async Task<IActionResult> GetAll([FromQuery] OfferFiltersRequest filters, [FromQuery] int page = 1, [FromQuery] int limit = 20)
+        public async Task<IActionResult> GetAll([FromQuery] OfferFiltersRequest filters, [FromQuery] int page = 1, [FromQuery] int limit = 20, [FromQuery] bool includeChatOnly = false)
         {
             try
             {
@@ -150,6 +150,11 @@ namespace Share_Care.Controllers
                 if (!string.IsNullOrWhiteSpace(filters.Status))
                 {
                     filterList.Add(filterBuilder.Eq(x => x.Status, filters.Status));
+                }
+
+                if (!includeChatOnly)
+                {
+                    filterList.Add(filterBuilder.Ne(x => x.IsChatOnly, true));
                 }
 
                 // Wyszukiwanie tekstowe
@@ -195,11 +200,126 @@ namespace Share_Care.Controllers
 
         // Alias
         [HttpGet("get-user-offers/{userId}")]
-        public async Task<IActionResult> GetUserOffers(string userId)
+        public async Task<IActionResult> GetUserOffers(string userId, [FromQuery] bool includeChatOnly = false)
         {
             // Chcemy pobrać wszystkie oferty użytkownika (aktywne i nieaktywne),
             // dlatego nadpisujemy Status na null.
-            return await GetAll(new OfferFiltersRequest { UserId = userId, Status = null });
+            return await GetAll(new OfferFiltersRequest { UserId = userId, Status = null }, includeChatOnly: includeChatOnly);
+        }
+
+        [Authorize]
+        [HttpPost("create-chat-offer")]
+        [Consumes("multipart/form-data")]
+        [RequestSizeLimit(50_000_000)]
+        [RequestFormLimits(MultipartBodyLengthLimit = 50_000_000)]
+        public async Task<IActionResult> CreateChatOffer([FromForm] CreateChatOfferRequest form)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return ValidationProblem(ModelState);
+                }
+
+                if (string.Equals(form.OfferKind, "Borrow", StringComparison.OrdinalIgnoreCase) &&
+                    (!form.Deposit.HasValue || form.Deposit.Value <= 0))
+                {
+                    return BadRequest(new { message = "Kaucja jest wymagana dla wypozyczenia." });
+                }
+
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrWhiteSpace(currentUserId))
+                {
+                    return Unauthorized();
+                }
+
+                var report = await _collection.Find(x => x.OfferId == form.ReportId).FirstOrDefaultAsync();
+                if (report is null)
+                {
+                    return NotFound("Zgloszenie nie istnieje.");
+                }
+
+                if (!IsReportListing(report))
+                {
+                    return BadRequest("Wskazana oferta nie jest zgloszeniem.");
+                }
+
+                var imageIds = new List<string>();
+                if (form.Images != null && form.Images.Count > 0)
+                {
+                    if (_gridFS is null)
+                    {
+                        return Problem("Brak konfiguracji GridFS", statusCode: StatusCodes.Status500InternalServerError);
+                    }
+
+                    foreach (var file in form.Images)
+                    {
+                        if (file == null || file.Length == 0) continue;
+
+                        using var stream = file.OpenReadStream();
+                        var fileId = await _gridFS.UploadFromStreamAsync(
+                            file.FileName,
+                            stream,
+                            new GridFSUploadOptions
+                            {
+                                Metadata = new BsonDocument
+                                {
+                                    { "contentType", file.ContentType ?? "application/octet-stream" },
+                                    { "originalName", file.FileName },
+                                    { "userId", currentUserId }
+                                }
+                            });
+
+                        imageIds.Add(fileId.ToString());
+                    }
+                }
+
+                var offer = new Offer
+                {
+                    UserId = currentUserId,
+                    Title = form.Title!,
+                    ContactName = form.ContactName!,
+                    Category = form.Category!,
+                    OfferKind = string.IsNullOrWhiteSpace(form.OfferKind) ? "Borrow" : form.OfferKind!,
+                    ContactNumber = form.ContactNumber ?? string.Empty,
+                    Description = form.Description ?? string.Empty,
+                    Deposit = form.Deposit,
+                    ExpirationDate = form.ExpirationDate,
+                    LocationText = string.IsNullOrWhiteSpace(form.LocationText)
+                        ? null
+                        : form.LocationText!.Trim(),
+                    CreatedAt = DateTime.UtcNow,
+                    ImageIds = imageIds,
+                    IsChatOnly = true,
+                    RelatedReportId = form.ReportId
+                };
+
+                await _collection.InsertOneAsync(offer);
+
+                return Ok(new { message = "Oferta czatowa utworzona", offerId = offer.OfferId, imageIds });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Blad tworzenia oferty czatowej");
+                return Problem("Blad bazy danych", statusCode: StatusCodes.Status500InternalServerError);
+            }
+        }
+
+        private static bool IsReportListing(Offer offer)
+        {
+            if (string.Equals(offer.OfferKind, "WantToTake", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var raw = (offer.Category ?? string.Empty).Trim();
+            if (raw.Contains('|'))
+            {
+                var parts = raw.Split('|');
+                raw = parts.Length > 0 ? parts[0].Trim() : raw;
+            }
+
+            return string.Equals(raw, "Zgloszenie", StringComparison.OrdinalIgnoreCase);
         }
 
         [HttpGet("get-offer/{offerId}")]

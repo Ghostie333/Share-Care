@@ -71,10 +71,12 @@ class RentalService {
   static Future<void> startRental({
     required String offerId,
     DateTime? deadlineAt,
+    String? chatId,
   }) async {
     final body = <String, dynamic>{
       'OfferId': offerId,
       if (deadlineAt != null) 'DeadlineAt': deadlineAt.toUtc().toIso8601String(),
+      if (chatId != null && chatId.isNotEmpty) 'ChatId': chatId,
     };
 
     final http.Response res = await ApiService.postJson('/rental/start', body);

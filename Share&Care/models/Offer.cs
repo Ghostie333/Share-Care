@@ -29,6 +29,12 @@ namespace Share_Care.models
         public DateTime? RentalStartedAt { get; set; }
         public DateTime? CompletedAt { get; set; }
 
+        // True when the offer is created only for a specific report chat.
+        public bool IsChatOnly { get; set; } = false;
+
+        // Report (listing) id that this chat-only offer answers.
+        public string? RelatedReportId { get; set; }
+
         public DateTime? ExpirationDate { get; set; }
 
         // Tekstowa lokalizacja (miasto / adres) widoczna w szczegółach ogłoszenia.

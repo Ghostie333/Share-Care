@@ -69,10 +69,14 @@ class AnnouncementService {
   }
 
   /// Pobiera aktywne ogłoszenia użytkownika.
-  static Future<List<Announcement>> getUserOffers(String userId) async {
+  static Future<List<Announcement>> getUserOffers(
+    String userId, {
+    bool includeChatOnly = false,
+  }) async {
     // Backend udostępnia alias GET /offer/get-user-offers/{userId}
+    final query = includeChatOnly ? '?includeChatOnly=true' : '';
     final http.Response res = await ApiService.get(
-      '/offer/get-user-offers/$userId',
+      '/offer/get-user-offers/$userId$query',
     );
 
     if (res.statusCode != 200) {
@@ -88,6 +92,99 @@ class AnnouncementService {
         .map((e) => Announcement.fromJson(e as Map<String, dynamic>))
         .map((a) => a..isOwner = true)
         .toList();
+  }
+
+  /// Tworzy ofertę tylko w kontekście chatu zgłoszenia.
+  static Future<Announcement> createChatOffer(
+    Announcement announcement, {
+    required String reportId,
+    List<XFile>? images,
+  }) async {
+    final token = await AuthService.getToken();
+
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/offer/create-chat-offer');
+    final request = http.MultipartRequest('POST', uri);
+
+    if (token != null && token.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+
+    request.fields.addAll({
+      'ReportId': reportId,
+      'Title': announcement.title,
+      'ContactName': announcement.contactName ?? announcement.ownerName,
+      'Category': announcement.category ?? 'Inne',
+      'OfferKind': announcement.offerKind,
+      'ContactNumber': announcement.contactNumber ?? '',
+      'Description': announcement.description,
+      'LocationText': announcement.location,
+    });
+
+    if (announcement.expiresAt != null) {
+      request.fields['ExpirationDate'] =
+          announcement.expiresAt!.toIso8601String();
+    }
+
+    final deposit = announcement.deposit;
+    if (deposit != null) {
+      request.fields['Deposit'] = deposit.toString();
+    }
+
+    if (images != null && images.isNotEmpty) {
+      for (final image in images) {
+        if (kIsWeb) {
+          final bytes = await image.readAsBytes();
+          if (bytes.isEmpty) continue;
+
+          request.files.add(
+            http.MultipartFile.fromBytes(
+              'Images',
+              bytes,
+              filename: image.name,
+            ),
+          );
+        } else {
+          if (image.path.isEmpty) continue;
+
+          request.files.add(
+            await http.MultipartFile.fromPath(
+              'Images',
+              image.path,
+              filename: image.name,
+            ),
+          );
+        }
+      }
+    }
+
+    final streamed = await request.send();
+    final res = await http.Response.fromStream(streamed);
+
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw Exception('Blad tworzenia oferty w chacie: ${res.statusCode} ${res.body}');
+    }
+
+    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+    final offerId = decoded['offerId'] ?? decoded['offer_id'];
+    final imageIds = decoded['imageIds'] as List<dynamic>? ?? const [];
+
+    return Announcement(
+      id: offerId?.toString() ?? announcement.id,
+      userId: announcement.userId,
+      title: announcement.title,
+      description: announcement.description,
+      location: announcement.location,
+      deposit: announcement.deposit,
+      ownerName: announcement.ownerName,
+      isActive: true,
+      createdAt: DateTime.now(),
+      imageUrls: imageIds.map((e) => e.toString()).toList(),
+      isOwner: true,
+      offerKind: announcement.offerKind,
+      category: announcement.category,
+      contactName: announcement.contactName,
+      contactNumber: announcement.contactNumber,
+    );
   }
 
   /// Pobiera pojedynczą ofertę po identyfikatorze.

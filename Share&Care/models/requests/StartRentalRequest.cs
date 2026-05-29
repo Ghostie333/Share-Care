@@ -9,5 +9,7 @@ namespace Share_Care.Models.Requests
         public string? OfferId { get; set; }
 
         public DateTime? DeadlineAt { get; set; }
+
+        public string? ChatId { get; set; }
     }
 }

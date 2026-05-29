@@ -27,14 +27,16 @@ class AnnouncementGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final crossAxisCount = width < 380
-            ? 1
-            : width < 640
-            ? 2
-            : 3;
-        final childAspectRatio = width < 380
-          ? 1.2
+        final crossAxisCount = width < 420
+          ? 1
+          : width < 720
+          ? 2
+          : 3;
+        final childAspectRatio = width < 420
+          ? 1.45
           : width < 520
+          ? 1.2
+          : width < 720
           ? 1.0
           : 0.9;
 
