@@ -67,16 +67,39 @@ namespace Share_Care.Controllers
 
                 if (escrow == null)
                     return BadRequest("Insufficient funds to lock deposit");
+
+                var update = Builders<Offer>.Update
+                    .Set(o => o.Status, "PendingApproval")
+                    .Set(o => o.CurrentBorrowerId, borrowerId)
+                    .Set(o => o.RentalDeadlineAt, request.DeadlineAt)
+                    .Unset(o => o.RentalStartedAt)
+                    .Unset(o => o.CompletedAt);
+
+                await _offers.UpdateOneAsync(o => o.OfferId == offer.OfferId, update);
+
+                offer.Status = "PendingApproval";
+                offer.CurrentBorrowerId = borrowerId;
+                offer.RentalDeadlineAt = request.DeadlineAt;
             }
+            else if (string.Equals(offer.OfferKind, "Give", StringComparison.OrdinalIgnoreCase))
+            {
+                var update = Builders<Offer>.Update
+                    .Set(o => o.Status, "PendingApproval")
+                    .Set(o => o.CurrentBorrowerId, borrowerId);
 
-            var update = Builders<Offer>.Update
-                .Set(o => o.Status, "PendingApproval")
-                .Set(o => o.CurrentBorrowerId, borrowerId)
-                .Set(o => o.RentalDeadlineAt, request.DeadlineAt)
-                .Unset(o => o.RentalStartedAt)
-                .Unset(o => o.CompletedAt);
+                await _offers.UpdateOneAsync(o => o.OfferId == offer.OfferId, update);
 
-            await _offers.UpdateOneAsync(o => o.OfferId == offer.OfferId, update);
+                var result = await _offers.UpdateOneAsync(
+                                        o => o.OfferId == offer.OfferId,
+                                        update);
+
+                Console.WriteLine($"MATCHED: {result.MatchedCount}");
+                Console.WriteLine($"MODIFIED: {result.ModifiedCount}");
+
+                // aktualizacja lokalnego obiektu
+                offer.Status = "PendingApproval";
+                offer.CurrentBorrowerId = borrowerId;
+            }
 
             Chat? chat = null;
             if (!string.IsNullOrWhiteSpace(request.ChatId))
@@ -100,19 +123,31 @@ namespace Share_Care.Controllers
                 {
                     offerId = offer.OfferId,
                     escrowId = escrow?.Id,
-                    deadlineAt = request.DeadlineAt,
-                    amount = offer.Deposit,
+                    deadlineAt = request?.DeadlineAt,
+                    amount = offer?.Deposit,
                     offerKind = offer.OfferKind,
                     takerId = borrowerId,
                     giverId = offer.UserId
                 });
 
-                await _chatService.SaveMessageAsync(
-                    chat.Id,
-                    borrowerId,
-                    "Nowa prośba o wypożyczenie",
-                    "rental_request",
-                    payload);
+                if (string.Equals(offer.OfferKind, "Borrow", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _chatService.SaveMessageAsync(
+                        chat.Id,
+                        borrowerId,
+                        "Nowa prośba o wypożyczenie",
+                        "rental_request",
+                        payload);
+                }
+                else if (string.Equals(offer.OfferKind, "Give", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _chatService.SaveMessageAsync(
+                        chat.Id,
+                        borrowerId,
+                        "Nowa prośba o oddanie",
+                        "give_request",
+                        payload);
+                }
             }
 
             return Ok(new { escrowId = escrow?.Id });
@@ -147,11 +182,14 @@ namespace Share_Care.Controllers
             }
             else
             {
-                var update = Builders<Offer>.Update
-                    .Set(o => o.Status, "Completed")
-                    .Set(o => o.CompletedAt, DateTime.UtcNow);
+                await _offers.DeleteOneAsync(o => o.OfferId == offerId);
+                await _rewardsService.AwardGiverBonusAsync(offer.UserId, 10);
 
-                await _offers.UpdateOneAsync(o => o.OfferId == offerId, update);
+                await SendRentalUpdateMessage(offer, giverId, "give_approved", "Giver zaakceptował prośbę");
+
+                return Ok(new { 
+                    message = "Prośba o oddanie zaakceptowana",
+                });
             }
 
             await SendRentalUpdateMessage(offer, giverId, "rental_approved", "Giver zaakceptował prośbę");
