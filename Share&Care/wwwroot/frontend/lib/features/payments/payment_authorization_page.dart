@@ -449,6 +449,23 @@ class _PaymentAuthorizationPageState extends State<PaymentAuthorizationPage>
         title: const Text('Autoryzacja płatności'),
         backgroundColor: ClassicStyle.my_dark_green,
         foregroundColor: Colors.white,
+        flexibleSpace: SafeArea(
+          child: Center(
+            child: GestureDetector(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Dziękuję że jesteś'),
+                ),
+              );
+            },
+            child: Image.asset(
+              'images/logo/shareandcare_logo.png',
+              height: 40,
+              ),
+            ),
+          ),
+        ),
         elevation: 0,
       ),
       body: Padding(

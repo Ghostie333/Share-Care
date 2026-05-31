@@ -143,6 +143,23 @@ class _FiltersPageState extends State<FiltersPage> {
         title: const Text('Filtry'),
         backgroundColor: ClassicStyle.my_dark_green,
         foregroundColor: Colors.white,
+        flexibleSpace: SafeArea(
+          child: Center(
+            child: GestureDetector(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Dziękuję że jesteś'),
+                ),
+              );
+            },
+            child: Image.asset(
+              'images/logo/shareandcare_logo.png',
+              height: 40,
+              ),
+            ),
+          ),
+        ),
       ),
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(

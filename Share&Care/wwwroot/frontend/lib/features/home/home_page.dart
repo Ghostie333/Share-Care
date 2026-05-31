@@ -13,6 +13,7 @@ import '../../config/app_config.dart';
 import '../../services/auth_service.dart';
 import '../../services/announcement_service.dart';
 import '../../services/user_profile_service.dart';
+import '../../services/rental_service.dart';
 import '../announcements/create_announcement_sheet.dart';
 import '../../utils/animations.dart';
 import '../auth/auth_login_page.dart';
@@ -229,37 +230,59 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     Row(
                       children: [
-                        Expanded(
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.cardColor,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black,
+                                blurRadius: 10,
+                                spreadRadius: 1,
+                                offset: Offset(0, 4),
                               ),
-                              decoration: BoxDecoration(
-                                color: theme.cardColor,
-                                borderRadius: BorderRadius.circular(10),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black,
-                                    blurRadius: 10,
-                                    spreadRadius: 1,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Text(
-                                'Witaj, $greetingNick',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                            ],
+                          ),
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxWidth: 140,
+                            ),
+                            child: Text(
+                              'Witaj, \n$greetingNick',
+                              softWrap: true,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+
+                        const Spacer(),
+
+                        GestureDetector(
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Dziękuję że jesteś'),
+                              ),
+                            );
+                          },
+                          child: Image.asset(
+                            'images/logo/shareandcare_logo.png',
+                            height: 60,
+                          ),
+                        ),
+
+                        const Spacer(),
+
                         _buildAuthButton(theme),
+                                            
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -478,7 +501,11 @@ class _HomePageState extends State<HomePage> {
     final userId = widget.authResult.userId;
     final bool isLoggedIn = userId != null && userId.isNotEmpty;
 
-    final label = isLoggedIn ? 'ID: $userId' : 'Zaloguj się';
+    final shortId = isLoggedIn
+      ? '${userId.length > 10 ? userId.substring(0, 10) : userId.substring(0, 10)}...'
+      : '';
+
+    final label = isLoggedIn ? 'ID: $shortId' : 'Zaloguj się';
 
     return OutlinedButton(
       style: OutlinedButton.styleFrom(
@@ -699,7 +726,7 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Dziel sie, wypozyczaj i dawaj drugie zycie rzeczom.',
+            'Dziel się, wypożyczaj i dawaj drugie życie rzeczom.',
             textAlign: TextAlign.center,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
@@ -709,7 +736,7 @@ class _HomePageState extends State<HomePage> {
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 500),
             child: Text(
-              'Share&Care to lokalna platforma wymiany i wypozyczania. '
+              'Share&Care to lokalna platforma wymiany i wypożyczania. '
               'Znajdź ogloszenia w okolicy, pomóż innym i buduj zaufanie '
               'dzięki wspólnym spotkaniom i bezpiecznemu mechanizmowi wypożyczania,'
               'który dba o ineteresy obu stron',
@@ -851,16 +878,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                         );
                       },
-                      onPayment: () {
-                        Navigator.of(context).push(
-                          createSlideFadeRoute(
-                            PaymentAuthorizationPage(
-                              authResult: widget.authResult,
-                              announcement: ad,
-                            ),
-                          ),
-                        );
-                      },
+                      onPayment: () => _handleTakeAction(ad),
                     );
                   },
                 );
@@ -916,17 +934,37 @@ class _HomePageState extends State<HomePage> {
             );
           },
           onPayment: () {
-            Navigator.of(context).push(
-              createSlideFadeRoute(
-                PaymentAuthorizationPage(
-                  authResult: widget.authResult,
-                  announcement: ad,
-                ),
-              ),
-            );
+            _handleTakeAction(ad);
           },
         );
       },
+    );
+  }
+
+  Future<void> _handleTakeAction(Announcement ad) async {
+    if (ad.offerKind == 'Give') {
+      try {
+        await RentalService.startRental(offerId: ad.id);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Prośba o oddanie została wysłana.')),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Nie udało się wysłać prośby: $e')),
+        );
+      }
+      return;
+    }
+
+    Navigator.of(context).push(
+      createSlideFadeRoute(
+        PaymentAuthorizationPage(
+          authResult: widget.authResult,
+          announcement: ad,
+        ),
+      ),
     );
   }
 }

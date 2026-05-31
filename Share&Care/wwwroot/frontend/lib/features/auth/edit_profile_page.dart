@@ -105,6 +105,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text('Edycja profilu'),
+        flexibleSpace: SafeArea(
+          child: Center(
+            child: GestureDetector(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Dziękuję że jesteś'),
+                ),
+              );
+            },
+            child: Image.asset(
+              'images/logo/shareandcare_logo.png',
+              height: 40,
+              ),
+            ),
+          ),
+        ),
         elevation: 0,
       ),
       backgroundColor: scaffoldBg,

@@ -112,7 +112,27 @@ class _RewardsPageState extends State<RewardsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Nagrody')),
+      appBar: 
+        AppBar(
+          title: const Text('Nagrody'),
+          flexibleSpace: SafeArea(
+          child: Center(
+            child: GestureDetector(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Dziękuję że jesteś'),
+                ),
+              );
+            },
+            child: Image.asset(
+              'images/logo/shareandcare_logo.png',
+              height: 40,
+              ),
+            ),
+          ),
+        ),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView.separated(

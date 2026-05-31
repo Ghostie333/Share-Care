@@ -125,6 +125,23 @@ class _LoginScreenState extends State<LoginScreen> {
       appBar: AppBar(
         elevation: 0,
         title: const Text('Logowanie'),
+        flexibleSpace: SafeArea(
+          child: Center(
+            child: GestureDetector(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Dziękuję że jesteś'),
+                ),
+              );
+            },
+            child: Image.asset(
+              'images/logo/shareandcare_logo.png',
+              height: 40,
+              ),
+            ),
+          ),
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {

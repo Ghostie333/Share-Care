@@ -138,18 +138,6 @@ namespace Share_Care.Services
 
             await _walletService.AddFundsAsync(transaction.UserId, transaction.Amount);
 
-            var creditsPerPlnRaw = _config["Credits:PerPln"];
-            var creditsPerPln = int.TryParse(creditsPerPlnRaw, out var parsed) ? parsed : 1;
-            var creditsToAdd = (int)Math.Round(transaction.Amount * creditsPerPln, MidpointRounding.AwayFromZero);
-            if (creditsToAdd > 0)
-            {
-                var users = _db.GetCollection<UserData>("users");
-                await users.UpdateOneAsync(
-                    u => u.UserId == transaction.UserId,
-                    Builders<UserData>.Update.Inc(u => u.Credits, creditsToAdd)
-                );
-            }
-
             _logger.LogInformation($"Payment success: {transaction.Id}");
         }
 

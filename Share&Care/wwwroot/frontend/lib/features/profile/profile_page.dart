@@ -148,6 +148,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(
         elevation: 0,
         title: const Text('Profil'),
+        flexibleSpace: SafeArea(
+          child: Center(
+            child: GestureDetector(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Dziękuję że jesteś'),
+                ),
+              );
+            },
+            child: Image.asset(
+              'images/logo/shareandcare_logo.png',
+              height: 40,
+              ),
+            ),
+          ),
+        ),
         backgroundColor: theme.appBarTheme.backgroundColor,
         foregroundColor: theme.appBarTheme.foregroundColor,
         actions: [

@@ -52,6 +52,9 @@ namespace Share_Care.Controllers
             if (!string.Equals(offer.Status, "Active", StringComparison.OrdinalIgnoreCase))
                 return BadRequest("Offer not available");
 
+            if (!string.IsNullOrWhiteSpace(offer.CurrentBorrowerId))
+                return BadRequest("Offer already has a pending request");
+
             Escrow? escrow = null;
             if (string.Equals(offer.OfferKind, "Borrow", StringComparison.OrdinalIgnoreCase))
             {
@@ -84,20 +87,11 @@ namespace Share_Care.Controllers
             else if (string.Equals(offer.OfferKind, "Give", StringComparison.OrdinalIgnoreCase))
             {
                 var update = Builders<Offer>.Update
-                    .Set(o => o.Status, "PendingApproval")
                     .Set(o => o.CurrentBorrowerId, borrowerId);
 
                 await _offers.UpdateOneAsync(o => o.OfferId == offer.OfferId, update);
 
-                var result = await _offers.UpdateOneAsync(
-                                        o => o.OfferId == offer.OfferId,
-                                        update);
-
-                Console.WriteLine($"MATCHED: {result.MatchedCount}");
-                Console.WriteLine($"MODIFIED: {result.ModifiedCount}");
-
                 // aktualizacja lokalnego obiektu
-                offer.Status = "PendingApproval";
                 offer.CurrentBorrowerId = borrowerId;
             }
 
@@ -168,6 +162,13 @@ namespace Share_Care.Controllers
             if (!string.Equals(offer.UserId, giverId, StringComparison.Ordinal))
                 return Forbid();
 
+            if (string.IsNullOrWhiteSpace(offer.CurrentBorrowerId))
+                return BadRequest("No pending request for this offer");
+
+            if (string.Equals(offer.Status, "InProgress", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(offer.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+                return BadRequest("Request already decided");
+
             if (string.Equals(offer.OfferKind, "Borrow", StringComparison.OrdinalIgnoreCase))
             {
                 var approved = await _escrowService.ApproveEscrowAsync(offerId);
@@ -182,17 +183,16 @@ namespace Share_Care.Controllers
             }
             else
             {
+                await SendRentalUpdateMessage(offer, giverId, "give_approved", "Prośba została zaakceptowana");
+                await _rewardsService.AwardCreditsAsync(offer.UserId, 60);
                 await _offers.DeleteOneAsync(o => o.OfferId == offerId);
-                await _rewardsService.AwardGiverBonusAsync(offer.UserId, 10);
-
-                await SendRentalUpdateMessage(offer, giverId, "give_approved", "Giver zaakceptował prośbę");
 
                 return Ok(new { 
                     message = "Prośba o oddanie zaakceptowana",
                 });
             }
 
-            await SendRentalUpdateMessage(offer, giverId, "rental_approved", "Giver zaakceptował prośbę");
+            await SendRentalUpdateMessage(offer, giverId, "rental_approved", "Prośba została zaakceptowana");
 
             return Ok();
         }
@@ -215,6 +215,12 @@ namespace Share_Care.Controllers
             if (!string.Equals(offer.UserId, giverId, StringComparison.Ordinal))
                 return Forbid();
 
+            if (string.IsNullOrWhiteSpace(offer.CurrentBorrowerId))
+                return BadRequest("No pending request for this offer");
+
+            if (string.Equals(offer.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+                return BadRequest("Request already decided");
+
             if (string.Equals(offer.OfferKind, "Borrow", StringComparison.OrdinalIgnoreCase))
             {
                 await _escrowService.CancelEscrowAsync(offerId);
@@ -229,8 +235,8 @@ namespace Share_Care.Controllers
             await _offers.UpdateOneAsync(o => o.OfferId == offerId, update);
 
             var declineMessage = string.Equals(offer.OfferKind, "Borrow", StringComparison.OrdinalIgnoreCase)
-                ? "Giver odrzucił prośbę. Kaucja wróciła na konto takera."
-                : "Giver odrzucił prośbę.";
+                ? "Prośba została odrzucona. Kaucja wróciła na konto takera."
+                : "Prośba została odrzucona.";
 
             await SendRentalUpdateMessage(offer, giverId, "rental_declined", declineMessage);
 

@@ -518,7 +518,7 @@ class _AnnouncementDetailsDialogState extends State<AnnouncementDetailsDialog> {
     if (isAnnouncement &&
         !widget.ad.isOwner &&
         widget.onPayment != null &&
-        widget.ad.offerKind == 'Borrow') {
+        (widget.ad.offerKind == 'Borrow' || widget.ad.offerKind == 'Give')) {
       buttons.add(
         buildAdaptiveButton(
           onPressed: () {
@@ -527,7 +527,7 @@ class _AnnouncementDetailsDialogState extends State<AnnouncementDetailsDialog> {
           },
           icon: Icons.payment,
           label: widget.ad.offerKind == 'Give'
-              ? 'Poproś o oddanie'
+              ? 'Weź'
               : 'Wypożycz',
         ),
       );

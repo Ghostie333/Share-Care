@@ -143,44 +143,82 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
                 ),
                 child: Column(
                   children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.cardColor,
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black,
-                              blurRadius: 10,
-                              spreadRadius: 1,
-                              offset: Offset(0, 4),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final maxCardWidth = (constraints.maxWidth * 0.38)
+                            .clamp(120.0, 220.0)
+                            .toDouble();
+
+                        return Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxWidth: maxCardWidth,
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: theme.cardColor,
+                                    borderRadius: BorderRadius.circular(10),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Colors.black,
+                                        blurRadius: 10,
+                                        spreadRadius: 1,
+                                        offset: Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Text(
+                                    _announcementTypeFilter == null
+                                        ? 'Ogłoszenia i zgłoszenia'
+                                        : _announcementTypeFilter!,
+                                    softWrap: true,
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Dziękuję że jesteś'),
+                                  ),
+                                );
+                              },
+                              child: Image.asset(
+                                'images/logo/shareandcare_logo.png',
+                                height: 42,
+                                fit: BoxFit.contain,
+                              ),
                             ),
                           ],
-                        ),
-                        child: Text(
-                          _announcementTypeFilter == null
-                              ? 'Ogłoszenia i zgłoszenia'
-                              : _announcementTypeFilter!,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
-                    const SizedBox(height: 16),
-                    _buildSearchBar(context),
+
                     const SizedBox(height: 12),
+
+                    // SEARCH BAR (poniżej)
+                    _buildSearchBar(context),
+
+                    const SizedBox(height: 12),
+
                     activeFilters,
                   ],
                 ),
               ),
             ),
           ),
+
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -361,8 +399,9 @@ class _AnnouncementsFeedPageState extends State<AnnouncementsFeedPage> {
       labels.add('Lokalizacja: ${_locationFilter!}');
     }
     if (_expirationFrom != null || _expirationTo != null) {
-      final fromText =
-          _expirationFrom != null ? _formatDate(_expirationFrom!) : '-';
+      final fromText = _expirationFrom != null
+          ? _formatDate(_expirationFrom!)
+          : '-';
       final toText = _expirationTo != null ? _formatDate(_expirationTo!) : '-';
       labels.add('Wazne do: $fromText - $toText');
     }

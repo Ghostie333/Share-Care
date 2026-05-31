@@ -315,14 +315,7 @@ class _ChatPageState extends State<ChatPage> {
           onDelete: null,
           onClose: null,
           onPayment: () {
-            Navigator.of(context).push(
-              createSlideFadeRoute(
-                PaymentAuthorizationPage(
-                  authResult: widget.authResult,
-                  announcement: ad,
-                ),
-              ),
-            );
+            _openPaymentForOffer(ad.id, chatId: thread.chatId);
           },
         ),
       );
@@ -404,24 +397,24 @@ class _ChatPageState extends State<ChatPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Zglos sprawe do administracji'),
+        title: const Text('Zgloś sprawę do administracji'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<String>(
               value: reason,
               decoration: const InputDecoration(
-                labelText: 'Powod',
+                labelText: 'Powód',
                 border: OutlineInputBorder(),
               ),
               items: const [
                 DropdownMenuItem(
-                  value: 'Nieprawidlowa ocena',
-                  child: Text('Nieprawidlowa ocena'),
+                  value: 'Nieprawidłowa ocena',
+                  child: Text('Nieprawidłowa ocena'),
                 ),
                 DropdownMenuItem(
-                  value: 'Nieprawidlowy stan',
-                  child: Text('Nieprawidlowy stan rzeczy'),
+                  value: 'Nieprawidłowy stan',
+                  child: Text('Nieprawidłowy stan rzeczy'),
                 ),
                 DropdownMenuItem(
                   value: 'Inne',
@@ -451,7 +444,7 @@ class _ChatPageState extends State<ChatPage> {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Wyslij'),
+            child: const Text('Wyślij'),
           ),
         ],
       ),
@@ -466,7 +459,7 @@ class _ChatPageState extends State<ChatPage> {
     if (description.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Opis nie moze byc pusty.')),
+          const SnackBar(content: Text('Opis nie może być pusty.')),
         );
       }
       controller.dispose();
@@ -484,12 +477,12 @@ class _ChatPageState extends State<ChatPage> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Zgloszenie zostalo wyslane.')),
+        const SnackBar(content: Text('Zgłoszenie zostało wysłane.')),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Nie udalo sie wyslac: $e')),
+        SnackBar(content: Text('Nie udało się wysłać: $e')),
       );
     } finally {
       controller.dispose();
@@ -529,7 +522,7 @@ class _ChatPageState extends State<ChatPage> {
                   _showShareOfferSheet(thread);
                 },
                 icon: const Icon(Icons.campaign_outlined),
-                label: const Text('Udostepnij swoje ogloszenie'),
+                label: const Text('Udostępnij swoje ogłoszenie'),
               ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
@@ -538,7 +531,7 @@ class _ChatPageState extends State<ChatPage> {
                   _showCreateChatOfferSheet(thread);
                 },
                 icon: const Icon(Icons.add_circle_outline),
-                label: const Text('Utworz oferte w chacie'),
+                label: const Text('Utwórz ofertę w chacie'),
               ),
             ],
           ),
@@ -572,7 +565,7 @@ class _ChatPageState extends State<ChatPage> {
                 }
 
                 if (snapshot.hasError) {
-                  return Text('Nie udalo sie pobrac ofert: ${snapshot.error}');
+                  return Text('Nie udało się pobrać ofert: ${snapshot.error}');
                 }
 
                 final offers = (snapshot.data ?? [])
@@ -583,7 +576,7 @@ class _ChatPageState extends State<ChatPage> {
                     .toList();
 
                 if (offers.isEmpty) {
-                  return const Text('Brak aktywnych ogloszen do udostepnienia.');
+                  return const Text('Brak aktywnych ogloszeń do udostępnienia.');
                 }
 
                 return ListView.separated(
@@ -627,7 +620,7 @@ class _ChatPageState extends State<ChatPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Nie udalo sie pobrac profilu: $e')),
+        SnackBar(content: Text('Nie udało się pobrać profilu: $e')),
       );
       return;
     }
@@ -702,7 +695,7 @@ class _ChatPageState extends State<ChatPage> {
             } catch (e) {
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Blad tworzenia oferty: $e')),
+                SnackBar(content: Text('Bląd tworzenia oferty: $e')),
               );
             }
           },
@@ -726,7 +719,7 @@ class _ChatPageState extends State<ChatPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Nie udalo sie wyslac oferty: $e')),
+        SnackBar(content: Text('Nie udało się wyslać oferty: $e')),
       );
     }
   }
@@ -746,18 +739,27 @@ class _ChatPageState extends State<ChatPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Nie udalo sie otworzyc oferty: $e')),
+        SnackBar(content: Text('Nie udało się otworzyć oferty: $e')),
       );
     }
   }
 
-  Future<void> _openPaymentForOffer(String offerId) async {
+  Future<void> _openPaymentForOffer(String offerId, {String? chatId}) async {
     try {
       final ad = await AnnouncementService.getOfferById(
         offerId,
         currentUserId: _userId,
       );
       if (!mounted) return;
+
+      if (ad.offerKind == 'Give') {
+        await RentalService.startRental(offerId: ad.id, chatId: chatId);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Prośba o oddanie została wysłana.')),
+        );
+        return;
+      }
 
       Navigator.of(context).push(
         createSlideFadeRoute(
@@ -770,7 +772,7 @@ class _ChatPageState extends State<ChatPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Nie udalo sie otworzyc platnosci: $e')),
+        SnackBar(content: Text('Nie udało się otworzyć płatności: $e')),
       );
     }
   }
@@ -790,7 +792,7 @@ class _ChatPageState extends State<ChatPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Nie udalo sie pobrac danych: $e')),
+        SnackBar(content: Text('Nie udało się pobrać danych: $e')),
       );
       return;
     }
@@ -867,7 +869,7 @@ class _ChatPageState extends State<ChatPage> {
             } catch (e) {
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Blad edycji oferty: $e')),
+                SnackBar(content: Text('Bląd edycji oferty: $e')),
               );
             }
           },
@@ -1138,8 +1140,7 @@ class _ChatPageState extends State<ChatPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text('Wiadomości'),
+      appBar: AppBar(title: const Text('Wiadomości'),
         actions: [
           if (_selectedThread != null)
             IconButton(
@@ -1148,6 +1149,23 @@ class _ChatPageState extends State<ChatPage> {
               onPressed: _onDeleteCurrentChat,
             ),
         ],
+        flexibleSpace: SafeArea(
+          child: Center(
+            child: GestureDetector(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Dziękuję że jesteś'),
+                ),
+              );
+            },
+            child: Image.asset(
+              'images/logo/shareandcare_logo.png',
+              height: 60,
+              ),
+            ),
+          ),
+        ),
       ),
       body: SafeArea(
         bottom: false,
@@ -1427,6 +1445,13 @@ class _ChatPageState extends State<ChatPage> {
               final isGiver = giverId != null && giverId == currentUserId;
               final isTaker = takerId != null && takerId == currentUserId;
               final offerId = m.data?['offerId']?.toString() ?? thread.listingId;
+              final hasDecision = _messages.any((msg) {
+                final decisionOfferId = msg.data?['offerId']?.toString() ?? thread.listingId;
+                if (decisionOfferId != offerId) return false;
+                return msg.kind == 'rental_approved' ||
+                    msg.kind == 'rental_declined' ||
+                    msg.kind == 'give_approved';
+              });
 
               if (m.kind == 'report_offer') {
                 final data = m.data ?? <String, dynamic>{};
@@ -1453,7 +1478,10 @@ class _ChatPageState extends State<ChatPage> {
                     canRent: canRent,
                     canEdit: isOfferOwner,
                     onDetails: () => _openOfferDetails(offer.id),
-                    onRent: () => _openPaymentForOffer(offer.id),
+                    onRent: () => _openPaymentForOffer(
+                      offer.id,
+                      chatId: _selectedChatId,
+                    ),
                     onEdit: () => _openEditOffer(offer.id),
                   );
                 }
@@ -1464,39 +1492,85 @@ class _ChatPageState extends State<ChatPage> {
                   child: ListTile(
                     title: const Text('Nowa prośba o wypożyczenie'),
                     subtitle: Text(m.content),
-                    trailing: Wrap(
-                      spacing: 8,
-                      children: [
-                        TextButton(
-                          onPressed: () async {
-                            try {
-                              await RentalService.approveRental(offerId);
-                              await _loadMessagesForSelected();
-                            } catch (e) {
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Nie udało się zaakceptować: $e')),
-                              );
-                            }
-                          },
-                          child: const Text('Akceptuj'),
-                        ),
-                        TextButton(
-                          onPressed: () async {
-                            try {
-                              await RentalService.declineRental(offerId);
-                              await _loadMessagesForSelected();
-                            } catch (e) {
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Nie udało się odrzucić: $e')),
-                              );
-                            }
-                          },
-                          child: const Text('Odrzuć'),
-                        ),
-                      ],
-                    ),
+                    trailing: hasDecision
+                        ? null
+                        : Wrap(
+                            spacing: 8,
+                            children: [
+                              TextButton(
+                                onPressed: () async {
+                                  try {
+                                    await RentalService.approveRental(offerId);
+                                    await _loadMessagesForSelected();
+                                  } catch (e) {
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Nie udało się zaakceptować: $e')),
+                                    );
+                                  }
+                                },
+                                child: const Text('Akceptuj'),
+                              ),
+                              TextButton(
+                                onPressed: () async {
+                                  try {
+                                    await RentalService.declineRental(offerId);
+                                    await _loadMessagesForSelected();
+                                  } catch (e) {
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Nie udało się odrzucić: $e')),
+                                    );
+                                  }
+                                },
+                                child: const Text('Odrzuć'),
+                              ),
+                            ],
+                          ),
+                  ),
+                );
+              }
+
+              if (m.kind == 'give_request' && isGiver) {
+                return Card(
+                  child: ListTile(
+                    title: const Text('Nowa prośba o oddanie'),
+                    subtitle: Text(m.content),
+                    trailing: hasDecision
+                        ? null
+                        : Wrap(
+                            spacing: 8,
+                            children: [
+                              TextButton(
+                                onPressed: () async {
+                                  try {
+                                    await RentalService.approveRental(offerId);
+                                    await _loadMessagesForSelected();
+                                  } catch (e) {
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Nie udało się zaakceptować: $e')),
+                                    );
+                                  }
+                                },
+                                child: const Text('Akceptuj'),
+                              ),
+                              TextButton(
+                                onPressed: () async {
+                                  try {
+                                    await RentalService.declineRental(offerId);
+                                    await _loadMessagesForSelected();
+                                  } catch (e) {
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Nie udało się odrzucić: $e')),
+                                    );
+                                  }
+                                },
+                                child: const Text('Odrzuć'),
+                              ),
+                            ],
+                          ),
                   ),
                 );
               }
@@ -1523,6 +1597,51 @@ class _ChatPageState extends State<ChatPage> {
                       onPressed: () => _showReturnDialog(offerId),
                       child: const Text('Zgłoś zwrot'),
                     ),
+                  ),
+                );
+              }
+
+              if (m.kind == 'rental_approved' && !isTaker) {
+                return Card(
+                  child: ListTile(
+                    title: const Text('Prośba została zaakceptowana'),
+                    subtitle: Text(m.content),
+                  ),
+                );
+              }
+
+              if (m.kind == 'rental_declined' && isTaker) {
+                return Card(
+                  child: ListTile(
+                    title: const Text('Prośba została odrzucona'),
+                    subtitle: Text(m.content),
+                  ),
+                );
+              }
+
+              if (m.kind == 'rental_declined' && !isTaker) {
+                return Card(
+                  child: ListTile(
+                    title: const Text('Prośba została odrzucona'),
+                    subtitle: Text(m.content),
+                  ),
+                );
+              }
+
+              if (m.kind == 'give_approved' && isTaker) {
+                return Card(
+                  child: ListTile(
+                    title: const Text('Prośba została zaakceptowana'),
+                    subtitle: Text(m.content),
+                  ),
+                );
+              }
+
+              if (m.kind == 'give_approved' && !isTaker) {
+                return Card(
+                  child: ListTile(
+                    title: const Text('Prośba została zaakceptowana'),
+                    subtitle: Text(m.content),
                   ),
                 );
               }
@@ -1778,7 +1897,9 @@ class _ChatPageState extends State<ChatPage> {
                     ElevatedButton.icon(
                       onPressed: onRent,
                       icon: const Icon(Icons.payments_outlined),
-                      label: const Text('Wypożycz'),
+                      label: Text(
+                        offer.offerKind == 'Give' ? 'Weź' : 'Wypożycz',
+                      ),
                     ),
                   if (canEdit)
                     TextButton.icon(

@@ -17,7 +17,27 @@ class HistoryPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(title: const Text('Historia')),
+      appBar: 
+        AppBar(
+          title: const Text('Historia'),
+          flexibleSpace: SafeArea(
+          child: Center(
+            child: GestureDetector(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Dziękuję że jesteś'),
+                ),
+              );
+            },
+            child: Image.asset(
+              'images/logo/shareandcare_logo.png',
+              height: 40,
+              ),
+            ),
+          ),
+        ),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

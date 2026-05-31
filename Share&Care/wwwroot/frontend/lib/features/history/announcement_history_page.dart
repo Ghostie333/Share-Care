@@ -59,7 +59,27 @@ class _AnnouncementHistoryPageState extends State<AnnouncementHistoryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Historia ogłoszeń')),
+      appBar: 
+        AppBar(
+          title: const Text('Historia ogłoszeń'),
+          flexibleSpace: SafeArea(
+          child: Center(
+            child: GestureDetector(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Dziękuję że jesteś'),
+                ),
+              );
+            },
+            child: Image.asset(
+              'images/logo/shareandcare_logo.png',
+              height: 40,
+              ),
+            ),
+          ),
+        ),
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _inactiveAnnouncements.isEmpty

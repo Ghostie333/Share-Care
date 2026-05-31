@@ -13,7 +13,27 @@ class AchievementsGuidePage extends StatelessWidget {
     final achievements = buildAchievementProgress(stats);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Trofea i osiągnięcia')),
+      appBar: 
+        AppBar(
+          title: const Text('Trofea i osiągnięcia'),
+          flexibleSpace: SafeArea(
+          child: Center(
+            child: GestureDetector(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Dziękuję że jesteś'),
+                ),
+              );
+            },
+            child: Image.asset(
+              'images/logo/shareandcare_logo.png',
+              height: 40,
+              ),
+            ),
+          ),
+        ),
+      ),
       body: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: achievements.length,

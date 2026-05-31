@@ -62,7 +62,27 @@ class _AppRatingPageState extends State<AppRatingPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Ocena aplikacji')),
+      appBar: 
+        AppBar(
+          title: const Text('Ocena aplikacji'),
+          flexibleSpace: SafeArea(
+          child: Center(
+            child: GestureDetector(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Dziękuję że jesteś'),
+                ),
+              );
+            },
+            child: Image.asset(
+              'images/logo/shareandcare_logo.png',
+              height: 40,
+              ),
+            ),
+          ),
+        ),
+        ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

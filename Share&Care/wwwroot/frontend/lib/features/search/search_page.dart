@@ -55,7 +55,27 @@ class _SearchPageState extends State<SearchPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(title: const Text('Kategorie')),
+      appBar: 
+        AppBar(
+          title: const Text('Kategorie'), 
+          flexibleSpace: SafeArea(
+          child: Center(
+            child: GestureDetector(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Dziękuję że jesteś'),
+                ),
+              );
+            },
+            child: Image.asset(
+              'images/logo/shareandcare_logo.png',
+              height: 40,
+              ),
+            ),
+          ),
+        ),
+      ),
       body: Column(
         children: [
           Container(

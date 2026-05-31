@@ -58,7 +58,27 @@ class _ReportHistoryPageState extends State<ReportHistoryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Historia zgłoszeń')),
+      appBar: 
+        AppBar(
+          title: const Text('Historia zgłoszeń'),
+          flexibleSpace: SafeArea(
+          child: Center(
+            child: GestureDetector(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Dziękuję że jesteś'),
+                ),
+              );
+            },
+            child: Image.asset(
+              'images/logo/shareandcare_logo.png',
+              height: 40,
+              ),
+            ),
+          ),
+        ),
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _inactiveReports.isEmpty

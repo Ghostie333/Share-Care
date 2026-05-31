@@ -24,21 +24,27 @@ class AnnouncementGrid extends StatelessWidget {
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final crossAxisCount = width < 420
-          ? 1
-          : width < 720
-          ? 2
-          : 3;
-        final childAspectRatio = width < 420
-          ? 1.45
-          : width < 520
-          ? 1.2
-          : width < 720
-          ? 1.0
-          : 0.9;
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+
+          // Minimalna szerokość pojedynczej karty
+          const minCardWidth = 320.0;
+          final isVerySmall = width < 360;
+
+          final crossAxisCount = isVerySmall
+              ? 1
+              : (width / minCardWidth).floor().clamp(1, 4);
+
+          // Dostosowanie proporcji do urządzenia
+          final childAspectRatio = isVerySmall
+              ? 1.05
+              : switch (crossAxisCount) {
+                  1 => 1.2,  // telefony
+                  2 => 1.0,  // tablety pionowo
+                  3 => 0.9,  // tablety poziomo
+                  _ => 0.85, // desktop
+                };
 
         return GridView.builder(
           itemCount: announcements.length,
@@ -126,54 +132,102 @@ class _AnnouncementCard extends StatelessWidget {
                 style: titleStyle,
               ),
               const SizedBox(height: 8),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.bottomLeft,
-                      child: Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          Chip(
-                            label: Text(ad.isActive ? 'Aktywne' : 'Zakończone'),
-                            backgroundColor: ad.isActive
-                                ? theme.colorScheme.primaryContainer
-                                : theme.colorScheme.surfaceVariant,
-                            labelStyle: theme.textTheme.labelMedium?.copyWith(
-                              color: ad.isActive
-                                  ? theme.colorScheme.onPrimaryContainer
-                                  : theme.colorScheme.onSurfaceVariant,
-                            ),
+              if (isPhone)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        Chip(
+                          label: Text(ad.isActive ? 'Aktywne' : 'Zakończone'),
+                          backgroundColor: ad.isActive
+                              ? theme.colorScheme.primaryContainer
+                              : theme.colorScheme.surfaceVariant,
+                          labelStyle: theme.textTheme.labelMedium?.copyWith(
+                            color: ad.isActive
+                                ? theme.colorScheme.onPrimaryContainer
+                                : theme.colorScheme.onSurfaceVariant,
                           ),
-                          Chip(
-                            label: Text(typeLabel),
-                            backgroundColor:
-                                theme.colorScheme.secondaryContainer,
-                            labelStyle: theme.textTheme.labelMedium?.copyWith(
-                              color: theme.colorScheme.onSecondaryContainer,
-                            ),
+                        ),
+                        Chip(
+                          label: Text(typeLabel),
+                          backgroundColor:
+                              theme.colorScheme.secondaryContainer,
+                          labelStyle: theme.textTheme.labelMedium?.copyWith(
+                            color: theme.colorScheme.onSecondaryContainer,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ),
-                  if (ad.offerKind == 'Borrow' && ad.deposit != null)
-                    Flexible(
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 8, bottom: 2),
-                        child: Text(
-                          'Kaucja: ${ad.deposit!.toStringAsFixed(2)} zł',
-                          style: depositStyle,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.right,
+                    if (ad.offerKind == 'Borrow' && ad.deposit != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            'Kaucja: ${ad.deposit!.toStringAsFixed(2)} zł',
+                            style: depositStyle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.right,
+                          ),
+                        ),
+                      ),
+                  ],
+                )
+              else
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.bottomLeft,
+                        child: Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            Chip(
+                              label:
+                                  Text(ad.isActive ? 'Aktywne' : 'Zakończone'),
+                              backgroundColor: ad.isActive
+                                  ? theme.colorScheme.primaryContainer
+                                  : theme.colorScheme.surfaceVariant,
+                              labelStyle: theme.textTheme.labelMedium?.copyWith(
+                                color: ad.isActive
+                                    ? theme.colorScheme.onPrimaryContainer
+                                    : theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            Chip(
+                              label: Text(typeLabel),
+                              backgroundColor:
+                                  theme.colorScheme.secondaryContainer,
+                              labelStyle:
+                                  theme.textTheme.labelMedium?.copyWith(
+                                color: theme.colorScheme.onSecondaryContainer,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                ],
-              ),
+                    if (ad.offerKind == 'Borrow' && ad.deposit != null)
+                      Flexible(
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 8, bottom: 2),
+                          child: Text(
+                            'Kaucja: ${ad.deposit!.toStringAsFixed(2)} zł',
+                            style: depositStyle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.right,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
             ],
           ),
         ),

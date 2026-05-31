@@ -11,6 +11,26 @@ namespace Share_Care.Services
 
         private const decimal PER_PLN_RATE = 4m;
 
+        public async Task<bool> AwardCreditsAsync(string userId, int credits)
+        {
+            if (string.IsNullOrWhiteSpace(userId) || credits <= 0)
+                return false;
+
+            try
+            {
+                var update = Builders<UserData>.Update.Inc(u => u.Credits, credits);
+                var result = await _users.UpdateOneAsync(u => u.UserId == userId, update);
+
+                _logger.LogInformation("Awarded {Credits} credits to user {UserId}", credits, userId);
+                return result.ModifiedCount > 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to award credits to user {UserId}", userId);
+                return false;
+            }
+        }
+
         public async Task<bool> AwardGiverBonusAsync(string giverId, decimal bonusAmount)
         {
             if (string.IsNullOrWhiteSpace(giverId) || bonusAmount <= 0)

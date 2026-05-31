@@ -66,7 +66,27 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     final unlockedAchievements = achievements.where((a) => a.unlocked).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profil użytkownika')),
+      appBar: 
+        AppBar(
+          title: const Text('Profil użytkownika'),
+          flexibleSpace: SafeArea(
+          child: Center(
+            child: GestureDetector(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Dziękuję że jesteś'),
+                ),
+              );
+            },
+            child: Image.asset(
+              'images/logo/shareandcare_logo.png',
+              height: 40,
+              ),
+            ),
+          ),
+        ),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _profile == null
