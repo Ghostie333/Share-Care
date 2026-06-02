@@ -273,17 +273,18 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       if (profile.showLastName) profile.lastName,
     ].join(' ').trim();
     final showPhoto = profile.showProfileImage;
+    final avatarUrl = showPhoto
+        ? (profile.profileImageId == null || profile.profileImageId!.isEmpty
+            ? '${AppConfig.apiBaseUrl}/UserProfile/photo/${profile.userId}'
+            : '${AppConfig.apiBaseUrl}/UserProfile/photo/${profile.userId}?v=${profile.profileImageId}')
+        : null;
 
     return Column(
       children: [
         CircleAvatar(
           radius: 48,
           backgroundColor: theme.colorScheme.primary,
-          foregroundImage: showPhoto
-              ? NetworkImage(
-                  '${AppConfig.apiBaseUrl}/UserProfile/photo/${profile.userId}',
-                )
-              : null,
+          foregroundImage: avatarUrl == null ? null : NetworkImage(avatarUrl),
           child: showPhoto
               ? null
               : Text(

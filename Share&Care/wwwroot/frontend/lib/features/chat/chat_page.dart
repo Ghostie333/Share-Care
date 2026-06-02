@@ -1412,7 +1412,7 @@ class _ChatPageState extends State<ChatPage> {
                   TextButton.icon(
                     onPressed: () => _showTicketDialog(thread),
                     icon: const Icon(Icons.flag_outlined),
-                    label: const Text('Zglos sprawe'),
+                    label: const Text('Zgłoś sprawe'),
                   ),
                 ],
               ),

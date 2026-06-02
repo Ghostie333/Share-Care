@@ -97,11 +97,11 @@ namespace Share_Care.Controllers
                     {
                         ChatId = c.Id,
                         ListingId = c.ListingId,
-                        ListingTitle = offer?.Title ?? string.Empty,
+                        ListingTitle = ResolveListingTitle(offer),
                         ListingStatus = listingStatus,
                         CurrentBorrowerId = offer?.CurrentBorrowerId,
                         OtherUserId = otherUserId,
-                        OtherUserName = ((otherUser?.FirstName ?? string.Empty) + " " + (otherUser?.LastName ?? string.Empty)).Trim(),
+                        OtherUserName = ResolveUserDisplayName(otherUser),
                         LastMessage = c.LastMessage,
                         LastMessageAt = c.LastMessageAt,
                         ListingFirstImageId = offer?.ImageIds?.FirstOrDefault()
@@ -159,11 +159,11 @@ namespace Share_Care.Controllers
                     {
                         ChatId = c.Id,
                         ListingId = c.ListingId,
-                        ListingTitle = offer?.Title ?? string.Empty,
+                        ListingTitle = ResolveListingTitle(offer),
                         ListingStatus = listingStatus,
                         CurrentBorrowerId = offer?.CurrentBorrowerId,
                         OtherUserId = otherUserId,
-                        OtherUserName = ((otherUser?.FirstName ?? string.Empty) + " " + (otherUser?.LastName ?? string.Empty)).Trim(),
+                        OtherUserName = ResolveUserDisplayName(otherUser),
                         LastMessage = c.LastMessage,
                         LastMessageAt = c.LastMessageAt,
                         ListingFirstImageId = offer?.ImageIds?.FirstOrDefault()
@@ -302,6 +302,19 @@ namespace Share_Care.Controllers
             }
 
             return string.Equals(raw, "Zgloszenie", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string ResolveUserDisplayName(UserData? user)
+        {
+            var name = ((user?.FirstName ?? string.Empty) + " " + (user?.LastName ?? string.Empty)).Trim();
+            return string.IsNullOrWhiteSpace(name) ? "Użytkownik usunięty" : name;
+        }
+
+        private static string ResolveListingTitle(Offer? offer)
+        {
+            return string.IsNullOrWhiteSpace(offer?.Title)
+                ? "Usunięte ogłoszenie"
+                : offer!.Title;
         }
 
         /// <summary>

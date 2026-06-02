@@ -21,6 +21,7 @@ class UserProfileInfo {
   final String raiting;
   final int ratingCount;
   final int credits;
+  final String? profileImageId;
   final double walletBalance;
   final double walletLocked;
   final String type;
@@ -51,6 +52,7 @@ class UserProfileInfo {
     required this.raiting,
     required this.ratingCount,
     required this.credits,
+    this.profileImageId,
     required this.walletBalance,
     required this.walletLocked,
     required this.type,
@@ -89,6 +91,7 @@ class UserProfileInfo {
       raiting: (json['raiting'] ?? json['Raiting'] ?? '').toString(),
         ratingCount: int.tryParse((json['ratingCount'] ?? 0).toString()) ?? 0,
         credits: int.tryParse((json['credits'] ?? 0).toString()) ?? 0,
+        profileImageId: (json['profileImageId'] ?? json['ProfileImageId'])?.toString(),
         walletBalance:
           double.tryParse((json['walletBalance'] ?? 0).toString()) ?? 0,
         walletLocked:
@@ -168,6 +171,7 @@ class PublicProfileInfo {
   final double raiting;
   final int ratingCount;
   final int offersCount;
+  final String? profileImageId;
   final int activeOffersCount;
   final int activeReportsCount;
   final int completedCount;
@@ -194,6 +198,7 @@ class PublicProfileInfo {
     required this.raiting,
     required this.ratingCount,
     required this.offersCount,
+    this.profileImageId,
     required this.activeOffersCount,
     required this.activeReportsCount,
     required this.completedCount,
@@ -230,6 +235,7 @@ class PublicProfileInfo {
       raiting: double.tryParse((json['raiting'] ?? 0).toString()) ?? 0,
       ratingCount: int.tryParse((json['ratingCount'] ?? 0).toString()) ?? 0,
       offersCount: int.tryParse((json['offersCount'] ?? 0).toString()) ?? 0,
+      profileImageId: (json['profileImageId'] ?? json['ProfileImageId'])?.toString(),
       activeOffersCount:
         int.tryParse((json['activeOffersCount'] ?? 0).toString()) ?? 0,
       activeReportsCount:

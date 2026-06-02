@@ -22,6 +22,9 @@ namespace Share_Care.Controllers
         private readonly IMongoCollection<UserData> _users = database.GetCollection<UserData>("users");
         private readonly IMongoCollection<Offer> _offers = database.GetCollection<Offer>("offers");
         private readonly IMongoCollection<Escrow> _escrows = database.GetCollection<Escrow>("escrows");
+        private readonly IMongoCollection<Ticket> _tickets = database.GetCollection<Ticket>("tickets");
+        private readonly IMongoCollection<Transaction> _transactions = database.GetCollection<Transaction>("transactions");
+        private readonly IMongoCollection<Wallet> _wallets = database.GetCollection<Wallet>("wallets");
         private readonly ILogger<UserProfileController> _logger = logger;
         private readonly SecurityService _security = securityService;
         private readonly IWalletService _walletService = walletService;
@@ -206,6 +209,7 @@ namespace Share_Care.Controllers
                     raiting = user.Raiting,
                     ratingCount = user.RatingCount,
                     credits = user.Credits,
+                    profileImageId = user.ProfileImageId,
                     showFirstName = user.ShowFirstName,
                     showLastName = user.ShowLastName,
                     showCity = user.ShowCity,
@@ -291,6 +295,7 @@ namespace Share_Care.Controllers
                 phoneNumber,
                 raiting = user.Raiting,
                 ratingCount = user.RatingCount,
+                profileImageId = user.ProfileImageId,
                 showFirstName = user.ShowFirstName,
                 showLastName = user.ShowLastName,
                 showCity = user.ShowCity,
@@ -479,6 +484,14 @@ namespace Share_Care.Controllers
                     return Unauthorized();
                 }
 
+                var user = await _users.Find(u => u.UserId == currentUserId).FirstOrDefaultAsync();
+                if (user == null)
+                {
+                    return NotFound("User not found");
+                }
+
+                await DeleteUserRelatedDataAsync(currentUserId, user);
+
                 var deleteResult = await _users.DeleteOneAsync(x => x.UserId == currentUserId);
 
                 if (deleteResult.DeletedCount == 0)
@@ -492,6 +505,70 @@ namespace Share_Care.Controllers
             {
                 _logger.LogError(ex, "Nie udało się usunąć profilu użytkownika");
                 return StatusCode(500);
+            }
+        }
+
+        private async Task DeleteUserRelatedDataAsync(string userId, UserData user)
+        {
+            await DeleteProfileImageAsync(user.ProfileImageId);
+
+            var userOffers = await _offers.Find(o => o.UserId == userId).ToListAsync();
+            foreach (var offer in userOffers)
+            {
+                await DeleteGridFsFilesAsync(offer.ImageIds);
+            }
+
+            var userEscrows = await _escrows.Find(e => e.BorrowerId == userId || e.LenderId == userId).ToListAsync();
+            foreach (var escrow in userEscrows)
+            {
+                await DeleteGridFsFilesAsync(escrow.TakerReturnImageIds);
+                await DeleteGridFsFilesAsync(escrow.GiverInspectionImageIds);
+            }
+
+            await _offers.DeleteManyAsync(o => o.UserId == userId);
+            await _escrows.DeleteManyAsync(e => e.BorrowerId == userId || e.LenderId == userId);
+            await _tickets.DeleteManyAsync(t => t.UserId == userId || t.TargetUserId == userId);
+            await _transactions.DeleteManyAsync(t => t.UserId == userId);
+            await _wallets.DeleteManyAsync(w => w.UserId == userId);
+        }
+
+        private async Task DeleteProfileImageAsync(string? profileImageId)
+        {
+            if (!ObjectId.TryParse(profileImageId, out var objectId))
+            {
+                return;
+            }
+
+            await DeleteGridFsFileSafelyAsync(objectId);
+        }
+
+        private async Task DeleteGridFsFilesAsync(IEnumerable<string>? fileIds)
+        {
+            if (fileIds == null)
+            {
+                return;
+            }
+
+            foreach (var fileId in fileIds)
+            {
+                if (!ObjectId.TryParse(fileId, out var objectId))
+                {
+                    continue;
+                }
+
+                await DeleteGridFsFileSafelyAsync(objectId);
+            }
+        }
+
+        private async Task DeleteGridFsFileSafelyAsync(ObjectId objectId)
+        {
+            try
+            {
+                await _bucket.DeleteAsync(objectId);
+            }
+            catch (GridFSFileNotFoundException)
+            {
+                // Plik mógł już zostać usunięty wcześniej.
             }
         }
 

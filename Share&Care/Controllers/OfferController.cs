@@ -42,6 +42,12 @@ namespace Share_Care.Controllers
                     return BadRequest(new { message = "Kaucja jest wymagana dla wypożyczenia." });
                 }
 
+                if (IsFoodCategory(form.Category) &&
+                    !string.Equals(form.OfferKind, "Give", StringComparison.OrdinalIgnoreCase))
+                {
+                    return BadRequest(new { message = "Dla kategorii Jedzenie dostępna jest tylko opcja Oddanie." });
+                }
+
                 if (string.Equals(form.OfferKind, "WantToTake", StringComparison.OrdinalIgnoreCase))
                 {
                     if (!form.ExpirationDate.HasValue)
@@ -128,6 +134,8 @@ namespace Share_Care.Controllers
         {
             try
             {
+                await DeleteExpiredReportAndFoodOffersAsync();
+
                 page = Math.Max(page, 1);
                 limit = Math.Clamp(limit, 1, 100); // zabezpieczenie, żeby nie zabić bazy
 
@@ -225,6 +233,12 @@ namespace Share_Care.Controllers
                     (!form.Deposit.HasValue || form.Deposit.Value <= 0))
                 {
                     return BadRequest(new { message = "Kaucja jest wymagana dla wypozyczenia." });
+                }
+
+                if (IsFoodCategory(form.Category) &&
+                    !string.Equals(form.OfferKind, "Give", StringComparison.OrdinalIgnoreCase))
+                {
+                    return BadRequest(new { message = "Dla kategorii Jedzenie dostępna jest tylko opcja Oddanie." });
                 }
 
                 var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -327,7 +341,14 @@ namespace Share_Care.Controllers
         {
             try
             {
+                await DeleteExpiredReportAndFoodOffersAsync();
+
                 var offer = await _collection.Find(x => x.OfferId == offerId).FirstOrDefaultAsync();
+                if (offer is null)
+                {
+                    return NotFound();
+                }
+
                 return Ok(offer);
             }
             catch (Exception ex)
@@ -469,7 +490,14 @@ namespace Share_Care.Controllers
         {
             try
             {
+                await DeleteExpiredReportAndFoodOffersAsync();
+
                 var offer = await _collection.Find(x => x.OfferId == offerId).FirstOrDefaultAsync();
+                if (offer is null)
+                {
+                    return NotFound();
+                }
+
                 return Ok(offer);
             }
             catch (Exception ex)
@@ -542,6 +570,12 @@ namespace Share_Care.Controllers
                     (!form.Deposit.HasValue || form.Deposit.Value <= 0))
                 {
                     return BadRequest(new { message = "Kaucja jest wymagana dla wypożyczenia." });
+                }
+
+                if (IsFoodCategory(form.Category) &&
+                    !string.Equals(form.OfferKind, "Give", StringComparison.OrdinalIgnoreCase))
+                {
+                    return BadRequest(new { message = "Dla kategorii Jedzenie dostępna jest tylko opcja Oddanie." });
                 }
 
                 if (string.Equals(form.OfferKind, "WantToTake", StringComparison.OrdinalIgnoreCase))
@@ -632,6 +666,66 @@ namespace Share_Care.Controllers
                 _logger.LogError(ex, "Nie udało się zaktualizować informacji o użytkowniku");
                 return StatusCode(500);
             }
+        }
+
+        private async Task DeleteExpiredReportAndFoodOffersAsync()
+        {
+            var now = DateTime.UtcNow;
+
+            var filterBuilder = Builders<Offer>.Filter;
+            var expiredFilter = filterBuilder.And(
+                filterBuilder.Lte(o => o.ExpirationDate, now),
+                filterBuilder.Or(
+                    filterBuilder.Eq(o => o.OfferKind, "WantToTake"),
+                    filterBuilder.Regex(o => o.Category, new BsonRegularExpression("jedzenie", "i")),
+                    filterBuilder.Regex(o => o.Category, new BsonRegularExpression("^zgloszenie(\\||$)", "i")),
+                    filterBuilder.Regex(o => o.Category, new BsonRegularExpression("^zgłoszenie(\\||$)", "i"))
+                )
+            );
+
+            var expiredOffers = await _collection.Find(expiredFilter).ToListAsync();
+            if (expiredOffers.Count == 0)
+            {
+                return;
+            }
+
+            var offerIds = expiredOffers.Select(o => o.OfferId).Where(id => !string.IsNullOrWhiteSpace(id)).ToList();
+
+            if (_gridFS is not null)
+            {
+                foreach (var offer in expiredOffers)
+                {
+                    if (offer.ImageIds is not { Count: > 0 })
+                    {
+                        continue;
+                    }
+
+                    foreach (var imageId in offer.ImageIds)
+                    {
+                        if (!ObjectId.TryParse(imageId, out var oid))
+                        {
+                            continue;
+                        }
+
+                        try
+                        {
+                            await _gridFS.DeleteAsync(oid);
+                        }
+                        catch (GridFSFileNotFoundException)
+                        {
+                            // Plik został już usunięty - pomijamy.
+                        }
+                    }
+                }
+            }
+
+            await _collection.DeleteManyAsync(o => offerIds.Contains(o.OfferId));
+        }
+
+        private static bool IsFoodCategory(string? category)
+        {
+            return !string.IsNullOrWhiteSpace(category) &&
+                   category.Contains("Jedzenie", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

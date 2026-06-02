@@ -252,7 +252,7 @@ class _HomePageState extends State<HomePage> {
                               maxWidth: 140,
                             ),
                             child: Text(
-                              'Witaj, \n$greetingNick',
+                              'Witaj, $greetingNick',
                               softWrap: true,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,

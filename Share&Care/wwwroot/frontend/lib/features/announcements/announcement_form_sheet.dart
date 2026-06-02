@@ -78,6 +78,8 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
   bool get _isFoodCategory => _selectedCategory == 'Jedzenie';
   bool get _isReportType =>
       _selectedType == AnnouncementMetadata.defaultReportType;
+    List<String> get _availableOfferKinds =>
+      _isFoodCategory ? const ['Give'] : widget.offerKinds;
 
   DateTime? _expirationDate;
 
@@ -114,6 +116,8 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
 
     if (_isReportType) {
       _selectedOfferKind = 'WantToTake';
+    } else if (_isFoodCategory) {
+      _selectedOfferKind = 'Give';
     }
 
     if (!_isBorrow) {
@@ -251,6 +255,10 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                             if (v == null) return;
                             setState(() {
                               _selectedCategory = v;
+                              if (_isFoodCategory) {
+                                _selectedOfferKind = 'Give';
+                                _depositController.clear();
+                              }
                               if (!_isFoodCategory) {
                                 _expirationDate = null;
                                 _expirationController.clear();
@@ -291,6 +299,7 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                               border: OutlineInputBorder(),
                             ),
                             items: widget.offerKinds
+                                .where((k) => _availableOfferKinds.contains(k))
                                 .map(
                                   (k) => DropdownMenuItem(
                                     value: k,
@@ -339,6 +348,10 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                               if (v == null) return;
                               setState(() {
                                 _selectedCategory = v;
+                                if (_isFoodCategory) {
+                                  _selectedOfferKind = 'Give';
+                                  _depositController.clear();
+                                }
                                 if (!_isFoodCategory) {
                                   _expirationDate = null;
                                   _expirationController.clear();
@@ -385,6 +398,7 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
                                 border: OutlineInputBorder(),
                               ),
                               items: widget.offerKinds
+                                  .where((k) => _availableOfferKinds.contains(k))
                                   .map(
                                     (k) => DropdownMenuItem(
                                       value: k,
@@ -733,7 +747,11 @@ class _AnnouncementFormSheetState extends State<AnnouncementFormSheet> {
       ? double.tryParse(_depositController.text.replaceAll(',', '.'))
       : null;
 
-    final offerKind = _isReportType ? 'WantToTake' : _selectedOfferKind;
+    final offerKind = _isReportType
+      ? 'WantToTake'
+      : _isFoodCategory
+        ? 'Give'
+        : _selectedOfferKind;
 
     widget.onSubmit(
       _titleController.text.trim(),

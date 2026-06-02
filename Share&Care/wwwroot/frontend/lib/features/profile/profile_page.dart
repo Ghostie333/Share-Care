@@ -40,6 +40,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  UserProfileInfo? _profileInfo;
   late String _firstName;
   late String _lastName;
   late String _email;
@@ -89,6 +90,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final info = await UserProfileService.fetchProfile(userId);
       if (!mounted) return;
       setState(() {
+        _profileInfo = info;
         _firstName = info.firstName;
         _lastName = info.lastName;
         _email = info.email;
@@ -332,6 +334,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildProfileHeader() {
     final theme = Theme.of(context);
+    final userId = widget.authResult.userId;
+    final profileImageId = _profileInfo?.profileImageId;
+    final avatarUrl = userId == null
+        ? null
+        : profileImageId == null || profileImageId.isEmpty
+            ? '${AppConfig.apiBaseUrl}/UserProfile/photo/$userId'
+            : '${AppConfig.apiBaseUrl}/UserProfile/photo/$userId?v=$profileImageId';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -339,11 +348,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         CircleAvatar(
           radius: 40,
           backgroundColor: theme.colorScheme.primary,
-          foregroundImage: widget.authResult.userId == null
+          foregroundImage: avatarUrl == null
               ? null
-              : NetworkImage(
-                  '${AppConfig.apiBaseUrl}/UserProfile/photo/${widget.authResult.userId}',
-                ),
+              : NetworkImage(avatarUrl),
           child: Text(
             _initials,
             style: theme.textTheme.headlineMedium?.copyWith(
@@ -995,6 +1002,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _city = updated.city;
       });
     }
+
+    await _loadUserProfile();
   }
 
   void _onSettingsPressed() {

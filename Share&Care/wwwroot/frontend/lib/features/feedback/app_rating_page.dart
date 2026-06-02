@@ -102,7 +102,7 @@ class _AppRatingPageState extends State<AppRatingPage> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _isSubmitting ? null : _submit,
-              child: Text(_isSubmitting ? 'Wysylanie...' : 'Wyslij'),
+              child: Text(_isSubmitting ? 'Wysylanie...' : 'Wylij'),
             ),
           ],
         ),
