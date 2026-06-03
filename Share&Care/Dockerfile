@@ -17,78 +17,21 @@ ARG BUILD_CONFIGURATION=Release
 
 WORKDIR /src
 
-# -------------------------
-# Install Flutter
-# -------------------------
-RUN apt-get update && apt-get install -y \
-    curl \
-    git \
-    unzip \
-    xz-utils \
-    zip \
-    libglu1-mesa \
-    && rm -rf /var/lib/apt/lists/*
-
-ENV FLUTTER_HOME=/opt/flutter
-ENV PATH="${FLUTTER_HOME}/bin:${FLUTTER_HOME}/bin/cache/dart-sdk/bin:${PATH}"
-
-# Install Flutter
-RUN git clone https://github.com/flutter/flutter.git ${FLUTTER_HOME}
-
-# Use stable channel
-RUN flutter channel stable && flutter upgrade
-
-# Disable analytics
-RUN flutter config --no-analytics
-
-# Precache Flutter web dependencies
-RUN flutter precache --web
-
-# Verify Flutter installation
-RUN flutter doctor
-
-# -------------------------
-# Copy .NET project
-# -------------------------
+# Kopiowanie i przywracanie zależności .NET
 COPY ["Share&Care.csproj", "."]
-
 RUN dotnet restore "./Share&Care.csproj"
 
+# Kopiowanie reszty kodu źródłowego backendu
 COPY . .
 
-# =========================
-# Build Flutter frontend
-# =========================
-WORKDIR /src/wwwroot/frontend
-
-# Clean previous Flutter builds
-RUN flutter clean
-
-# Install Flutter dependencies
-RUN flutter pub get
-
-# Build Flutter web app
-# PWA/service worker cache potrafi trzymać starą wersję frontendu; wyłączamy go,
-# żeby zmiany (np. poprawki multipart dla web) były widoczne od razu po deployu.
-RUN flutter build web --release --pwa-strategy=none
-
-# Save Flutter build to temp folder
-RUN mkdir -p /src/flutter-build && \
-    cp -r build/web/* /src/flutter-build/
-
-# =========================
-# Build .NET app
-# =========================
-WORKDIR /src
-
+# Kompilacja aplikacji .NET
 RUN dotnet build "./Share&Care.csproj" \
     -c ${BUILD_CONFIGURATION} \
     -o /app/build
 
 # =========================
-# Publish
-# =========================
 # Etap publish
+# =========================
 FROM build AS publish
 
 ARG BUILD_CONFIGURATION=Release
@@ -98,18 +41,14 @@ RUN dotnet publish "./Share&Care.csproj" \
     -o /app/publish \
     /p:UseAppHost=false
 
-# Copy Flutter build into ASP.NET wwwroot/frontend/build/web (zgodnie z Program.cs)
-RUN mkdir -p /app/publish/wwwroot/frontend/build/web && \
-    cp -r /src/flutter-build/* /app/publish/wwwroot/frontend/build/web/
-
-# =========================
-# Final image
 # =========================
 # Etap finalny
+# =========================
 FROM base AS final
 
 WORKDIR /app
 
+# Kopiowanie tylko opublikowanej aplikacji .NET
 COPY --from=publish /app/publish .
 
 ENTRYPOINT ["dotnet", "Share&Care.dll"]

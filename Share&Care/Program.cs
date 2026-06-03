@@ -16,20 +16,56 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddSignalR();
 builder.Services.AddHttpClient();
 
+// Pobieranie dozwolonych adresów ze zmiennych środowiskowych
+var rawCorsOrigins = Environment.GetEnvironmentVariable("Cors__AllowedOrigins")
+    ?? Environment.GetEnvironmentVariable("FRONTEND_ORIGINS");
+
+var corsOriginsList = (rawCorsOrigins ?? string.Empty)
+    .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    .ToList();
+
+// ZABEZPIECZENIE: Jeśli produkcja i lista jest pusta, dodaj domyślny adres Cloudflare Pages,
+// żeby aplikacja od razu ruszyła. Zmień "twoja-nazwa-projektu" na swoją nazwę z Pages.
+if (corsOriginsList.Count == 0 && !builder.Environment.IsDevelopment())
+{
+    corsOriginsList.Add("https://twoja-nazwa-projektu.pages.dev");
+}
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Frontend", policy =>
+    {
+        if (corsOriginsList.Count == 0)
+        {
+            if (builder.Environment.IsDevelopment())
+            {
+                // Dla localhost w dev mode bez ustawionych zmiennych
+                policy.AllowAnyOrigin()
+                      .AllowAnyHeader()
+                      .AllowAnyMethod();
+                // Usunięto AllowCredentials(), bo gryzie się z AllowAnyOrigin()
+            }
+            return;
+        }
+
+        // Dla zdefiniowanych adresów (w tym Cloudflare Pages)
+        policy.WithOrigins(corsOriginsList.ToArray())
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials(); // SignalR tego wymaga, więc origins muszą być jawne
+    });
+});
 
 // MongoDB
 var rawConn = Environment.GetEnvironmentVariable("MongoDb__ConnectionString");
-
 var mongoUrl = new MongoUrl(rawConn);
 var dbName = mongoUrl.DatabaseName;
 Console.WriteLine($"[STARTUP] Using MongoDB URL: {rawConn}");
 Console.WriteLine($"[STARTUP] Resolved Database: {dbName}");
-
 var mongoClient = new MongoClient(mongoUrl);
 var mongoDatabase = mongoClient.GetDatabase(dbName);
 builder.Services.AddSingleton(mongoDatabase);
 builder.Services.AddSingleton(new GridFSBucket(mongoDatabase));
-
 
 // Serwisy
 builder.Services.AddSingleton<SecurityService>();
@@ -65,7 +101,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 var app = builder.Build();
 
-
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -74,44 +109,21 @@ if (app.Environment.IsDevelopment())
 
 app.UseRouting();
 
-// W kontenerze wystawiamy tylko HTTP (brak nasłuchu HTTPS),
-// więc w środowisku deweloperskim NIE wymuszamy przekierowania na HTTPS,
-// bo skutkuje to błędem "Connection refused" po przekierowaniu na https://127.0.0.1:7070.
+// CORS musi być dokładnie tutaj - po UseRouting, przed Https/Auth
+app.UseCors("Frontend");
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
+
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseDefaultFiles();
 app.UseStaticFiles();
 
-// Najpierw mapujemy API i SignalR, aby ścieżki /chat/* nie były
-// przechwytywane przez fallback SPA (index.html).
 app.MapControllers();
 app.MapHub<ChatHub>("/chubs/chat");
-
-// Serwuj Flutter Web spod / (root)
-var flutterAppRoot = Path.Combine(app.Environment.WebRootPath, "frontend", "build", "web");
-if (Directory.Exists(flutterAppRoot))
-{
-    var flutterProvider = new PhysicalFileProvider(flutterAppRoot);
-
-    app.UseFileServer(new FileServerOptions
-    {
-        FileProvider = flutterProvider,
-        RequestPath = PathString.Empty, // root
-        EnableDefaultFiles = true
-    });
-
-    // Fallback dla SPA: tylko jeśli nie trafiono w żaden endpoint ani plik statyczny
-    // ani w żaden endpoint API.
-    app.MapFallbackToFile("index.html", new StaticFileOptions
-    {
-        FileProvider = flutterProvider
-    });
-}
 
 app.MapGet("/userprofilepage", async context =>
 {
