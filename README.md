@@ -34,7 +34,7 @@ Do uruchomienia całej aplikacji w środowisku deweloperskim potrzebujesz jedyni
 
 ### 1. Pobranie repozytorium
 ```bash
-git clone [https://github.com/Ghostie333/Share-Care.git](https://github.com/Ghostie333/Share-Care.git)
+git clone https://github.com/Ghostie333/Share-Care.git
 cd Share-Care
 ```
 ### 2. Otworzenie folderu Share-Care
