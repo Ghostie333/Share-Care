@@ -9,7 +9,7 @@ class AppConfig {
   /// Ustaw w --dart-define=MAPTILER_API_KEY=... przy budowaniu.
   static const String mapTilerApiKey = String.fromEnvironment(
     'MAPTILER_API_KEY',
-    defaultValue: 'yl3lq7alW9or6w3Ps0Ye',
+    defaultValue: '',
   );
 
   // Informacja o wersji aplikacji
