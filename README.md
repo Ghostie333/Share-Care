@@ -68,20 +68,18 @@
 ## 💻 Jak uruchomić projekt lokalnie
 
 ### Wymagania wstępne
-Do uruchomienia całej aplikacji w środowisku deweloperskim potrzebujesz jedynie:
-* [Docker](https://docs.docker.com/get-docker/) (razem z Docker Compose)
+Do uruchomienia całej aplikacji potrzebujesz [Docker](https://docs.docker.com/get-docker/)
 
 ### 1. Pobranie repozytorium
 ```bash
 git clone https://github.com/Ghostie333/Share-Care.git
 cd Share-Care
 ```
-### 2. Otworzenie folderu Share-Care
+### 2. Uruchomienie kontenera z aplikacją
 W folderze z aplikacją otwieramy okno terminalu i wpisujemy komendę:
 ```bash
 docker compose --env-file shareCare.env -f docker-compose.dev.yml up -d --build
 ```
-Zbuduje ona kontener z naszą aplikacją i uruchomi go.
 ### 3. Wejście na stronę aplikacji:
 ```bash
 http://127.0.0.1:7070
