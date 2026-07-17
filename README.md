@@ -26,6 +26,27 @@
 
 ---
 
+## 💻 Wygląd aplikacji
+## Strona główna
+<img width="1616" height="1173" alt="obraz" src="https://github.com/user-attachments/assets/abaed7da-aceb-4142-bec0-0b06387f34a6" />
+
+## Wyszukiwarka
+<img width="1616" height="1167" alt="obraz" src="https://github.com/user-attachments/assets/ad78874e-100b-490d-b7cf-8394cbe2c1b5" />
+
+## Tworzenie ogłoszenia
+<img width="678" height="977" alt="obraz" src="https://github.com/user-attachments/assets/3fb1a639-f6a7-449f-94ba-0bbf6d1bcf56" />
+
+## Podgląd ogłoszenia
+<img width="1615" height="1167" alt="obraz" src="https://github.com/user-attachments/assets/f99e0dd1-19a3-4067-a3d4-9a7cf4592eeb" />
+
+## Chat
+<img width="1616" height="1167" alt="obraz" src="https://github.com/user-attachments/assets/0b345ede-2f96-4a5f-a0ce-65946d298ce9" />
+
+## Profil użytkownika
+<img width="1616" height="1260" alt="obraz" src="https://github.com/user-attachments/assets/fea3fcd5-55c7-4fd2-a493-81eac5d1e679" />
+
+---
+
 ## 💻 Jak uruchomić projekt lokalnie
 
 ### Wymagania wstępne
