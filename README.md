@@ -84,5 +84,5 @@ docker compose --env-file shareCare.env -f docker-compose.dev.yml up -d --build
 Zbuduje ona kontener z naszą aplikacją i uruchomi go.
 ### 3. Wejście na stronę aplikacji:
 ```bash
-http://localhost:7070/
+http://127.0.0.1:7070
 ```
